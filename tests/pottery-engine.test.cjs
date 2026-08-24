@@ -19,12 +19,16 @@ const {
   POTTERY_VERTICAL_FOV,
   POTTERY_BASE_SCREEN_Y,
   advancePotteryTurntable,
+  advancePotteryTurntableFrame,
+  calculatePotteryBaseScreenY,
   calculatePotteryOrbitDelta,
   calculatePotteryCameraDistance,
   calculatePotteryFocusY,
+  calculatePotteryTargetRpm,
   calculatePotteryZoomFactor,
   defaultPotteryPitch,
-  normalizePotteryYaw
+  normalizePotteryYaw,
+  potteryRpmToPeriodMs
 } = require("../core/pottery-scene.ts");
 
 const ringCount = 48;
@@ -34,6 +38,20 @@ const outer = Array.from({ length: ringCount }, (_, index) =>
 );
 const inner = outer.map((radius, index) => (index < 3 ? 0 : radius - 0.11));
 const mesh = buildPotteryMesh(outer, inner, 1.2, radialSegments);
+const reshapedMesh = buildPotteryMesh(
+  outer.map((radius, index) => radius + (index > 12 ? 0.01 : 0)),
+  inner,
+  1.2,
+  radialSegments
+);
+assert.equal(mesh.topologyKey, reshapedMesh.topologyKey, "只改剖面时应复用固定拓扑");
+assert.equal(mesh.indices, reshapedMesh.indices, "只改剖面时不应重新分配索引");
+assert.equal(mesh.cavity, reshapedMesh.cavity, "只改剖面时不应重新分配静态内腔属性");
+assert.notEqual(
+  mesh.topologyKey,
+  buildPotteryMesh(outer, inner, 1.2, 48).topologyKey,
+  "画质档变化时必须重建拓扑"
+);
 
 assert.equal(mesh.positions.length, mesh.normals.length, "每个顶点都必须有法线");
 assert.equal(mesh.positions.length / 3, mesh.cavity.length, "每个顶点都必须标记内外表面");
@@ -152,6 +170,37 @@ for (let frame = 0; frame < 60; frame++) {
   sixtyFrameTurn = advancePotteryTurntable(sixtyFrameTurn, 1000 / 60);
 }
 assert.ok(Math.abs(oneSecondTurn - sixtyFrameTurn) < 1e-10, "转盘速度不能随帧率变化");
+
+assert.equal(calculatePotteryBaseScreenY(568), 0.72, "短屏接触线应保持在 72%");
+assert.equal(calculatePotteryBaseScreenY(932), 0.75, "长屏接触线可下移到 75%");
+assert.ok(
+  calculatePotteryBaseScreenY(812) > 0.739 && calculatePotteryBaseScreenY(812) < 0.741,
+  "常规长屏接触线应约为 74%"
+);
+assert.equal(calculatePotteryTargetRpm(0.55, "idle"), 44, "窄器形空闲时应为 44 RPM");
+assert.equal(calculatePotteryTargetRpm(1.1, "idle"), 32, "宽器形空闲时应降到 32 RPM");
+assert.equal(calculatePotteryTargetRpm(0.55, "shaping"), 30, "触摸窄器形应降到 30 RPM");
+assert.equal(calculatePotteryTargetRpm(1.1, "orbit"), 18, "观察宽器形应降到 18 RPM");
+assert.equal(calculatePotteryTargetRpm(0.7, "reduced"), 0, "减少动态必须完全停转");
+assert.equal(potteryRpmToPeriodMs(30), 2000, "RPM 与 CSS 单圈时间必须可共享换算");
+
+function replayTurntable(frameRate) {
+  let frame = { angle: 0, rpm: 44 };
+  for (let index = 0; index < frameRate; index++) {
+    frame = advancePotteryTurntableFrame(
+      frame.angle,
+      frame.rpm,
+      24,
+      1000 / frameRate
+    );
+  }
+  return frame;
+}
+const turn30 = replayTurntable(30);
+const turn120 = replayTurntable(120);
+assert.ok(Math.abs(turn30.angle - turn120.angle) < 0.002, "平滑减速角度应基本不受帧率影响");
+assert.ok(Math.abs(turn30.rpm - turn120.rpm) < 0.002, "平滑减速目标应基本不受帧率影响");
+assert.ok(turn30.rpm < 26, "一秒后应平滑接近观察目标转速");
 
 const gentleDrag = profileDeltaFromDrag(4, 375);
 const delayedEvent = profileDeltaFromDrag(80, 375);

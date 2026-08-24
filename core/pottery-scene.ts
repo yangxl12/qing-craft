@@ -1,10 +1,17 @@
 export const POTTERY_VERTICAL_FOV = 0.62;
-export const POTTERY_BASE_SCREEN_Y = 0.7;
+export const POTTERY_BASE_SCREEN_Y = 0.74;
 export const POTTERY_MIN_ZOOM_FACTOR = 0.62;
 export const POTTERY_MAX_ZOOM_FACTOR = 2.2;
 export const POTTERY_MIN_PITCH = 0.035;
 export const POTTERY_MAX_PITCH = 0.78;
-export const POTTERY_TURNTABLE_PERIOD_MS = 18000;
+export const POTTERY_TURNTABLE_PERIOD_MS = 60000 / 38;
+
+export type PotteryRotationState = "idle" | "shaping" | "orbit" | "reduced";
+
+export interface PotteryTurntableFrame {
+  angle: number;
+  rpm: number;
+}
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -15,6 +22,28 @@ export function normalizePotteryYaw(angle: number): number {
   if (!Number.isFinite(angle)) return 0;
   const turn = Math.PI * 2;
   return ((angle + Math.PI) % turn + turn) % turn - Math.PI;
+}
+
+/** Short screens keep the contact line clear of the process rail and tray. */
+export function calculatePotteryBaseScreenY(viewportHeight: number): number {
+  const safeHeight = Number.isFinite(viewportHeight) ? viewportHeight : 812;
+  return clamp(0.72 + ((safeHeight - 568) / (932 - 568)) * 0.03, 0.72, 0.75);
+}
+
+/** Wider clay has a lower target RPM so its edge keeps a controllable speed. */
+export function calculatePotteryTargetRpm(
+  maxRadius: number,
+  state: PotteryRotationState
+): number {
+  if (state === "reduced") return 0;
+  const width = clamp((maxRadius - 0.55) / (1.1 - 0.55), 0, 1);
+  if (state === "shaping") return 30 + (22 - 30) * width;
+  if (state === "orbit") return 24 + (18 - 24) * width;
+  return 44 + (32 - 44) * width;
+}
+
+export function potteryRpmToPeriodMs(rpm: number): number {
+  return rpm > 0 ? 60000 / rpm : 0;
 }
 
 /**
@@ -50,13 +79,37 @@ export function calculatePotteryZoomFactor(current: number, pinchScale: number):
 }
 
 /** Advances by elapsed time so the wheel speed is independent of frame rate. */
-export function advancePotteryTurntable(angle: number, elapsedMilliseconds: number): number {
+export function advancePotteryTurntable(
+  angle: number,
+  elapsedMilliseconds: number,
+  rpm = 60000 / POTTERY_TURNTABLE_PERIOD_MS
+): number {
   const safeElapsed = Number.isFinite(elapsedMilliseconds)
     ? Math.max(0, elapsedMilliseconds)
     : 0;
   return normalizePotteryYaw(
-    angle + (Math.PI * 2 * safeElapsed) / POTTERY_TURNTABLE_PERIOD_MS
+    angle + (Math.PI * 2 * safeElapsed * Math.max(0, rpm)) / 60000
   );
+}
+
+/** Smooth target-speed changes while preserving frame-rate-independent angle. */
+export function advancePotteryTurntableFrame(
+  angle: number,
+  currentRpm: number,
+  targetRpm: number,
+  elapsedMilliseconds: number
+): PotteryTurntableFrame {
+  const elapsed = clamp(Number.isFinite(elapsedMilliseconds) ? elapsedMilliseconds : 0, 0, 50);
+  const safeCurrent = Math.max(0, Number.isFinite(currentRpm) ? currentRpm : 0);
+  const safeTarget = Math.max(0, Number.isFinite(targetRpm) ? targetRpm : 0);
+  if (!elapsed) return { angle: normalizePotteryYaw(angle), rpm: safeCurrent };
+  const transitionMs = safeTarget < safeCurrent ? 270 : 410;
+  const blend = 1 - Math.exp(-elapsed / transitionMs);
+  const nextRpm = safeCurrent + (safeTarget - safeCurrent) * blend;
+  return {
+    angle: advancePotteryTurntable(angle, elapsed, (safeCurrent + nextRpm) * 0.5),
+    rpm: Math.abs(nextRpm - safeTarget) < 0.01 ? safeTarget : nextRpm
+  };
 }
 
 /** A squat piece needs a slightly higher eye line so its opening still reads. */

@@ -1,17 +1,19 @@
 import { clayColor, glazeColor, PotteryWork } from "./model";
 import { buildPotteryMesh } from "./pottery-mesh";
 import {
-  advancePotteryTurntable,
+  advancePotteryTurntableFrame,
   calculatePotteryOrbitDelta,
   calculatePotteryCameraDistance,
   calculatePotteryFocusY,
+  calculatePotteryTargetRpm,
   calculatePotteryZoomFactor,
   defaultPotteryPitch,
   normalizePotteryYaw,
   POTTERY_BASE_SCREEN_Y,
   POTTERY_MAX_PITCH,
   POTTERY_MIN_PITCH,
-  POTTERY_VERTICAL_FOV
+  POTTERY_VERTICAL_FOV,
+  PotteryRotationState
 } from "./pottery-scene";
 
 type GL = any;
@@ -21,6 +23,10 @@ interface LightingPreset {
   fillDirection: number[];
   keyColor: number[];
   fillColor: number[];
+  ambient: number[];
+  keyIntensity: number;
+  fillIntensity: number;
+  exposure: number;
 }
 
 const LIGHTING: Record<string, LightingPreset> = {
@@ -28,19 +34,31 @@ const LIGHTING: Record<string, LightingPreset> = {
     keyDirection: [-0.58, 0.8, 0.46],
     fillDirection: [0.58, 0.24, 0.78],
     keyColor: [1, 0.92, 0.79],
-    fillColor: [0.43, 0.57, 0.69]
+    fillColor: [0.43, 0.57, 0.69],
+    ambient: [0.3, 0.305, 0.295],
+    keyIntensity: 0.82,
+    fillIntensity: 0.2,
+    exposure: 2.5
   },
   museum: {
     keyDirection: [-0.34, 0.91, 0.24],
     fillDirection: [0.5, 0.2, 0.84],
     keyColor: [1, 0.95, 0.86],
-    fillColor: [0.32, 0.42, 0.5]
+    fillColor: [0.32, 0.42, 0.5],
+    ambient: [0.26, 0.265, 0.27],
+    keyIntensity: 0.76,
+    fillIntensity: 0.18,
+    exposure: 2.2
   },
   window: {
     keyDirection: [-0.76, 0.62, 0.2],
     fillDirection: [0.64, 0.28, 0.7],
     keyColor: [1, 0.98, 0.9],
-    fillColor: [0.49, 0.63, 0.72]
+    fillColor: [0.49, 0.63, 0.72],
+    ambient: [0.285, 0.295, 0.3],
+    keyIntensity: 0.8,
+    fillIntensity: 0.21,
+    exposure: 2.35
   }
 };
 
@@ -189,6 +207,10 @@ uniform vec3 uKeyDirection;
 uniform vec3 uFillDirection;
 uniform vec3 uKeyColor;
 uniform vec3 uFillColor;
+uniform vec3 uAmbient;
+uniform float uKeyIntensity;
+uniform float uFillIntensity;
+uniform float uExposure;
 uniform float uGlazeMix;
 uniform float uPattern;
 uniform float uMethod;
@@ -227,12 +249,14 @@ void main(){
   float fresnel = pow(1.0 - facing, 3.0) * mix(0.018, 0.065, surfaceGlaze);
 
   vec3 linearMaterial = pow(max(material, vec3(0.0)), vec3(2.2));
-  vec3 diffuseLight = vec3(0.25, 0.26, 0.26) + uKeyColor * key * 0.68 + uFillColor * fill * 0.2;
+  vec3 diffuseLight = uAmbient + uKeyColor * key * uKeyIntensity + uFillColor * fill * uFillIntensity;
   float baseOcclusion = mix(0.84, 1.0, smoothstep(0.0, 0.16, vY));
   float cavityOcclusion = mix(1.0, 0.6, vCavity);
   vec3 linearColor = linearMaterial * diffuseLight * baseOcclusion * cavityOcclusion;
   linearColor += (uKeyColor * specular + uFillColor * fresnel) * mix(1.0, 0.58, vCavity);
-  gl_FragColor = vec4(pow(clamp(linearColor, 0.0, 1.0), vec3(1.0 / 2.2)), 1.0);
+  vec3 exposed = max(linearColor * uExposure, vec3(0.0));
+  vec3 mapped = exposed / (vec3(1.0) + exposed);
+  gl_FragColor = vec4(pow(mapped, vec3(1.0 / 2.2)), 1.0);
 }
 `;
 
@@ -260,6 +284,14 @@ export class PotteryEngine {
   private lastFrameTime = 0;
   private running = true;
   private autoRotate = true;
+  private rotationState: PotteryRotationState = "idle";
+  private currentRpm = 0;
+  private targetRpm = 38;
+  private baseScreenY = POTTERY_BASE_SCREEN_Y;
+  private frameProcessor: (() => boolean) | null = null;
+  private topologyKey = "";
+  private positionByteLength = 0;
+  private normalByteLength = 0;
   private lighting = "workshop";
 
   constructor(canvas: any, work: PotteryWork) {
@@ -279,6 +311,8 @@ export class PotteryEngine {
     this.cbo = gl.createBuffer();
     this.ibo = gl.createBuffer();
     this.rebuild();
+    this.targetRpm = calculatePotteryTargetRpm(this.meshRadius, "idle");
+    this.currentRpm = this.targetRpm;
     this.pitch = defaultPotteryPitch(this.meshRadius, this.meshHeight);
     this.resetCameraFit();
     this.loop();
@@ -324,15 +358,37 @@ export class PotteryEngine {
     this.render();
   }
 
-  update(work: PotteryWork) {
+  update(work: PotteryWork, renderNow = true) {
     this.work = work;
     this.rebuild();
+    this.targetRpm = this.autoRotate
+      ? calculatePotteryTargetRpm(this.meshRadius, this.rotationState)
+      : 0;
     this.ensureCameraFit();
-    this.render();
+    if (renderNow) this.render();
   }
 
   setAutoRotate(value: boolean) {
     this.autoRotate = value;
+    this.rotationState = value ? "idle" : "reduced";
+    this.targetRpm = value ? calculatePotteryTargetRpm(this.meshRadius, "idle") : 0;
+    if (!value) this.currentRpm = 0;
+  }
+
+  setRotationState(value: PotteryRotationState) {
+    this.rotationState = value;
+    this.targetRpm = this.autoRotate ? calculatePotteryTargetRpm(this.meshRadius, value) : 0;
+    if (value === "reduced") this.currentRpm = 0;
+  }
+
+  setBaseScreenY(value: number) {
+    this.baseScreenY = clamp(value, 0.72, 0.75);
+    this.resetCameraFit();
+    this.render();
+  }
+
+  setFrameProcessor(processor: (() => boolean) | null) {
+    this.frameProcessor = processor;
   }
 
   setLighting(value: string) {
@@ -369,8 +425,8 @@ export class PotteryEngine {
     this.render();
   }
 
-  /** Maps a CSS-pixel y coordinate back to the nearest profile sample. */
-  profileIndexAtCanvasY(canvasY: number): number {
+  /** Maps a CSS-pixel y coordinate to a continuous profile coordinate. */
+  profilePositionAtCanvasY(canvasY: number): number {
     const sampleCount = this.work.outerRadius.length;
     if (sampleCount <= 1) return 0;
     const distance = this.fitDistance * this.zoomFactor;
@@ -382,7 +438,11 @@ export class PotteryEngine {
     const relativeY = Math.abs(denominator) < 1e-5 ? 0 : (ndcY * distance) / denominator;
     const modelY = focusY + relativeY;
     const profilePosition = clamp(modelY / this.meshHeight + 0.5, 0, 1);
-    return Math.round(profilePosition * (sampleCount - 1));
+    return profilePosition * (sampleCount - 1);
+  }
+
+  profileIndexAtCanvasY(canvasY: number): number {
+    return Math.round(this.profilePositionAtCanvasY(canvasY));
   }
 
   /** Conservative silhouette hit test used to separate shaping from camera orbit. */
@@ -400,11 +460,18 @@ export class PotteryEngine {
     const maxY = Math.max(top, bottom) + verticalAllowance;
     if (canvasY < minY || canvasY > maxY) return false;
 
-    const profileIndex = this.profileIndexAtCanvasY(canvasY);
-    const profileY = (profileIndex / Math.max(1, this.work.outerRadius.length - 1) - 0.5) * this.meshHeight;
+    const profilePosition = this.profilePositionAtCanvasY(canvasY);
+    const lowerIndex = Math.floor(profilePosition);
+    const upperIndex = Math.min(this.work.outerRadius.length - 1, lowerIndex + 1);
+    const blend = profilePosition - lowerIndex;
+    const profileY =
+      (profilePosition / Math.max(1, this.work.outerRadius.length - 1) - 0.5) *
+      this.meshHeight;
     const focusY = this.calculateFocusY(distance);
     const relativeY = profileY - focusY;
-    const radius = this.work.outerRadius[profileIndex] || this.meshRadius;
+    const radius =
+      (this.work.outerRadius[lowerIndex] || this.meshRadius) * (1 - blend) +
+      (this.work.outerRadius[upperIndex] || this.meshRadius) * blend;
     const closestDepth = Math.max(
       0.08,
       distance - relativeY * Math.sin(this.pitch) - radius * Math.cos(this.pitch)
@@ -417,6 +484,7 @@ export class PotteryEngine {
 
   destroy() {
     this.running = false;
+    this.frameProcessor = null;
     if (this.frame && this.canvas.cancelAnimationFrame) {
       this.canvas.cancelAnimationFrame(this.frame);
     }
@@ -442,13 +510,26 @@ export class PotteryEngine {
 
     const gl = this.gl;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
-    gl.bufferData(gl.ARRAY_BUFFER, mesh.positions, gl.DYNAMIC_DRAW);
+    if (mesh.positions.byteLength === this.positionByteLength && gl.bufferSubData) {
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, mesh.positions);
+    } else {
+      gl.bufferData(gl.ARRAY_BUFFER, mesh.positions, gl.DYNAMIC_DRAW);
+      this.positionByteLength = mesh.positions.byteLength;
+    }
     gl.bindBuffer(gl.ARRAY_BUFFER, this.nbo);
-    gl.bufferData(gl.ARRAY_BUFFER, mesh.normals, gl.DYNAMIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.cbo);
-    gl.bufferData(gl.ARRAY_BUFFER, mesh.cavity, gl.DYNAMIC_DRAW);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.indices, gl.DYNAMIC_DRAW);
+    if (mesh.normals.byteLength === this.normalByteLength && gl.bufferSubData) {
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, mesh.normals);
+    } else {
+      gl.bufferData(gl.ARRAY_BUFFER, mesh.normals, gl.DYNAMIC_DRAW);
+      this.normalByteLength = mesh.normals.byteLength;
+    }
+    if (mesh.topologyKey !== this.topologyKey) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.cbo);
+      gl.bufferData(gl.ARRAY_BUFFER, mesh.cavity, gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.indices, gl.STATIC_DRAW);
+      this.topologyKey = mesh.topologyKey;
+    }
     this.count = mesh.indices.length;
   }
 
@@ -494,7 +575,7 @@ export class PotteryEngine {
       this.meshHeight,
       distance,
       this.pitch,
-      POTTERY_BASE_SCREEN_Y,
+      this.baseScreenY,
       this.work.outerRadius[0] || 0
     );
   }
@@ -556,6 +637,10 @@ export class PotteryEngine {
     set3("uFillDirection", lighting.fillDirection);
     set3("uKeyColor", lighting.keyColor);
     set3("uFillColor", lighting.fillColor);
+    set3("uAmbient", lighting.ambient);
+    gl.uniform1f(gl.getUniformLocation(program, "uKeyIntensity"), lighting.keyIntensity);
+    gl.uniform1f(gl.getUniformLocation(program, "uFillIntensity"), lighting.fillIntensity);
+    gl.uniform1f(gl.getUniformLocation(program, "uExposure"), lighting.exposure);
 
     const glazeMix = this.work.stageIndex >= 2 ? (this.work.stageIndex >= 3 ? 1 : 0.72) : 0;
     gl.uniform1f(gl.getUniformLocation(program, "uGlazeMix"), glazeMix);
@@ -584,13 +669,19 @@ export class PotteryEngine {
       ? clamp((now - this.lastFrameTime) / 1000, 0, 0.05)
       : 0;
     this.lastFrameTime = now;
+    let shouldRender = this.frameProcessor ? this.frameProcessor() : false;
     if (this.autoRotate && elapsedSeconds > 0) {
-      this.turntableAngle = advancePotteryTurntable(
+      const frame = advancePotteryTurntableFrame(
         this.turntableAngle,
+        this.currentRpm,
+        this.targetRpm,
         elapsedSeconds * 1000
       );
-      this.render();
+      this.turntableAngle = frame.angle;
+      this.currentRpm = frame.rpm;
+      shouldRender = shouldRender || frame.rpm > 0;
     }
+    if (shouldRender) this.render();
     this.frame = this.canvas.requestAnimationFrame((nextTimestamp: number) =>
       this.loop(nextTimestamp)
     );

@@ -13,12 +13,21 @@ export interface PotteryMesh {
   radius: number;
   height: number;
   innerStartRing: number;
+  topologyKey: string;
   ranges: Record<PotteryMeshPart, PotteryMeshRange>;
 }
 
 const MIN_WALL = 0.065;
 const DEFAULT_WALL = 0.11;
 const MIN_CAVITY_RADIUS = 0.035;
+
+interface CachedPotteryTopology {
+  cavity: Float32Array;
+  indices: Uint16Array;
+  ranges: Record<PotteryMeshPart, PotteryMeshRange>;
+}
+
+const topologyCache = new Map<string, CachedPotteryTopology>();
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -78,11 +87,16 @@ export function buildPotteryMesh(
     return clamp(candidate, MIN_CAVITY_RADIUS, Math.max(MIN_CAVITY_RADIUS, radius - MIN_WALL));
   });
 
+  const topologyKey = `${ringCount}:${segments}:${innerStartRing}`;
+  const cachedTopology = topologyCache.get(topologyKey);
+
   const positions: number[] = [];
   const normals: number[] = [];
   const cavity: number[] = [];
   const indices: number[] = [];
-  const ranges = {} as Record<PotteryMeshPart, PotteryMeshRange>;
+  const ranges = cachedTopology
+    ? cachedTopology.ranges
+    : ({} as Record<PotteryMeshPart, PotteryMeshRange>);
   const top = ringCount - 1;
   const lipRadius = Math.min((outer[top] - inner[top]) / 2, 0.075);
   const sideHeight = safeHeight - lipRadius;
@@ -100,7 +114,7 @@ export function buildPotteryMesh(
     const index = positions.length / 3;
     positions.push(x, y, z);
     normals.push(nx, ny, nz);
-    cavity.push(cavityAmount);
+    if (!cachedTopology) cavity.push(cavityAmount);
     return index;
   };
 
@@ -138,7 +152,9 @@ export function buildPotteryMesh(
 
   const startPart = () => indices.length;
   const finishPart = (part: PotteryMeshPart, start: number) => {
-    ranges[part] = { indexOffset: start, indexCount: indices.length - start };
+    if (!cachedTopology) {
+      ranges[part] = { indexOffset: start, indexCount: indices.length - start };
+    }
   };
 
   let start = startPart();
@@ -151,16 +167,18 @@ export function buildPotteryMesh(
       )
     );
   }
-  for (let ring = 0; ring < ringCount - 1; ring++) {
-    const lower = outerBases[ring];
-    const upper = outerBases[ring + 1];
-    for (let segment = 0; segment < segments; segment++) {
-      const lowerCurrent = lower + segment;
-      const lowerNext = lowerCurrent + 1;
-      const upperCurrent = upper + segment;
-      const upperNext = upperCurrent + 1;
-      // Counter-clockwise when viewed from outside.
-      indices.push(lowerCurrent, upperCurrent, lowerNext, lowerNext, upperCurrent, upperNext);
+  if (!cachedTopology) {
+    for (let ring = 0; ring < ringCount - 1; ring++) {
+      const lower = outerBases[ring];
+      const upper = outerBases[ring + 1];
+      for (let segment = 0; segment < segments; segment++) {
+        const lowerCurrent = lower + segment;
+        const lowerNext = lowerCurrent + 1;
+        const upperCurrent = upper + segment;
+        const upperNext = upperCurrent + 1;
+        // Counter-clockwise when viewed from outside.
+        indices.push(lowerCurrent, upperCurrent, lowerNext, lowerNext, upperCurrent, upperNext);
+      }
     }
   }
   finishPart("outer", start);
@@ -178,16 +196,18 @@ export function buildPotteryMesh(
       )
     );
   }
-  for (let localRing = 0; localRing < innerBases.length - 1; localRing++) {
-    const lower = innerBases[localRing];
-    const upper = innerBases[localRing + 1];
-    for (let segment = 0; segment < segments; segment++) {
-      const lowerCurrent = lower + segment;
-      const lowerNext = lowerCurrent + 1;
-      const upperCurrent = upper + segment;
-      const upperNext = upperCurrent + 1;
-      // Reversed winding: the visible face points into the cavity.
-      indices.push(lowerCurrent, lowerNext, upperCurrent, lowerNext, upperNext, upperCurrent);
+  if (!cachedTopology) {
+    for (let localRing = 0; localRing < innerBases.length - 1; localRing++) {
+      const lower = innerBases[localRing];
+      const upper = innerBases[localRing + 1];
+      for (let segment = 0; segment < segments; segment++) {
+        const lowerCurrent = lower + segment;
+        const lowerNext = lowerCurrent + 1;
+        const upperCurrent = upper + segment;
+        const upperNext = upperCurrent + 1;
+        // Reversed winding: the visible face points into the cavity.
+        indices.push(lowerCurrent, lowerNext, upperCurrent, lowerNext, upperNext, upperCurrent);
+      }
     }
   }
   finishPart("inner", start);
@@ -209,22 +229,24 @@ export function buildPotteryMesh(
       )
     );
   }
-  for (let band = 0; band < rimBands; band++) {
-    const outerBand = rimBases[band];
-    const innerBand = rimBases[band + 1];
-    for (let segment = 0; segment < segments; segment++) {
-      const outerCurrent = outerBand + segment;
-      const outerNext = outerCurrent + 1;
-      const innerCurrent = innerBand + segment;
-      const innerNext = innerCurrent + 1;
-      indices.push(
-        outerCurrent,
-        innerCurrent,
-        outerNext,
-        outerNext,
-        innerCurrent,
-        innerNext
-      );
+  if (!cachedTopology) {
+    for (let band = 0; band < rimBands; band++) {
+      const outerBand = rimBases[band];
+      const innerBand = rimBases[band + 1];
+      for (let segment = 0; segment < segments; segment++) {
+        const outerCurrent = outerBand + segment;
+        const outerNext = outerCurrent + 1;
+        const innerCurrent = innerBand + segment;
+        const innerNext = innerCurrent + 1;
+        indices.push(
+          outerCurrent,
+          innerCurrent,
+          outerNext,
+          outerNext,
+          innerCurrent,
+          innerNext
+        );
+      }
     }
   }
   finishPart("rim", start);
@@ -233,8 +255,10 @@ export function buildPotteryMesh(
   const bottomY = yAt(0);
   const bottomCenter = appendVertex(0, bottomY, 0, 0, -1, 0, 0);
   const bottomRing = appendRing(outer[0], bottomY, () => [0, -1, 0]);
-  for (let segment = 0; segment < segments; segment++) {
-    indices.push(bottomCenter, bottomRing + segment, bottomRing + segment + 1);
+  if (!cachedTopology) {
+    for (let segment = 0; segment < segments; segment++) {
+      indices.push(bottomCenter, bottomRing + segment, bottomRing + segment + 1);
+    }
   }
   finishPart("bottom", start);
 
@@ -242,22 +266,32 @@ export function buildPotteryMesh(
   const floorY = yAt(innerStartRing);
   const floorCenter = appendVertex(0, floorY, 0, 0, 1, 0, 1);
   const floorRing = appendRing(inner[innerStartRing], floorY, () => [0, 1, 0], 1);
-  for (let segment = 0; segment < segments; segment++) {
-    indices.push(floorCenter, floorRing + segment + 1, floorRing + segment);
+  if (!cachedTopology) {
+    for (let segment = 0; segment < segments; segment++) {
+      indices.push(floorCenter, floorRing + segment + 1, floorRing + segment);
+    }
   }
   finishPart("floor", start);
 
   const vertexCount = positions.length / 3;
   if (vertexCount > 65535) throw new Error("POTTERY_MESH_TOO_LARGE");
+  const staticTopology =
+    cachedTopology || {
+      cavity: new Float32Array(cavity),
+      indices: new Uint16Array(indices),
+      ranges
+    };
+  if (!cachedTopology) topologyCache.set(topologyKey, staticTopology);
 
   return {
     positions: new Float32Array(positions),
     normals: new Float32Array(normals),
-    cavity: new Float32Array(cavity),
-    indices: new Uint16Array(indices),
+    cavity: staticTopology.cavity,
+    indices: staticTopology.indices,
     radius: maxRadius,
     height: safeHeight,
     innerStartRing,
-    ranges
+    topologyKey,
+    ranges: staticTopology.ranges
   };
 }

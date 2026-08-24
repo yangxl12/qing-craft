@@ -5,5 +5,5 @@ declare function Page<D extends Record<string, any>, T extends Record<string, an
 ): void;
 declare function getCurrentPages(): any[];
 
-interface WechatMiniprogramTouch { clientX: number; clientY: number; identifier: number; }
-interface WechatMiniprogramTouchEvent { touches: WechatMiniprogramTouch[]; changedTouches: WechatMiniprogramTouch[]; currentTarget: { dataset: Record<string, string> }; detail?: any; }
+interface WechatMiniprogramTouch { clientX: number; clientY: number; identifier: number; force?: number; }
+interface WechatMiniprogramTouchEvent { touches: WechatMiniprogramTouch[]; changedTouches: WechatMiniprogramTouch[]; currentTarget: { dataset: Record<string, string> }; detail?: any; timeStamp?: number; }

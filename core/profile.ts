@@ -1,3 +1,15 @@
+/**
+ * Converts a touch move in CSS pixels into a small radial profile change.
+ * A full-width drag changes the radius by roughly one third of a model unit,
+ * while a single delayed touch event is capped so the clay cannot jump.
+ */
+export function profileDeltaFromDrag(deltaPixels:number, viewportWidth:number):number {
+  if(!Number.isFinite(deltaPixels)) return 0;
+  const safeWidth=Math.max(280,Number.isFinite(viewportWidth)?viewportWidth:0);
+  const capped=Math.max(-14,Math.min(14,deltaPixels));
+  return capped*(.34/safeWidth);
+}
+
 export function deformProfile(profile:number[], center:number, delta:number, strength=.12, relaxed=true):number[] {
   const next=profile.slice(); const sigma=Math.max(2, profile.length*.08); const d=Math.max(-strength,Math.min(strength,delta));
   for(let i=0;i<next.length;i++){ const dist=i-center; const weight=Math.exp(-(dist*dist)/(2*sigma*sigma)); next[i]+=d*weight; }

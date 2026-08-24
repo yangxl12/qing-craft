@@ -64,6 +64,9 @@
   right: 0;
   top: 0;
   bottom: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
   z-index: 2;
 }
 .fallback {
@@ -78,29 +81,86 @@
   justify-content: center;
   flex-direction: column;
 }
-/* 转盘：静态盘面，中心对齐默认陶坯底部投影位置 */
+/* 70% 是引擎中的器底可见接触线；盘面与 WebGL 使用同一舞台坐标。 */
 .wheel {
   position: absolute;
   z-index: 1;
   left: 50%;
-  top: 76%;
-  transform: translate(-50%, -50%);
+  top: 70%;
+  transform: translateX(-50%);
   width: 640rpx;
   height: 170rpx;
+  overflow: hidden;
   border-radius: 50%;
   background: #9b8f7f;
   box-shadow:
     0 30rpx 30rpx rgba(0, 0, 0, 0.25),
     inset 0 12rpx 0 #c7b8a0;
 }
+.wheel-spin {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  width: 640rpx;
+  height: 640rpx;
+  border-radius: 50%;
+  background-color: #9b8f7f;
+  background-image: conic-gradient(
+    from 20deg,
+    rgba(231, 217, 193, 0.2),
+    rgba(91, 82, 71, 0.06) 20%,
+    rgba(231, 217, 193, 0.12) 46%,
+    rgba(83, 75, 65, 0.13) 72%,
+    rgba(231, 217, 193, 0.2)
+  );
+  transform-origin: center;
+  animation: wheel-turn 18s linear infinite;
+  will-change: transform;
+}
+.wheel.reduced-motion .wheel-spin {
+  animation-play-state: paused;
+}
 .wheel-ring {
   position: absolute;
+  z-index: 1;
   inset: 24rpx;
   border-radius: 50%;
   border: 2rpx solid rgba(71, 66, 58, 0.28);
 }
 .wheel-ring.r2 {
   inset: 50rpx;
+}
+.wheel-trace {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: calc(50% - 4rpx);
+  width: 43%;
+  height: 8rpx;
+  border-radius: 8rpx;
+  transform-origin: left center;
+  background: linear-gradient(90deg, rgba(233, 219, 196, 0.08), rgba(233, 219, 196, 0.5));
+}
+.wheel:after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 8rpx;
+  width: 290rpx;
+  height: 58rpx;
+  transform: translateX(-50%);
+  z-index: 2;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(25, 23, 20, 0.38), rgba(25, 23, 20, 0) 72%);
+}
+@keyframes wheel-turn {
+  from {
+    transform: translate(-50%, -50%) scaleY(0.265625) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) scaleY(0.265625) rotate(360deg);
+  }
 }
 .topbar {
   position: relative;

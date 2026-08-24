@@ -32,14 +32,17 @@
   right: 0;
   top: 0;
   bottom: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
   z-index: 2;
 }
-/* 展台：静态底座，中心对齐默认陶坯底部投影位置 */
+/* 与引擎的器底可见接触线共用 70%，不同器形都会稳稳落在台面上。 */
 .plinth {
   position: absolute;
   left: 50%;
-  top: 76%;
-  transform: translate(-50%, -50%);
+  top: 70%;
+  transform: translateX(-50%);
   width: 640rpx;
   height: 200rpx;
   border-radius: 50%;
@@ -52,6 +55,17 @@
   box-shadow:
     0 34rpx 50rpx rgba(0, 0, 0, 0.45),
     inset 0 14rpx 0 rgba(255, 255, 255, 0.08);
+}
+.plinth:after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 8rpx;
+  width: 300rpx;
+  height: 62rpx;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(8, 10, 9, 0.5), rgba(8, 10, 9, 0) 72%);
 }
 .shine {
   position: absolute;

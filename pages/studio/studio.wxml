@@ -8,9 +8,9 @@
  <view class="stage-area">
   <canvas wx:if="{{!fallback}}" id="potteryCanvas" class="canvas" type="webgl" disable-scroll="true" bindtouchstart="touchStart" bindtouchmove="touchMove" bindtouchend="touchEnd" bindtouchcancel="touchEnd"></canvas>
   <view wx:else class="fallback"><view class="fallback-pot shape-{{work.shapeId}}" style="background:{{stageIndex>=3 ? '#84a99a' : '#c7c2b6'}}"></view><view class="fallback-note">轻量剖面模式</view></view>
-  <view class="wheel"><view class="wheel-ring r1"></view><view class="wheel-ring r2"></view></view>
+  <view class="wheel {{reduceMotion?'reduced-motion':''}}"><view class="wheel-spin"><view class="wheel-ring r1"></view><view class="wheel-ring r2"></view><view class="wheel-trace"></view></view></view>
   <view class="stage-label"><view class="eyebrow">工序 {{stageIndex+1}} / 7</view><view class="display">{{stageName}}</view></view>
-  <view class="hint panel" wx:if="{{showHint||showHelp}}" bindtap="hideHint"><view class="teacher-mark">师</view><view><text>{{hint}}</text><small>点一下收起</small></view></view>
+  <view class="hint panel" wx:if="{{showHint||showHelp}}" bindtap="hideHint"><view class="teacher-mark">师</view><view><text>{{showHelp?cameraHelp:hint}}</text><small>点一下收起</small></view></view>
  </view>
  <view class="stage-spacer"></view>
 

@@ -1,0 +1,25 @@
+<view class="studio">
+ <view class="workshop-bg"><view class="light"></view><view class="shelf-line"></view><view class="table"></view></view>
+ <view class="safe-top"></view>
+ <view class="topbar">
+  <button class="top-button" bindtap="close">退出</button><view class="work-title"><view class="display">{{work.title}}</view><text class="{{saveState==='已保存'?'saved':''}}">● {{saveState}}</text></view>
+  <view class="top-actions"><button class="circle" disabled="{{!canUndo}}" bindtap="undo">↶</button><button class="circle" disabled="{{!canRedo}}" bindtap="redo">↷</button><button class="circle" bindtap="help">?</button></view>
+ </view>
+ <view class="stage-area">
+  <canvas wx:if="{{!fallback}}" id="potteryCanvas" class="canvas" type="webgl" disable-scroll="true" bindtouchstart="touchStart" bindtouchmove="touchMove" bindtouchend="touchEnd" bindtouchcancel="touchEnd"></canvas>
+  <view wx:else class="fallback"><view class="fallback-pot shape-{{work.shapeId}}" style="background:{{stageIndex>=3 ? '#84a99a' : '#c7c2b6'}}"></view><view class="fallback-note">轻量剖面模式</view></view>
+  <view class="wheel"><view class="wheel-ring r1"></view><view class="wheel-ring r2"></view></view>
+  <view class="stage-label"><view class="eyebrow">工序 {{stageIndex+1}} / 7</view><view class="display">{{stageName}}</view></view>
+  <view class="hint panel" wx:if="{{showHint||showHelp}}" bindtap="hideHint"><view class="teacher-mark">师</view><view><text>{{hint}}</text><small>点一下收起</small></view></view>
+ </view>
+ <view class="stage-spacer"></view>
+
+ <view class="ring-band"><view wx:for="{{stages}}" wx:key="id" class="ring-step {{index===stageIndex?'active':''}} {{index<stageIndex?'done':''}}"><view>{{index<stageIndex?'✓':item.short}}</view><text>{{item.name}}</text></view></view>
+ <view class="tray">
+  <scroll-view wx:if="{{tools.length}}" class="tool-scroll" scroll-x show-scrollbar="false"><view class="tool-row"><view wx:for="{{tools}}" wx:key="id" data-id="{{item.id}}" bindtap="chooseTool" class="tool {{tool===item.id?'active':''}}"><view>{{item.name}}</view><text>{{item.name}}</text></view></view></scroll-view>
+  <scroll-view wx:if="{{stageIndex===2}}" class="swatch-scroll" scroll-x show-scrollbar="false"><view class="swatch-row"><view wx:for="{{glazes}}" wx:key="id" class="swatch-item {{glazeId===item.id?'active':''}}" data-id="{{item.id}}" bindtap="chooseGlaze"><view style="background:{{item.fired}}"></view><text>{{item.name}}</text></view></view></scroll-view>
+  <view wx:if="{{stageIndex===4}}" class="paint-row"><view wx:for="{{paintColors}}" wx:key="*this" class="paint-dot" style="background:{{item}}" data-color="{{item}}" bindtap="choosePaint"></view><button class="symmetry" bindtap="cycleSymmetry">{{symmetryLabels[work.symmetry]}}</button></view>
+  <view class="tray-bottom"><button class="reset" bindtap="resetCamera">◎ 回正</button><view class="tool-hint">{{toolName}}</view><button class="complete" bindtap="completeStage">{{stageIndex===6?'查看成品':'完成'+stageName}} →</button></view>
+ </view>
+ <view wx:if="{{kiln}}" class="kiln-overlay"><view class="kiln-door"><view class="kiln-glow" style="opacity:{{.25+kilnProgress/130}}"></view><view class="temperature">{{700+kilnProgress*6}}<text>℃</text></view><view class="kiln-copy display">{{kilnText}}</view><view class="kiln-progress"><view style="width:{{kilnProgress}}%"></view></view><button bindtap="skipKiln">跳过等待</button></view></view>
+</view>

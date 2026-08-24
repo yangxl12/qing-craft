@@ -1,0 +1,13 @@
+{
+  "name": "palm-kiln-miniprogram",
+  "version": "1.0.0",
+  "private": true,
+  "description": "掌心窑微信陶艺小程序 v1",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node tests/profile.test.cjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

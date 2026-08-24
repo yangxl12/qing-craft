@@ -1,0 +1,17 @@
+<view class="result light-{{light}}">
+ <view class="safe-top"></view>
+ <view class="top"><button bindtap="backHome">×</button><view class="display">成品展台</view><button bindtap="toggleInfo">···</button></view>
+ <view class="scene">
+  <canvas wx:if="{{!fallback}}" id="resultCanvas" type="webgl" class="result-canvas" disable-scroll="true" bindtouchstart="touchStart" bindtouchmove="touchMove" bindtouchend="touchEnd" bindtouchcancel="touchEnd"></canvas>
+  <view wx:else class="result-pot"></view>
+  <view class="plinth"></view>
+  <view class="shine"></view>
+ </view>
+ <view class="scene-spacer"></view>
+ <canvas id="posterCanvas" type="2d" class="poster-canvas"></canvas>
+ <view class="reveal"><view class="eyebrow">七道工序 · 已完成</view><view class="display name">{{work.title}}</view><view class="note">转动看看，釉色已经在光里定住。</view></view>
+ <view class="lights"><view data-id="workshop" bindtap="chooseLight" class="{{light==='workshop'?'active':''}}">工坊光</view><view data-id="museum" bindtap="chooseLight" class="{{light==='museum'?'active':''}}">博物馆光</view><view data-id="window" bindtap="chooseLight" class="{{light==='window'?'active':''}}">日光窗边</view></view>
+ <view class="actions"><button class="primary" bindtap="exportWork" loading="{{exporting}}">生成作品图</button><button class="secondary" bindtap="exportPoster">纪念海报</button><button class="share" open-type="share">分享</button></view>
+ <view wx:if="{{infoOpen}}" class="info panel"><view class="handle"></view><view class="display info-title">这件作品</view><view class="info-row"><text>名称</text><text>{{work.title}}</text></view><view class="info-row"><text>器形</text><text>{{work.shapeId}}</text></view><view class="info-row"><text>完成</text><text>{{work.updatedAt}}</text></view><view class="info-buttons"><button bindtap="rename">修改名称</button><button bindtap="copy">复制副本</button><button class="danger" bindtap="remove">删除</button></view></view>
+ <view wx:if="{{preview}}" class="preview"><view class="preview-top"><text>{{previewType}}</text><button bindtap="closePreview">×</button></view><image src="{{preview}}" mode="aspectFit"></image><button class="save" bindtap="saveImage">保存到相册</button></view>
+</view>

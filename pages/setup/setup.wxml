@@ -1,0 +1,23 @@
+<view class="setup">
+ <view class="safe-top"></view>
+ <view class="top"><button class="icon-btn" bindtap="back">‹</button><view class="steps"><view class="step {{step>=0?'on':''}}"></view><view class="step {{step>=1?'on':''}}"></view><view class="step {{step>=2?'on':''}}"></view></view><view class="count">{{step+1}} / 3</view></view>
+ <view wx:if="{{step===0}}" class="content">
+  <view class="eyebrow">第一步 · 选器形</view><view class="display heading">今天想做什么？</view><view class="muted desc">器形只是起点，之后每一处轮廓都能亲手改变。</view>
+  <scroll-view scroll-x class="shape-scroll" show-scrollbar="false"><view class="shape-row">
+   <view wx:for="{{shapes}}" wx:key="id" data-id="{{item.id}}" bindtap="chooseShape" class="shape-card {{shapeId===item.id?'selected':''}}">
+    <view class="shape-glyph display">{{item.glyph}}</view><view class="shape-name">{{item.name}}</view><view class="shape-story">{{item.story}}</view><view class="minutes">{{item.minutes}}</view>
+   </view>
+  </view></scroll-view>
+  <view class="mode-title">创作方式</view><view class="mode-row"><view data-id="relaxed" bindtap="chooseMode" class="mode {{mode==='relaxed'?'selected':''}}"><view>跟着技师做</view><text>有提示与防塌保护</text></view><view data-id="free" bindtap="chooseMode" class="mode {{mode==='free'?'selected':''}}"><view>自由开始</view><text>只在风险时提醒</text></view></view>
+ </view>
+ <view wx:elif="{{step===1}}" class="content">
+  <view class="eyebrow">第二步 · 选泥</view><view class="display heading">每种泥，都有脾气。</view><view class="muted desc">颜色会随烧制改变，难度不会。</view>
+  <view class="clay-list"><view wx:for="{{clays}}" wx:key="id" data-id="{{item.id}}" bindtap="chooseClay" class="clay-card panel {{clayId===item.id?'selected':''}}"><view class="clay-swatch" style="background:{{item.wet}}"><view style="background:{{item.fired}}"></view></view><view class="clay-copy"><view>{{item.name}} <text>{{item.grain}}颗粒</text></view><text>{{item.note}}</text></view><view class="check">{{clayId===item.id?'✓':''}}</view></view></view>
+ </view>
+ <view wx:else class="content knead-page">
+  <view class="eyebrow">第三步 · 练泥</view><view class="display heading">把空气轻轻按出去。</view><view class="muted desc">按压泥团 3 次，或者交给技师。</view>
+  <view class="knead-zone" bindtap="knead"><view class="clay-ball k{{kneads}}"><view class="fingerprint"></view></view><view class="knead-count">{{kneads<3 ? '再按 '+(3-kneads)+' 次' : '泥已经准备好了'}}</view></view>
+  <button wx:if="{{kneads<3}}" class="skip" bindtap="finish">交给技师</button>
+ </view>
+ <view class="footer"><button class="btn-primary" bindtap="next">{{step===2 ? (kneads>=3?'进入创作台':'直接开始') : '下一步'}}</button></view>
+</view>

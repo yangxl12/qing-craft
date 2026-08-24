@@ -1,0 +1,34 @@
+<view class="home {{entrance ? 'is-in' : ''}}">
+  <view class="safe-top"></view>
+  <view class="topbar">
+    <view><view class="eyebrow">PALM KILN · 掌心窑</view><view class="season">乙巳 · 夏末工房</view></view>
+    <button class="icon-btn" bindtap="settings" aria-label="设置">⚙</button>
+  </view>
+
+  <view class="hero">
+    <view class="window-light"></view>
+    <view class="hero-copy">
+      <view class="display title">泥在手中，<br/><text>器由心生。</text></view>
+      <view class="subtitle">一座装在微信里的轻松陶艺工坊</view>
+    </view>
+    <view class="pot-scene" aria-label="转盘上的白瓷陶坯">
+      <view class="shelf"><view class="mini-pot p1"></view><view class="mini-pot p2"></view><view class="mini-pot p3"></view></view>
+      <view class="pot"><view class="pot-rim"></view><view class="pot-shine"></view></view>
+      <view class="wheel"><view class="wheel-ring r1"></view><view class="wheel-ring r2"></view></view>
+      <view class="process-ring"><view class="process-dot active">泥</view><view class="process-dot">坯</view><view class="process-dot">饰</view><view class="process-dot">釉</view><view class="process-dot">烧</view><view class="process-dot">彩</view><view class="process-dot">成</view></view>
+    </view>
+  </view>
+
+  <view class="actions">
+    <button wx:if="{{hasDraft}}" class="draft panel" bindtap="continueWork">
+      <view class="draft-meta"><text>继续上次创作</text><text class="draft-state">已存在本机</text></view>
+      <view class="draft-title display">{{draftTitle}}</view><view class="draft-arrow">继续 →</view>
+    </button>
+    <button class="btn-primary start" bindtap="start">开始捏陶 <text>用时约 8 分钟</text></button>
+  </view>
+
+  <view class="bottom-nav">
+    <view class="nav active"><text class="nav-mark"></text>创作</view>
+    <view class="nav" bindtap="gallery">我的作品</view>
+  </view>
+</view>

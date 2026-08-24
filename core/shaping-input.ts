@@ -4,26 +4,73 @@ export interface ShapingInputPoint {
   timestamp: number;
 }
 
+export type ShapingMotion =
+  | "stretch"
+  | "compress"
+  | "smooth-up"
+  | "smooth-down"
+  | "steady";
+
 export interface SweptInputSample {
   profileY: number;
   deltaRadius: number;
+  deltaHeight: number;
   durationSeconds: number;
   profileTravel: number;
+  motion?: ShapingMotion;
 }
 
 export interface ShapingInputOptions {
   viewportWidth: number;
+  viewportHeight?: number;
   profileCount: number;
   side: -1 | 1;
   minCutoff?: number;
   beta?: number;
   derivativeCutoff?: number;
   maxRadiusPerSecond?: number;
+  maxHeightPerSecond?: number;
   maxProfileStep?: number;
 }
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function smoothstep(edgeStart: number, edgeEnd: number, value: number): number {
+  const amount = clamp((value - edgeStart) / Math.max(0.0001, edgeEnd - edgeStart), 0, 1);
+  return amount * amount * (3 - amount * 2);
+}
+
+/**
+ * Keeps tiny cross-axis tremors quiet without reducing genuine diagonal input.
+ * Once an axis contributes roughly one third of the path, it has full force.
+ */
+function componentWeight(component: number, otherComponent: number): number {
+  const magnitude = Math.abs(component);
+  const total = magnitude + Math.abs(otherComponent);
+  if (magnitude < 0.2 || total < 0.2) return 0;
+  return smoothstep(0.06, 0.32, magnitude / total);
+}
+
+/**
+ * Chooses the dominant label shown by the studio guide. The actual deformation
+ * remains two-dimensional: diagonal paths can change radius and height at once.
+ */
+export function classifyShapingMotion(
+  deltaX: number,
+  deltaY: number,
+  side: -1 | 1
+): ShapingMotion {
+  const safeX = Number.isFinite(deltaX) ? deltaX : 0;
+  const safeY = Number.isFinite(deltaY) ? deltaY : 0;
+  const horizontal = Math.abs(safeX);
+  const vertical = Math.abs(safeY);
+  if (Math.max(horizontal, vertical) < 0.2) return "steady";
+  if (horizontal >= vertical * 0.82) {
+    return safeX * side >= 0 ? "stretch" : "compress";
+  }
+  return safeY < 0 ? "smooth-up" : "smooth-down";
 }
 
 function smoothingAlpha(cutoff: number, elapsedSeconds: number): number {
@@ -118,28 +165,36 @@ function normalizedTimestamp(timestamp: number, previous: number, elapsedSeconds
 }
 
 /**
- * Converts irregular touch events into a continuous, rate-limited sweep. Each
- * segment's radial intent is divided among its resampled points, so replaying
- * the same path at a higher event rate does not amplify the deformation.
+ * Converts irregular touch events into a continuous, rate-limited 2D sweep.
+ * Each segment's radial and vertical intent is divided among its resampled
+ * points, so replaying at a higher event rate does not amplify deformation.
  */
 export class ShapingInputSession {
   private readonly xFilter: OneEuroFilter;
   private readonly yFilter: OneEuroFilter;
   private readonly viewportWidth: number;
+  private readonly viewportHeight: number;
   private readonly profileCount: number;
   private readonly side: -1 | 1;
   private readonly maxRadiusPerSecond: number;
+  private readonly maxHeightPerSecond: number;
   private readonly maxProfileStep: number;
   private lastRaw: ShapingInputPoint | null = null;
   private lastFiltered: { x: number; y: number; profileY: number } | null = null;
   private lastTimestamp = 0;
   private lastHorizontalDirection = 0;
+  private lastVerticalDirection = 0;
 
   constructor(options: ShapingInputOptions) {
     this.viewportWidth = Math.max(280, options.viewportWidth || 0);
+    this.viewportHeight = Math.max(
+      320,
+      options.viewportHeight || this.viewportWidth * 1.35
+    );
     this.profileCount = Math.max(2, Math.round(options.profileCount || 0));
     this.side = options.side;
     this.maxRadiusPerSecond = clamp(options.maxRadiusPerSecond ?? 0.28, 0.05, 1);
+    this.maxHeightPerSecond = clamp(options.maxHeightPerSecond ?? 0.42, 0.08, 0.8);
     this.maxProfileStep = clamp(options.maxProfileStep ?? 0.5, 0.2, 2);
     this.xFilter = new OneEuroFilter(
       options.minCutoff,
@@ -166,6 +221,7 @@ export class ShapingInputSession {
     this.lastFiltered = { x: safePoint.x, y: safePoint.y, profileY: safeProfile };
     this.lastTimestamp = safePoint.timestamp;
     this.lastHorizontalDirection = 0;
+    this.lastVerticalDirection = 0;
   }
 
   push(point: ShapingInputPoint, profileAtCanvasY: (canvasY: number) => number): SweptInputSample[] {
@@ -178,14 +234,24 @@ export class ShapingInputSession {
     const safePoint = this.safePoint(point, this.lastTimestamp);
     const elapsedSeconds = normalizeElapsedSeconds(safePoint.timestamp, this.lastTimestamp);
     const rawDx = safePoint.x - this.lastRaw.x;
-    const direction = Math.abs(rawDx) >= 0.2 ? Math.sign(rawDx) : 0;
+    const rawDy = safePoint.y - this.lastRaw.y;
+    const motion = classifyShapingMotion(rawDx, rawDy, this.side);
+    const horizontalDirection = Math.abs(rawDx) >= 0.2 ? Math.sign(rawDx) : 0;
+    const verticalDirection = Math.abs(rawDy) >= 0.2 ? Math.sign(rawDy) : 0;
     if (
-      direction &&
+      horizontalDirection &&
       this.lastHorizontalDirection &&
-      direction !== this.lastHorizontalDirection
+      horizontalDirection !== this.lastHorizontalDirection
     ) {
       // A direction reversal should not continue moving in the old direction.
       this.xFilter.reset(safePoint.x, safePoint.timestamp);
+    }
+    if (
+      verticalDirection &&
+      this.lastVerticalDirection &&
+      verticalDirection !== this.lastVerticalDirection
+    ) {
+      this.yFilter.reset(safePoint.y, safePoint.timestamp);
     }
 
     const filteredX = this.xFilter.filter(safePoint.x, safePoint.timestamp);
@@ -209,21 +275,33 @@ export class ShapingInputSession {
     );
 
     const horizontalVelocity = Math.abs(rawDx) / Math.max(elapsedSeconds, 1 / 240);
-    const stableRawDx = horizontalVelocity < 4 ? 0 : rawDx;
-    const requestedDelta = (stableRawDx * 0.34 * this.side) / this.viewportWidth;
-    const segmentDelta = clamp(
-      requestedDelta,
+    const verticalVelocity = Math.abs(rawDy) / Math.max(elapsedSeconds, 1 / 240);
+    const stableRawDx =
+      horizontalVelocity < 4 ? 0 : rawDx * componentWeight(rawDx, rawDy);
+    const stableRawDy =
+      verticalVelocity < 4 ? 0 : rawDy * componentWeight(rawDy, rawDx);
+    const requestedRadiusDelta = (stableRawDx * 0.34 * this.side) / this.viewportWidth;
+    const requestedHeightDelta = (-stableRawDy * 1.04) / this.viewportHeight;
+    const segmentRadiusDelta = clamp(
+      requestedRadiusDelta,
       -this.maxRadiusPerSecond * elapsedSeconds,
       this.maxRadiusPerSecond * elapsedSeconds
+    );
+    const segmentHeightDelta = clamp(
+      requestedHeightDelta,
+      -this.maxHeightPerSecond * elapsedSeconds,
+      this.maxHeightPerSecond * elapsedSeconds
     );
     const samples: SweptInputSample[] = [];
     for (let index = 0; index < sampleCount; index++) {
       const amount = (index + 0.5) / sampleCount;
       samples.push({
         profileY: start.profileY + (nextProfileY - start.profileY) * amount,
-        deltaRadius: segmentDelta / sampleCount,
+        deltaRadius: segmentRadiusDelta / sampleCount,
+        deltaHeight: segmentHeightDelta / sampleCount,
         durationSeconds: elapsedSeconds / sampleCount,
-        profileTravel: profileDistance / sampleCount
+        profileTravel: profileDistance / sampleCount,
+        motion
       });
     }
 
@@ -234,7 +312,8 @@ export class ShapingInputSession {
       this.lastTimestamp,
       elapsedSeconds
     );
-    if (direction) this.lastHorizontalDirection = direction;
+    if (horizontalDirection) this.lastHorizontalDirection = horizontalDirection;
+    if (verticalDirection) this.lastVerticalDirection = verticalDirection;
     return samples;
   }
 

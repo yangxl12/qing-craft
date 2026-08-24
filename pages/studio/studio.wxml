@@ -1,4 +1,4 @@
-<view class="studio">
+<view class="studio {{reduceMotion?'reduce-motion':''}}">
   <view class="workshop-bg">
     <view class="wall-glow"></view>
     <view class="window-light"><view></view><view></view></view>
@@ -20,17 +20,17 @@
     <view class="vignette"></view>
   </view>
 
-  <view class="safe-top"></view>
+  <view class="safe-top" style="height:{{statusBarHeight}}px"></view>
   <view class="topbar">
-    <button class="top-button" bindtap="close">退出</button>
+    <view class="top-button" role="button" aria-label="退出创作台" bindtap="close">退出</view>
     <view class="work-title">
       <view class="display">{{work.title}}</view>
       <text class="{{saveState==='已保存'?'saved':''}}">● {{saveState}}</text>
     </view>
     <view class="top-actions">
-      <button class="circle" disabled="{{!canUndo}}" bindtap="undo">↶</button>
-      <button class="circle" disabled="{{!canRedo}}" bindtap="redo">↷</button>
-      <button class="circle" bindtap="help">?</button>
+      <view class="circle {{!canUndo?'disabled':''}}" role="button" aria-label="撤销" bindtap="undo">↶</view>
+      <view class="circle {{!canRedo?'disabled':''}}" role="button" aria-label="重做" bindtap="redo">↷</view>
+      <view class="circle" role="button" aria-label="查看手势帮助" bindtap="help">?</view>
     </view>
   </view>
 
@@ -64,21 +64,31 @@
     </view>
 
     <view
+      id="wheelRoot"
       class="wheel-root {{wheelPaused?'wheel-paused':''}} wheel-{{wheelState}}"
-      style="top:{{baseScreenPercent}}%; --wheel-period:{{wheelPeriodMs}}ms; --contact-shadow-width:{{contactShadowWidth}}rpx;"
+      style="--wheel-period:{{wheelPeriodMs}}ms; --contact-shadow-width:{{contactShadowWidth}}rpx;"
     >
-      <view class="splash-pan-back"></view>
+      <view class="contact-shadow"></view>
       <view class="wheel-head">
         <view class="wheel-head-spin">
           <view class="machined-rings"></view>
-          <view class="bat-pin pin-left"></view>
-          <view class="bat-pin pin-right"></view>
           <view class="slip-mark"></view>
+          <view class="wheel-glint"></view>
         </view>
       </view>
-      <view class="contact-shadow"></view>
-      <view class="spindle-band"></view>
-      <view class="splash-pan-front"></view>
+    </view>
+
+    <view wx:if="{{stageIndex===0}}" class="gesture-map motion-{{gestureIntent}}">
+      <view class="gesture-map-title">手势塑形</view>
+      <view class="gesture-row gesture-stretch"><view class="arrow-pair">←　→</view><text>拉伸</text></view>
+      <view class="gesture-row gesture-compress"><view class="arrow-pair">→　←</view><text>压缩</text></view>
+      <view class="gesture-row gesture-smooth-up"><view class="arrow-single">↑</view><text>向上平滑</text></view>
+      <view class="gesture-row gesture-smooth-down"><view class="arrow-single">↓</view><text>向下平滑</text></view>
+      <view class="gesture-camera"><view class="finger-pair"><view></view><view></view></view><text>双指 360° 环看</text></view>
+    </view>
+    <view wx:if="{{stageIndex===0}}" class="gesture-readout motion-{{gestureIntent}}">
+      <view class="gesture-pulse"></view>
+      <text>{{gestureLabel}}</text>
     </view>
 
     <view class="stage-label">
@@ -92,11 +102,7 @@
         <small>点一下收起</small>
       </view>
     </view>
-    <view class="sponge-guide" wx:if="{{showHint&&!showHelp&&tool==='smooth'}}">
-      <view></view><text>上下轻抹</text>
-    </view>
   </view>
-  <view class="stage-spacer"></view>
 
   <view class="ring-band">
     <view
@@ -108,8 +114,28 @@
     </view>
   </view>
 
-  <view class="tray">
-    <scroll-view wx:if="{{tools.length}}" class="tool-scroll" scroll-x show-scrollbar="false">
+  <view class="tray {{stageIndex===0?'tray-shaping':''}}">
+    <view wx:if="{{stageIndex===0}}" class="shaping-console">
+      <view class="shaping-console-head">
+        <view><text>选择受力形态</text><small>单指沿器壁滑动，方向就是工具</small></view>
+        <view class="shaping-badge">拉坯中</view>
+      </view>
+      <view class="shape-mode-row">
+        <view
+          wx:for="{{shapingForms}}"
+          wx:key="id"
+          role="button"
+          aria-label="选择{{item.name}}塑形"
+          data-id="{{item.id}}"
+          bindtap="chooseShapingForm"
+          class="shape-mode {{shapingForm===item.id?'active':''}}"
+        >
+          <view class="form-glyph glyph-{{item.id}}"></view>
+          <view class="shape-copy"><text>{{item.name}}</text><small>{{item.note}}</small></view>
+        </view>
+      </view>
+    </view>
+    <scroll-view wx:elif="{{tools.length}}" class="tool-scroll" scroll-x show-scrollbar="false">
       <view class="tool-row">
         <view
           wx:for="{{tools}}"
@@ -147,8 +173,8 @@
       <button class="symmetry" bindtap="cycleSymmetry">{{symmetryLabels[work.symmetry]}}</button>
     </view>
     <view class="tray-bottom">
-      <button class="reset" bindtap="resetCamera">◎ 回正</button>
-      <view class="tool-hint">{{toolName}}</view>
+      <button class="reset" bindtap="resetCamera">◎ 视角回正</button>
+      <view wx:if="{{stageIndex!==0}}" class="tool-hint">{{toolName}}</view>
       <button class="complete" bindtap="completeStage">
         {{stageIndex===6?'查看成品':'完成'+stageName}} →
       </button>

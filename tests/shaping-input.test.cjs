@@ -12,16 +12,25 @@ require.extensions[".ts"] = (module, filename) => {
 
 const { applySweptDeformation } = require("../core/profile.ts");
 const {
+  classifyShapingMotion,
   normalizeElapsedSeconds,
   OneEuroFilter,
   ShapingInputSession
 } = require("../core/shaping-input.ts");
+
+assert.equal(classifyShapingMotion(12, 2, 1), "stretch", "右壁向右应为拉伸");
+assert.equal(classifyShapingMotion(-12, 2, 1), "compress", "右壁向左应为压缩");
+assert.equal(classifyShapingMotion(-12, 2, -1), "stretch", "左壁向左应镜像为拉伸");
+assert.equal(classifyShapingMotion(12, 2, -1), "compress", "左壁向右应镜像为压缩");
+assert.equal(classifyShapingMotion(1, -16, 1), "smooth-up", "向上滑动应进入向上平滑");
+assert.equal(classifyShapingMotion(1, 16, -1), "smooth-down", "向下滑动应进入向下平滑");
 
 const profileAtY = (y) => Math.max(0, Math.min(47, ((310 - y) / 250) * 47));
 
 function replay(rate) {
   const session = new ShapingInputSession({
     viewportWidth: 375,
+    viewportHeight: 550,
     profileCount: 48,
     side: 1
   });
@@ -39,6 +48,7 @@ function replay(rate) {
   }
   return {
     samples,
+    heightDelta: samples.reduce((sum, sample) => sum + sample.deltaHeight, 0),
     profile: applySweptDeformation(Array(48).fill(0.55), samples, {
       tool: "finger",
       relaxed: true
@@ -48,6 +58,7 @@ function replay(rate) {
 
 const replays = [30, 60, 120].map(replay);
 for (const replayResult of replays) {
+  assert.ok(replayResult.heightDelta > 0.25, "持续向上扫掠必须累积为可见的增高量");
   for (let index = 1; index < replayResult.samples.length; index++) {
     assert.ok(
       Math.abs(replayResult.samples[index].profileY - replayResult.samples[index - 1].profileY) <=
@@ -67,6 +78,10 @@ for (let left = 0; left < replays.length; left++) {
       maxDifference <= 0.005,
       `30/60/120 Hz 回放半径差应不超过 0.005，实际 ${maxDifference}`
     );
+    assert.ok(
+      Math.abs(replays[left].heightDelta - replays[right].heightDelta) <= 0.006,
+      "不同触摸采样率下的总高度变化应保持一致"
+    );
   }
 }
 
@@ -78,6 +93,63 @@ assert.ok(outward.reduce((sum, sample) => sum + sample.deltaRadius, 0) > 0);
 assert.ok(
   inward.reduce((sum, sample) => sum + sample.deltaRadius, 0) < 0,
   "快速反向时径向意图必须立即反向"
+);
+
+const vertical = new ShapingInputSession({ viewportWidth: 375, profileCount: 48, side: 1 });
+vertical.begin({ x: 260, y: 250, timestamp: 2400 }, profileAtY(250));
+const verticalSamples = vertical.push({ x: 261, y: 190, timestamp: 2480 }, profileAtY);
+assert.ok(verticalSamples.length > 1, "纵向路径也必须连续重采样");
+assert.ok(
+  verticalSamples.every((sample) => sample.motion === "smooth-up"),
+  "纵向路径必须稳定标记为向上平滑"
+);
+assert.ok(
+  verticalSamples.every((sample) => sample.deltaRadius === 0),
+  "纵向平滑中的轻微横向抖动不得误改半径"
+);
+assert.ok(
+  verticalSamples.reduce((sum, sample) => sum + sample.deltaHeight, 0) > 0,
+  "向上平滑必须输出正向高度变化"
+);
+
+const downward = new ShapingInputSession({
+  viewportWidth: 375,
+  viewportHeight: 550,
+  profileCount: 48,
+  side: 1
+});
+downward.begin({ x: 260, y: 190, timestamp: 2600 }, profileAtY(190));
+const downwardSamples = downward.push({ x: 259, y: 250, timestamp: 2680 }, profileAtY);
+assert.ok(
+  downwardSamples.reduce((sum, sample) => sum + sample.deltaHeight, 0) < 0,
+  "向下平滑必须输出负向高度变化"
+);
+
+const fluid = new ShapingInputSession({
+  viewportWidth: 375,
+  viewportHeight: 550,
+  profileCount: 48,
+  side: 1
+});
+fluid.begin({ x: 245, y: 250, timestamp: 2800 }, profileAtY(250));
+const fluidSamples = [];
+for (const point of [
+  { x: 270, y: 220, timestamp: 2840 },
+  { x: 242, y: 190, timestamp: 2880 },
+  { x: 218, y: 220, timestamp: 2920 },
+  { x: 248, y: 250, timestamp: 2960 }
+]) {
+  fluidSamples.push(...fluid.push(point, profileAtY));
+}
+const fluidRadius = fluidSamples.map((sample) => sample.deltaRadius);
+const fluidHeight = fluidSamples.map((sample) => sample.deltaHeight);
+assert.ok(fluidRadius.some((delta) => delta > 0) && fluidRadius.some((delta) => delta < 0));
+assert.ok(fluidHeight.some((delta) => delta > 0) && fluidHeight.some((delta) => delta < 0));
+assert.ok(
+  fluidSamples.some(
+    (sample) => Math.abs(sample.deltaRadius) > 0 && Math.abs(sample.deltaHeight) > 0
+  ),
+  "斜向滑动必须能在同一时刻同时改变半径和高度"
 );
 
 const filter = new OneEuroFilter();
@@ -94,4 +166,4 @@ assert.equal(normalizeElapsedSeconds(1000, 1000), 1 / 120, "重复时间戳必�
 assert.equal(normalizeElapsedSeconds(900, 1000), 1 / 120, "倒退时间戳必须获得安全 dt");
 assert.equal(normalizeElapsedSeconds(3000, 1000), 1 / 60, "后台恢复的大间隔必须重置");
 
-console.log("shaping input tests passed: 1 EUR safety, continuous sweep, rate-equivalent replay, reversal");
+console.log("shaping input tests passed: 2D sweep, height intent, diagonal composition, rate equivalence");

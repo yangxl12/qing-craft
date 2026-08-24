@@ -2,8 +2,10 @@ export const POTTERY_VERTICAL_FOV = 0.62;
 export const POTTERY_BASE_SCREEN_Y = 0.74;
 export const POTTERY_MIN_ZOOM_FACTOR = 0.62;
 export const POTTERY_MAX_ZOOM_FACTOR = 2.2;
-export const POTTERY_MIN_PITCH = 0.035;
-export const POTTERY_MAX_PITCH = 0.78;
+// Stop short of the poles so lookAt keeps a stable up vector while still
+// revealing the full mouth and the underside of the foot.
+export const POTTERY_MIN_PITCH = -1.28;
+export const POTTERY_MAX_PITCH = 1.34;
 export const POTTERY_TURNTABLE_PERIOD_MS = 60000 / 38;
 
 export type PotteryRotationState = "idle" | "shaping" | "orbit" | "reduced";
@@ -28,6 +30,19 @@ export function normalizePotteryYaw(angle: number): number {
 export function calculatePotteryBaseScreenY(viewportHeight: number): number {
   const safeHeight = Number.isFinite(viewportHeight) ? viewportHeight : 812;
   return clamp(0.72 + ((safeHeight - 568) / (932 - 568)) * 0.03, 0.72, 0.75);
+}
+
+/** Aligns the WebGL foot with the measured top edge of the CSS turntable. */
+export function calculatePotteryBaseScreenYFromLayout(
+  canvasTop: number,
+  canvasHeight: number,
+  wheelTop: number
+): number {
+  const safeHeight = Number.isFinite(canvasHeight) ? Math.max(1, canvasHeight) : 1;
+  if (!Number.isFinite(canvasTop) || !Number.isFinite(wheelTop)) {
+    return POTTERY_BASE_SCREEN_Y;
+  }
+  return clamp((wheelTop - canvasTop) / safeHeight, 0.6, 0.9);
 }
 
 /** Wider clay has a lower target RPM so its edge keeps a controllable speed. */
@@ -60,7 +75,7 @@ export function calculatePotteryOrbitDelta(
   const safeDy = Number.isFinite(dy) ? dy : 0;
   return {
     yaw: (safeDx / Math.max(1, viewportWidth)) * Math.PI * 2,
-    pitch: (safeDy / Math.max(1, viewportHeight)) * 1.35
+    pitch: (safeDy / Math.max(1, viewportHeight)) * Math.PI * 0.9
   };
 }
 
@@ -136,7 +151,8 @@ export function calculatePotteryCameraDistance(
   const safeAspect = clamp(aspect, 0.35, 3);
   const tangent = Math.tan(POTTERY_VERTICAL_FOV / 2);
   const projectedHalfHeight =
-    (safeHeight / 2) * Math.cos(pitch) + safeRadius * Math.sin(pitch);
+    (safeHeight / 2) * Math.abs(Math.cos(pitch)) +
+    safeRadius * Math.abs(Math.sin(pitch));
   const verticalDistance = projectedHalfHeight / (tangent * verticalFill);
   const horizontalDistance = safeRadius / (tangent * safeAspect * horizontalFill);
   return Math.max(verticalDistance, horizontalDistance, safeRadius * 1.8) * 1.04;
@@ -155,17 +171,28 @@ export function calculatePotteryFocusY(
   contactRadius = 0
 ): number {
   const bottomY = -Math.max(0.01, height) / 2;
-  const ndcY = 1 - clamp(baseScreenY, 0.55, 0.8) * 2;
+  const ndcY = 1 - clamp(baseScreenY, 0.55, 0.93) * 2;
   const projectionScale = 1 / Math.tan(POTTERY_VERTICAL_FOV / 2);
-  const denominator = projectionScale * Math.cos(pitch) + ndcY * Math.sin(pitch);
+  // At near-polar views a fixed bottom contact line becomes geometrically
+  // singular. Smoothly release that anchor and orbit around the clay's center;
+  // returning to a working angle settles the foot back onto the wheel.
+  const absolutePitch = Math.abs(pitch);
+  const releaseProgress = clamp((absolutePitch - 0.82) / 0.34, 0, 1);
+  const easedRelease = releaseProgress * releaseProgress * (3 - releaseProgress * 2);
+  const anchorStrength = 1 - easedRelease;
+  if (anchorStrength <= 0) return 0;
+  const anchorPitch = clamp(pitch, -1.05, 1.05);
+  const denominator =
+    projectionScale * Math.cos(anchorPitch) + ndcY * Math.sin(anchorPitch);
+  if (Math.abs(denominator) < 0.08) return 0;
   const safeContactRadius = Math.max(0, Number.isFinite(contactRadius) ? contactRadius : 0);
   // Anchor the visible front edge of the foot, not its center axis. With an
   // elevated camera the front edge projects lower; ignoring it makes the pot
   // appear embedded in the wheel, especially after zooming in.
   const bottomRelativeToFocus =
     (ndcY * distance -
-      ndcY * Math.cos(pitch) * safeContactRadius +
-      projectionScale * Math.sin(pitch) * safeContactRadius) /
+      ndcY * Math.cos(anchorPitch) * safeContactRadius +
+      projectionScale * Math.sin(anchorPitch) * safeContactRadius) /
     denominator;
-  return bottomY - bottomRelativeToFocus;
+  return (bottomY - bottomRelativeToFocus) * anchorStrength;
 }

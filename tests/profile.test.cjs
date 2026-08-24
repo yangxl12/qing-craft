@@ -12,15 +12,40 @@ require.extensions[".ts"] = (module, filename) => {
 
 const {
   applySweptDeformation,
+  applyVerticalThrowing,
   approximateProfileVolume,
   constrainSlopeAndCurvature,
   deformProfile,
+  shapingKernelWeight,
   smoothProfileRange,
   synchronizeInnerWall
 } = require("../core/profile.ts");
 const { buildPotteryMesh } = require("../core/pottery-mesh.ts");
 
 const base = Array(48).fill(0.55);
+
+assert.equal(shapingKernelWeight(0, 3.6, "curve"), 1);
+assert.equal(shapingKernelWeight(2, 3.6, "square"), 1, "方形受力应保留平直核心");
+assert.ok(
+  shapingKernelWeight(8, 3.6, "curve") > shapingKernelWeight(8, 3.6, "cone"),
+  "锥型受力应比曲线更集中"
+);
+
+const formSample = [{
+  profileY: 24,
+  deltaRadius: 0.035,
+  deltaHeight: 0,
+  durationSeconds: 1 / 30,
+  profileTravel: 0,
+  motion: "stretch"
+}];
+const formProfiles = ["curve", "cone", "square"].map((form) =>
+  applySweptDeformation(base, formSample, { tool: "finger", form, relaxed: true })
+);
+assert.notDeepEqual(formProfiles[0], formProfiles[1], "曲线与锥型必须产生不同受力轮廓");
+assert.notDeepEqual(formProfiles[1], formProfiles[2], "锥型与方形必须产生不同受力轮廓");
+assert.ok(formProfiles.flat().every(Number.isFinite), "三种受力形态都必须保持有限数");
+
 const pushed = deformProfile(base, 24, 0.1);
 assert.ok(pushed[24] > base[24], "触点应向外鼓起");
 assert.ok(pushed[24] > pushed[10], "影响应集中在触点邻域");
@@ -45,6 +70,7 @@ for (const relaxed of [true, false]) {
 const sweep = Array.from({ length: 36 }, (_, index) => ({
   profileY: 8 + index * 0.5,
   deltaRadius: 0.032 / 36,
+  deltaHeight: 0,
   durationSeconds: 0.5 / 36,
   profileTravel: 0.5
 }));
@@ -67,6 +93,76 @@ assert.ok(volumeDrift < 0.03, `50 次海绵修顺体积漂移应小于 3%，实�
 assert.ok(sponge.every(Number.isFinite), "反复海绵修顺不能产生 NaN");
 assert.deepEqual(sponge.slice(0, 7), untouchedTop, "局部海绵不应改变远端底部轮廓");
 assert.deepEqual(sponge.slice(40), untouchedBottom, "局部海绵不应改变远端口沿轮廓");
+
+const directionalSource = base.map((radius, index) =>
+  index >= 14 && index <= 33 ? radius + (index % 2 ? 0.028 : -0.026) : radius
+);
+const directionalSamples = Array.from({ length: 20 }, (_, index) => ({
+  profileY: 14 + index,
+  deltaRadius: 0,
+  deltaHeight: 0.12 / 20,
+  durationSeconds: 0.5 / 20,
+  profileTravel: 1,
+  motion: "smooth-up"
+}));
+const smoothedUp = applySweptDeformation(directionalSource, directionalSamples, {
+  tool: "finger",
+  form: "curve",
+  relaxed: true
+});
+const smoothedDown = applySweptDeformation(
+  directionalSource,
+  directionalSamples.map((sample) => ({
+    ...sample,
+    deltaHeight: -Math.abs(sample.deltaHeight),
+    motion: "smooth-down"
+  })),
+  { tool: "finger", form: "curve", relaxed: true }
+);
+const roughness = (profile) => profile.slice(1, -1).reduce(
+  (total, radius, index) =>
+    total + Math.abs(profile[index] - radius * 2 + profile[index + 2]),
+  0
+);
+assert.ok(roughness(smoothedUp) < roughness(directionalSource), "向上轻抹必须降低局部凹凸");
+assert.notDeepEqual(smoothedUp, smoothedDown, "上下轻抹应沿各自前进方向扩展受力区");
+
+const diagonalSamples = [{
+  profileY: 24,
+  deltaRadius: 0.03,
+  deltaHeight: 0.02,
+  durationSeconds: 1 / 30,
+  profileTravel: 0.6,
+  motion: "smooth-up"
+}];
+const diagonal = applySweptDeformation(
+  base,
+  diagonalSamples,
+  { tool: "finger", form: "curve", relaxed: true }
+);
+assert.ok(diagonal[24] > base[24], "斜向上拉时不能再丢失横向扩张分量");
+const diagonalThrown = applyVerticalThrowing(diagonal, 1.2, diagonalSamples, true);
+assert.ok(diagonalThrown.height > 1.2, "斜向上拉必须同时增高器身");
+assert.ok(diagonalThrown.profile[24] > base[24], "斜向上拉的增高补偿不能盖掉外扩手势");
+
+const raised = applyVerticalThrowing(directionalSource, 1.2, directionalSamples, true);
+const lowered = applyVerticalThrowing(
+  directionalSource,
+  1.2,
+  directionalSamples.map((sample) => ({ ...sample, deltaHeight: -Math.abs(sample.deltaHeight) })),
+  true
+);
+assert.ok(raised.height > 1.2, "向上平滑必须让整个器身变高");
+assert.ok(lowered.height < 1.2, "向下平滑必须让整个器身变矮");
+assert.ok(roughness(raised.profile) < roughness(directionalSource), "增高时侧壁应整体趋于平滑");
+assert.ok(roughness(lowered.profile) < roughness(directionalSource), "压低时侧壁应整体趋于平滑");
+for (const result of [raised, lowered]) {
+  const beforeClay = approximateProfileVolume(directionalSource) * 1.2;
+  const afterClay = approximateProfileVolume(result.profile) * result.height;
+  const drift = Math.abs(afterClay - beforeClay) / beforeClay;
+  assert.ok(drift < 0.035, `纵向拉坯的近似泥量漂移应小于 3.5%，实际 ${drift}`);
+  assert.ok(result.profile.every(Number.isFinite), "纵向拉坯后轮廓必须保持有限数");
+}
 const spongeInner = sponge.map((radius, index) => (index < 3 ? 0 : radius - 0.11));
 const spongeMesh = buildPotteryMesh(sponge, spongeInner, 1.2, 64);
 assert.ok(spongeMesh.positions.every(Number.isFinite), "反复海绵后网格顶点必须有效");
@@ -91,4 +187,4 @@ for (let index = 0; index < 100; index++) {
   assert.ok(stress.every((radius) => radius >= 0.18 && radius <= 1.25));
 }
 
-console.log("profile tests passed: production sweep, bidirectional constraints, local sponge, wall sync");
+console.log("profile tests passed: 2D sweep, vertical throwing, smoothing, volume and wall safety");

@@ -2,17 +2,20 @@ import { GLAZES, STAGES, TOOLS } from "../../core/catalog";
 import { cloneWork, PotteryWork } from "../../core/model";
 import {
   applySweptDeformation,
-  synchronizeInnerWall,
-  toolAction
+  applyVerticalThrowing,
+  ShapingForm,
+  synchronizeInnerWall
 } from "../../core/profile";
 import { PotteryEngine } from "../../core/pottery-engine";
 import {
   calculatePotteryBaseScreenY,
+  calculatePotteryBaseScreenYFromLayout,
   calculatePotteryTargetRpm,
   potteryRpmToPeriodMs,
   PotteryRotationState
 } from "../../core/pottery-scene";
 import {
+  ShapingMotion,
   ShapingInputSession,
   ShapingInputPoint,
   SweptInputSample
@@ -33,16 +36,12 @@ interface EditGesture {
   y: number;
   side: -1 | 1;
   tool: string;
+  form: ShapingForm;
+  motion: ShapingMotion;
   changed: boolean;
   snapshot: PotteryWork;
   input: ShapingInputSession | null;
   pending: SweptInputSample[];
-}
-
-interface OrbitGesture {
-  type: "orbit";
-  x: number;
-  y: number;
 }
 
 interface CameraGesture {
@@ -50,9 +49,24 @@ interface CameraGesture {
   distance: number;
   x: number;
   y: number;
+  angle: number;
 }
 
-type StudioGesture = EditGesture | OrbitGesture | CameraGesture;
+type StudioGesture = EditGesture | CameraGesture;
+
+const SHAPING_FORMS: { id: ShapingForm; name: string; note: string }[] = [
+  { id: "curve", name: "曲线", note: "圆润过渡" },
+  { id: "cone", name: "锥型", note: "集中塑出肩线" },
+  { id: "square", name: "方形", note: "形成平直器壁" }
+];
+
+const MOTION_LABELS: Record<ShapingMotion, string> = {
+  stretch: "向外拉伸 · 放宽器腹",
+  compress: "向内压缩 · 收紧器壁",
+  "smooth-up": "向上平滑 · 器身变高并修顺",
+  "smooth-down": "向下平滑 · 器身变矮并收稳",
+  steady: "单指贴近器壁开始塑形"
+};
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -62,13 +76,18 @@ Page({
   data: {
     ready: false,
     fallback: false,
+    statusBarHeight: 20,
     work: null as PotteryWork | null,
     stages: STAGES,
     stageIndex: 0,
     stageName: "制坯",
     tools: TOOLS.shaping,
-    tool: "finger",
-    toolName: "推 / 拉",
+    tool: "",
+    toolName: "手势塑形",
+    shapingForms: SHAPING_FORMS,
+    shapingForm: "curve" as ShapingForm,
+    gestureIntent: "steady",
+    gestureLabel: MOTION_LABELS.steady,
     glazes: GLAZES,
     glazeId: "celadon",
     paintColors: ["#315e73", "#a95955", "#d0b17c", "#202822", "#f1eee4", "#657858"],
@@ -77,7 +96,7 @@ Page({
     canRedo: false,
     saveState: "已保存",
     hint: "按住器身，向外轻轻推",
-    cameraHelp: "单指拖动背景可环绕，双指开合可放大或缩小。",
+    cameraHelp: "单指只塑形；双指平移可 360° 环看，上下拖动查看口沿与底足，开合缩放。",
     showHint: false,
     kiln: false,
     kilnProgress: 0,
@@ -103,8 +122,11 @@ Page({
   saveTimer: null as any,
   kilnTimer: null as any,
   firstDeformTracked: false,
+  layoutStageIndex: -1,
 
   onLoad(query: any) {
+    const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+    this.setData({ statusBarHeight: Math.max(20, system.statusBarHeight || 20) });
     const work = loadWork(query.id);
     if (!work) {
       wx.showToast({ title: "草稿没有找到", icon: "none" });
@@ -143,11 +165,11 @@ Page({
 
   initCanvas() {
     const query = wx.createSelectorQuery().in(this);
-    query
-      .select("#potteryCanvas")
-      .fields({ node: true, size: true, rect: true })
-      .exec((results: any[]) => {
+    query.select("#potteryCanvas").fields({ node: true, size: true, rect: true });
+    query.select("#wheelRoot").boundingClientRect();
+    query.exec((results: any[]) => {
         const info = results && results[0];
+        const wheelInfo = results && results[1];
         if (!info?.node) {
           this.setData({ fallback: true, ready: true });
           return;
@@ -164,7 +186,13 @@ Page({
           const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
           const dpr = Math.min(system.pixelRatio || 2, 2);
           const reduceMotion = !!(wx.getStorageSync("palm-kiln-settings") || {}).reduceMotion;
-          const baseScreenY = calculatePotteryBaseScreenY(system.windowHeight || info.height);
+          const baseScreenY = wheelInfo
+            ? calculatePotteryBaseScreenYFromLayout(
+                info.top || 0,
+                info.height,
+                wheelInfo.top
+              )
+            : calculatePotteryBaseScreenY(system.windowHeight || info.height);
           this.engine.resize(info.width, info.height, dpr);
           this.engine.setBaseScreenY(baseScreenY);
           this.engine.setFrameProcessor(() => this.flushShapingFrame(false));
@@ -186,7 +214,7 @@ Page({
             showHint: true
           });
         }
-      });
+    });
   },
 
   maybeTutorial() {
@@ -199,17 +227,55 @@ Page({
     const stage = STAGES[this.work.stageIndex] || STAGES[0];
     const tools = TOOLS[stage.id] || [];
     const selected = tools.find((value) => value.id === this.data.tool) || tools[0];
-    this.setData({
-      work: this.work,
-      stageIndex: this.work.stageIndex,
-      stageName: stage.name,
-      tools,
-      tool: selected?.id || "",
-      toolName: selected?.name || "",
-      glazeId: this.work.glazeId,
-      canUndo: this.history.length > 0,
-      canRedo: this.future.length > 0,
-      contactShadowWidth: this.contactShadowWidth()
+    const layoutChanged = this.layoutStageIndex !== this.work.stageIndex;
+    this.layoutStageIndex = this.work.stageIndex;
+    this.setData(
+      {
+        work: this.work,
+        stageIndex: this.work.stageIndex,
+        stageName: stage.name,
+        tools,
+        tool: selected?.id || "",
+        toolName: selected?.name || "",
+        glazeId: this.work.glazeId,
+        canUndo: this.history.length > 0,
+        canRedo: this.future.length > 0,
+        contactShadowWidth: this.contactShadowWidth()
+      },
+      () => {
+        if (layoutChanged) setTimeout(() => this.refreshCanvasLayout(), 0);
+      }
+    );
+  },
+
+  refreshCanvasLayout() {
+    if (!this.engine || !this.canvas) return;
+    const query = wx.createSelectorQuery().in(this);
+    query.select("#potteryCanvas").fields({ size: true, rect: true });
+    query.select("#wheelRoot").boundingClientRect();
+    query.exec((results: any[]) => {
+      const info = results && results[0];
+      const wheelInfo = results && results[1];
+      if (!info?.width || !info?.height || !wheelInfo) return;
+      this.rect = {
+        left: info.left || 0,
+        top: info.top || 0,
+        width: info.width,
+        height: info.height
+      };
+      const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+      const dpr = Math.min(system.pixelRatio || 2, 2);
+      const baseScreenY = calculatePotteryBaseScreenYFromLayout(
+        info.top || 0,
+        info.height,
+        wheelInfo.top
+      );
+      this.engine?.resize(info.width, info.height, dpr);
+      this.engine?.setBaseScreenY(baseScreenY);
+      this.setData({
+        baseScreenY,
+        baseScreenPercent: Math.round(baseScreenY * 1000) / 10
+      });
     });
   },
 
@@ -235,6 +301,19 @@ Page({
     wx.setStorageSync("palm-kiln-tutorial-seen", true);
   },
 
+  chooseShapingForm(event: WechatMiniprogramTouchEvent) {
+    const form = event.currentTarget.dataset.id as ShapingForm;
+    const selected = SHAPING_FORMS.find((item) => item.id === form);
+    if (!selected) return;
+    this.setData({
+      shapingForm: selected.id,
+      gestureIntent: "steady",
+      gestureLabel: `${selected.name}受力 · ${selected.note}`,
+      showHint: false
+    });
+    this.vibrate();
+  },
+
   chooseTool(event: WechatMiniprogramTouchEvent) {
     if (!this.work) return;
     const id = event.currentTarget.dataset.id;
@@ -249,20 +328,6 @@ Page({
     });
     this.vibrate();
 
-    const gestureTools = ["finger", "open", "collar", "smooth"];
-    if (this.work.currentStage === "shaping" && !gestureTools.includes(id)) {
-      this.pushHistory();
-      const previousOuter = this.work.outerRadius.slice();
-      const action = toolAction(this.work.outerRadius, id);
-      this.work.outerRadius = action.profile;
-      this.work.height = clamp(this.work.height * action.heightScale, 0.45, 1.8);
-      this.work.innerRadius = synchronizeInnerWall(
-        previousOuter,
-        this.work.outerRadius,
-        this.work.innerRadius
-      );
-      this.changed();
-    }
     if (this.work.currentStage === "glaze") {
       this.pushHistory();
       this.work.glazeMethod = id;
@@ -306,15 +371,14 @@ Page({
   touchStart(event: WechatMiniprogramTouchEvent) {
     if (!this.work || !this.rect || this.data.kiln) return;
     const touches = event.touches;
-    if (touches.length === 2) {
+    if (touches.length >= 2) {
       this.commitGestureChange();
-      this.gesture = {
-        type: "camera2",
-        distance: this.distance(touches[0], touches[1]),
-        x: (touches[0].clientX + touches[1].clientX) / 2,
-        y: (touches[0].clientY + touches[1].clientY) / 2
-      };
+      this.gesture = this.cameraGesture(touches[0], touches[1]);
       this.setWheelState("orbit");
+      this.setData({
+        gestureIntent: "camera",
+        gestureLabel: "双指环看 · 上下越过口沿与底足"
+      });
       return;
     }
 
@@ -325,16 +389,19 @@ Page({
     const editable =
       hit && (this.work.currentStage === "shaping" || this.work.currentStage === "paint");
     if (!editable) {
-      this.gesture = { type: "orbit", x: touch.clientX, y: touch.clientY };
-      this.setWheelState("orbit");
+      // A lone finger never controls the camera. Starting outside the piece is
+      // intentionally inert so accidental background drags cannot change view.
+      this.gesture = null;
+      if (this.work.currentStage === "shaping") this.setGestureMotion("steady");
       return;
     }
 
+    const shaping = this.work.currentStage === "shaping";
     const side: -1 | 1 = local.x < this.rect.width / 2 ? -1 : 1;
-    const input =
-      this.work.currentStage === "shaping"
+    const input = shaping
         ? new ShapingInputSession({
             viewportWidth: this.rect.width,
+            viewportHeight: this.rect.height,
             profileCount: this.work.outerRadius.length,
             side
           })
@@ -350,48 +417,52 @@ Page({
       x: touch.clientX,
       y: touch.clientY,
       side,
-      tool: this.data.tool,
+      tool: shaping ? "gesture" : this.data.tool,
+      form: this.data.shapingForm as ShapingForm,
+      motion: "steady",
       changed: false,
       snapshot: cloneWork(this.work),
       input,
       pending: []
     };
-    this.setWheelState(this.work.currentStage === "shaping" ? "shaping" : "orbit");
+    if (shaping) this.setGestureMotion("steady");
+    this.setWheelState(shaping ? "shaping" : "idle");
   },
 
   touchMove(event: WechatMiniprogramTouchEvent) {
-    if (!this.work || !this.gesture || !this.rect) return;
+    if (!this.work || !this.rect) return;
     const touches = event.touches;
-    if (touches.length === 2) {
+    if (touches.length >= 2) {
       const distance = this.distance(touches[0], touches[1]);
       const x = (touches[0].clientX + touches[1].clientX) / 2;
       const y = (touches[0].clientY + touches[1].clientY) / 2;
-      if (this.gesture.type !== "camera2") {
+      const angle = this.touchAngle(touches[0], touches[1]);
+      if (!this.gesture || this.gesture.type !== "camera2") {
         this.commitGestureChange();
-        this.gesture = { type: "camera2", distance, x, y };
+        this.gesture = { type: "camera2", distance, x, y, angle };
         this.setWheelState("orbit");
+        this.setData({
+          gestureIntent: "camera",
+          gestureLabel: "双指环看 · 上下越过口沿与底足"
+        });
       } else {
         if (this.gesture.distance > 2 && distance > 2) {
           this.engine?.dolly(distance / this.gesture.distance);
         }
-        this.engine?.orbit(x - this.gesture.x, y - this.gesture.y);
+        const twist = this.angleDelta(angle, this.gesture.angle);
+        const twistPixels = (twist * this.rect.width * 0.58) / (Math.PI * 2);
+        this.engine?.orbit(x - this.gesture.x + twistPixels, y - this.gesture.y);
         this.gesture.distance = distance;
         this.gesture.x = x;
         this.gesture.y = y;
+        this.gesture.angle = angle;
       }
       return;
     }
 
+    if (!this.gesture || this.gesture.type === "camera2") return;
     const touch = touches[0];
     if (!touch) return;
-    const dx = touch.clientX - this.gesture.x;
-    const dy = touch.clientY - this.gesture.y;
-    if (this.gesture.type === "orbit") {
-      this.engine?.orbit(dx, dy);
-      this.gesture.x = touch.clientX;
-      this.gesture.y = touch.clientY;
-      return;
-    }
 
     if (this.gesture.type === "edit" && this.work.currentStage === "shaping") {
       const local = this.local(touch);
@@ -399,7 +470,17 @@ Page({
         this.inputPoint(local.x, local.y, event),
         (canvasY) => this.profilePositionAt(canvasY)
       );
-      if (samples?.length) this.gesture.pending.push(...samples);
+      if (samples?.length) {
+        this.gesture.pending.push(...samples);
+        for (let index = samples.length - 1; index >= 0; index--) {
+          const motion = samples[index].motion;
+          if (motion && motion !== "steady") {
+            this.gesture.motion = motion;
+            this.setGestureMotion(motion);
+            break;
+          }
+        }
+      }
     } else if (this.gesture.type === "edit" && this.work.currentStage === "paint") {
       const nextPattern =
         this.gesture.tool === "eraser"
@@ -421,16 +502,13 @@ Page({
 
   touchEnd(event: WechatMiniprogramTouchEvent) {
     if (!this.work || !this.gesture) return;
-    const previousType = this.gesture.type;
+    const cameraGesture = this.gesture.type === "camera2";
     this.commitGestureChange();
-    const remaining = event.touches?.[0];
-    if (remaining && previousType === "camera2") {
-      this.gesture = { type: "orbit", x: remaining.clientX, y: remaining.clientY };
-      this.setWheelState("orbit");
-      return;
-    }
     this.gesture = null;
     this.setWheelState("idle");
+    if (this.work.currentStage === "shaping" || cameraGesture) {
+      this.setGestureMotion("steady");
+    }
     this.syncData();
   },
 
@@ -447,41 +525,31 @@ Page({
     const samples = this.gesture.pending.splice(0);
     const previousOuter = this.work.outerRadius.slice();
     const previousInner = this.work.innerRadius.slice();
-
-    if (this.gesture.tool === "open") {
-      const openingDelta = samples.reduce(
-        (total, sample) => total + Math.max(0, sample.deltaRadius) * 1.1,
-        0
-      );
-      if (openingDelta > 0) {
-        const start = Math.floor(this.work.innerRadius.length * 0.7);
-        for (let index = start; index < this.work.innerRadius.length; index++) {
-          const current = this.work.innerRadius[index] || 0;
-          const target = this.work.outerRadius[index] - 0.09;
-          this.work.innerRadius[index] = Math.min(target, current + openingDelta);
-        }
-      }
-    } else {
-      const shapingTool =
-        this.gesture.tool === "smooth"
-          ? "smooth"
-          : this.gesture.tool === "collar"
-            ? "collar"
-            : "finger";
-      this.work.outerRadius = applySweptDeformation(this.work.outerRadius, samples, {
-        tool: shapingTool,
-        relaxed: this.work.mode === "relaxed"
-      });
-      this.work.innerRadius = synchronizeInnerWall(
-        previousOuter,
-        this.work.outerRadius,
-        this.work.innerRadius
-      );
-    }
+    const previousHeight = this.work.height;
+    const relaxed = this.work.mode === "relaxed";
+    const sweptOuter = applySweptDeformation(this.work.outerRadius, samples, {
+      tool: "finger",
+      form: this.gesture.form,
+      relaxed
+    });
+    const verticalThrow = applyVerticalThrowing(
+      sweptOuter,
+      this.work.height,
+      samples,
+      relaxed
+    );
+    this.work.outerRadius = verticalThrow.profile;
+    this.work.height = verticalThrow.height;
+    this.work.innerRadius = synchronizeInnerWall(
+      previousOuter,
+      this.work.outerRadius,
+      this.work.innerRadius
+    );
 
     const changed =
       this.profileChanged(previousOuter, this.work.outerRadius) ||
-      this.profileChanged(previousInner, this.work.innerRadius);
+      this.profileChanged(previousInner, this.work.innerRadius) ||
+      Math.abs(previousHeight - this.work.height) > 1e-7;
     if (!changed) return false;
     this.gesture.changed = true;
     this.engine?.update(this.work, renderNow);
@@ -499,16 +567,14 @@ Page({
     this.changed(false);
     if (!this.firstDeformTracked && this.work.currentStage === "shaping") {
       track("first_deform", {
-        gesture_type: this.gesture.tool,
+        gesture_type: this.gesture.motion,
+        shaping_form: this.gesture.form,
         quality_tier: (wx.getStorageSync("palm-kiln-settings") || {}).quality || "medium"
       });
       this.firstDeformTracked = true;
     }
     this.setData({
-      hint:
-        this.gesture.tool === "smooth"
-          ? "凹凸已经顺下来，可以继续轻抹局部"
-          : "很好，轮廓已经跟着手指变了",
+      hint: MOTION_LABELS[this.gesture.motion],
       showHint: true
     });
     wx.setStorageSync("palm-kiln-tutorial-seen", true);
@@ -552,6 +618,40 @@ Page({
 
   distance(a: WechatMiniprogramTouch, b: WechatMiniprogramTouch): number {
     return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  },
+
+  touchAngle(a: WechatMiniprogramTouch, b: WechatMiniprogramTouch): number {
+    const first = a.identifier <= b.identifier ? a : b;
+    const second = first === a ? b : a;
+    return Math.atan2(
+      second.clientY - first.clientY,
+      second.clientX - first.clientX
+    );
+  },
+
+  angleDelta(next: number, previous: number): number {
+    const turn = Math.PI * 2;
+    return ((next - previous + Math.PI) % turn + turn) % turn - Math.PI;
+  },
+
+  cameraGesture(
+    a: WechatMiniprogramTouch,
+    b: WechatMiniprogramTouch
+  ): CameraGesture {
+    return {
+      type: "camera2",
+      distance: this.distance(a, b),
+      x: (a.clientX + b.clientX) / 2,
+      y: (a.clientY + b.clientY) / 2,
+      angle: this.touchAngle(a, b)
+    };
+  },
+
+  setGestureMotion(motion: ShapingMotion) {
+    if (this.data.gestureIntent === motion && this.data.gestureLabel === MOTION_LABELS[motion]) {
+      return;
+    }
+    this.setData({ gestureIntent: motion, gestureLabel: MOTION_LABELS[motion] });
   },
 
   profileChanged(before: number[], after: number[]): boolean {

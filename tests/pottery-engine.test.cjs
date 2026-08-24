@@ -18,9 +18,12 @@ const { profileDeltaFromDrag } = require("../core/profile.ts");
 const {
   POTTERY_VERTICAL_FOV,
   POTTERY_BASE_SCREEN_Y,
+  POTTERY_MAX_PITCH,
+  POTTERY_MIN_PITCH,
   advancePotteryTurntable,
   advancePotteryTurntableFrame,
   calculatePotteryBaseScreenY,
+  calculatePotteryBaseScreenYFromLayout,
   calculatePotteryOrbitDelta,
   calculatePotteryCameraDistance,
   calculatePotteryFocusY,
@@ -161,6 +164,24 @@ assert.ok(
   "连续环绕后视角必须保持数值稳定"
 );
 assert.equal(calculatePotteryOrbitDelta(Number.NaN, Number.NaN, 0, 0).yaw, 0, "异常手势不能污染相机");
+assert.ok(POTTERY_MIN_PITCH < -1.2, "双指俯视必须能越过器底观察下方");
+assert.ok(POTTERY_MAX_PITCH > 1.2, "双指仰视必须能越过口沿观察内腔");
+assert.ok(
+  calculatePotteryOrbitDelta(0, 600, 375, 600).pitch > 2.7,
+  "一次纵向整屏拖动应覆盖从底部到顶部的完整视角"
+);
+assert.ok(
+  Math.abs(
+    calculatePotteryCameraDistance(0.7, 1.2, 0.72, -1.1) -
+      calculatePotteryCameraDistance(0.7, 1.2, 0.72, 1.1)
+  ) < 1e-10,
+  "俯视与仰视必须使用对称安全的相机包围范围"
+);
+for (const extremePitch of [POTTERY_MIN_PITCH, POTTERY_MAX_PITCH]) {
+  const extremeFocus = calculatePotteryFocusY(1.2, 6.4, extremePitch, 0.9, 0.55);
+  assert.ok(Number.isFinite(extremeFocus), "极端俯仰时相机焦点不能发散");
+  assert.ok(Math.abs(extremeFocus) < 0.8, "越过口沿或底足时应平滑转为绕作品中心观察");
+}
 
 assert.ok(calculatePotteryZoomFactor(1, 1.25) < 1, "双指张开必须放大作品");
 assert.ok(calculatePotteryZoomFactor(1, 0.8) > 1, "双指合拢必须缩小作品");
@@ -173,6 +194,11 @@ assert.ok(Math.abs(oneSecondTurn - sixtyFrameTurn) < 1e-10, "转盘速度不能�
 
 assert.equal(calculatePotteryBaseScreenY(568), 0.72, "短屏接触线应保持在 72%");
 assert.equal(calculatePotteryBaseScreenY(932), 0.75, "长屏接触线可下移到 75%");
+assert.equal(
+  calculatePotteryBaseScreenYFromLayout(100, 500, 525),
+  0.85,
+  "WebGL 器底必须跟随实测转盘上沿"
+);
 assert.ok(
   calculatePotteryBaseScreenY(812) > 0.739 && calculatePotteryBaseScreenY(812) < 0.741,
   "常规长屏接触线应约为 74%"

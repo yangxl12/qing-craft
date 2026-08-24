@@ -43,11 +43,8 @@ export const STAGES = [
 ] as const;
 
 export const TOOLS: Record<string, { id:string; name:string; hint:string }[]> = {
-  shaping: [
-    {id:"finger",name:"推 / 拉",hint:"按住器身左右移动"},{id:"raise",name:"拉高",hint:"向上提起器形"},{id:"lower",name:"压低",hint:"压低并稍稍放宽"},
-    {id:"open",name:"打开",hint:"向外拖动，打开顶部内腔"},{id:"collar",name:"收口",hint:"沿器壁上下滑动，收出连续颈线"},{id:"rim",name:"修口",hint:"抚平杯口"},
-    {id:"foot",name:"修足",hint:"收稳底足"},{id:"smooth",name:"海绵",hint:"沿器壁上下轻抹，修顺凹凸"}
-  ],
+  // 制坯不再使用离散工具按钮：四向手势与三种受力形态由 studio 直接编排。
+  shaping: [],
   decorate: [
     {id:"carve",name:"刻线",hint:"在器身刻出细线"},{id:"impress",name:"压纹",hint:"压出连续纹理"},{id:"stamp",name:"印章",hint:"放下一枚小印"},
     {id:"decal",name:"贴花",hint:"贴上一片浮雕"},{id:"handle",name:"加杯耳",hint:"从侧面添一个耳"}

@@ -382,7 +382,7 @@ export class PotteryEngine {
   }
 
   setBaseScreenY(value: number) {
-    this.baseScreenY = clamp(value, 0.72, 0.75);
+    this.baseScreenY = clamp(value, 0.6, 0.9);
     this.resetCameraFit();
     this.render();
   }

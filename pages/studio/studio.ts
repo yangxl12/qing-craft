@@ -188,7 +188,6 @@ Page({
 
   onShow() {
     const reduceMotion = !!(wx.getStorageSync("palm-kiln-settings") || {}).reduceMotion;
-    this.engine?.setAutoRotate(!reduceMotion);
     this.setData({ reduceMotion });
     this.setWheelState("idle", reduceMotion);
   },
@@ -235,7 +234,6 @@ Page({
           this.engine.resize(info.width, info.height, dpr);
           this.engine.setBaseScreenY(baseScreenY);
           this.engine.setFrameProcessor(() => this.flushShapingFrame(false));
-          this.engine.setAutoRotate(!reduceMotion);
           this.setData({
             ready: true,
             reduceMotion,
@@ -829,11 +827,13 @@ Page({
 
   setWheelState(state: Exclude<PotteryRotationState, "reduced">, reduced?: boolean) {
     const shouldReduce = reduced === undefined ? this.data.reduceMotion : reduced;
-    const actualState: PotteryRotationState = shouldReduce ? "reduced" : state;
+    const shouldPause = shouldReduce || this.work?.stageIndex !== 0;
+    const actualState: PotteryRotationState = shouldPause ? "reduced" : state;
     const maxRadius = this.work?.outerRadius.length
       ? Math.max(...this.work.outerRadius)
       : 0.72;
     const rpm = calculatePotteryTargetRpm(maxRadius, actualState);
+    this.engine?.setAutoRotate(!shouldPause);
     this.engine?.setRotationState(actualState);
     this.setData({
       wheelState: state,
@@ -919,6 +919,7 @@ Page({
     track("stage_complete", { stage: completed, next_stage: this.work.currentStage });
     this.changed();
     this.syncData();
+    this.setWheelState("idle");
     this.setData({
       hint: `现在开始${STAGES[this.work.stageIndex].name}`,
       showHint: true

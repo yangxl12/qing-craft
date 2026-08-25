@@ -32,14 +32,14 @@ interface LightingPreset {
 
 const LIGHTING: Record<string, LightingPreset> = {
   workshop: {
-    keyDirection: [-0.62, 0.72, 0.42],
-    fillDirection: [0.58, 0.24, 0.78],
-    keyColor: [1, 0.92, 0.79],
-    fillColor: [0.43, 0.57, 0.69],
-    ambient: [0.22, 0.23, 0.22],
-    keyIntensity: 0.98,
-    fillIntensity: 0.18,
-    exposure: 2.65
+    keyDirection: [0.58, 0.76, 0.3],
+    fillDirection: [-0.64, 0.22, 0.72],
+    keyColor: [1, 0.91, 0.76],
+    fillColor: [0.39, 0.53, 0.58],
+    ambient: [0.2, 0.22, 0.2],
+    keyIntensity: 1.04,
+    fillIntensity: 0.2,
+    exposure: 2.48
   },
   museum: {
     keyDirection: [-0.34, 0.91, 0.24],
@@ -685,7 +685,10 @@ export class PotteryEngine {
       focusY + Math.sin(this.pitch) * distance,
       Math.cos(this.viewYaw) * horizontalDistance
     ];
-    const model = rotateY(this.turntableAngle);
+    // Positive CSS rotation is clockwise on screen. WebGL's Y-axis convention
+    // presents the same positive angle in the opposite visual direction from
+    // the front camera, so invert it to keep clay and wheel turning together.
+    const model = rotateY(-this.turntableAngle);
     const view = lookAt(eye, [0, focusY, 0], [0, 1, 0]);
     const projection = perspective(POTTERY_VERTICAL_FOV, width / height, 0.08, 40);
     const viewProjection = multiply(projection, view);

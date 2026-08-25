@@ -190,6 +190,226 @@
   background: radial-gradient(ellipse at 50% 38%, transparent 35%, rgba(10, 14, 12, 0.52) 100%);
   pointer-events: none;
 }
+
+/* 窑房天光：青灰灰泥、旧木格窗与暖窑火共同建立前后景深。 */
+.workshop-bg {
+  background:
+    radial-gradient(ellipse at 51% 37%, rgba(128, 143, 130, .16), transparent 34%),
+    linear-gradient(180deg, #39433d 0%, #303a35 44%, #222a27 70%, #171d1b 100%);
+}
+.wall-plaster {
+  position: absolute;
+  inset: 0 0 43%;
+  opacity: .72;
+  background:
+    linear-gradient(104deg, transparent 0 18%, rgba(220, 226, 208, .025) 18.2%, transparent 18.7%),
+    linear-gradient(17deg, transparent 0 52%, rgba(20, 25, 23, .08) 52.3%, transparent 53%),
+    repeating-linear-gradient(7deg, rgba(238, 235, 214, .018) 0 2rpx, transparent 2rpx 13rpx),
+    radial-gradient(circle at 24% 24%, rgba(193, 202, 185, .08), transparent 25%),
+    linear-gradient(105deg, rgba(18, 24, 21, .18), transparent 38%, rgba(192, 200, 184, .04));
+}
+.wall-glow {
+  left: 50%;
+  top: 8%;
+  width: 660rpx;
+  height: 790rpx;
+  background: radial-gradient(
+    ellipse at 52% 44%,
+    rgba(220, 211, 184, .16) 0%,
+    rgba(129, 149, 137, .07) 43%,
+    transparent 72%
+  );
+}
+.window-bloom {
+  position: absolute;
+  right: -30rpx;
+  top: 68rpx;
+  width: 330rpx;
+  height: 430rpx;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(229, 218, 187, .2), transparent 67%);
+  filter: blur(22rpx);
+}
+.window-light {
+  right: 38rpx;
+  top: 112rpx;
+  width: 172rpx;
+  height: 258rpx;
+  box-sizing: border-box;
+  opacity: .82;
+  overflow: hidden;
+  border: 11rpx solid #29271f;
+  border-radius: 86rpx 86rpx 7rpx 7rpx;
+  transform: perspective(520rpx) rotateY(-9deg) skewY(-2deg);
+  transform-origin: right center;
+  background:
+    linear-gradient(155deg, rgba(255, 248, 211, .78), rgba(178, 192, 171, .33)),
+    #a9b3a2;
+  box-shadow:
+    inset 0 0 32rpx rgba(255, 242, 197, .24),
+    0 0 0 2rpx rgba(88, 70, 51, .45),
+    0 15rpx 34rpx rgba(7, 10, 8, .24);
+}
+.window-light .window-paper {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(82deg, rgba(98, 106, 91, .035) 0 1rpx, transparent 1rpx 8rpx),
+    linear-gradient(140deg, rgba(255, 251, 224, .18), transparent 54%);
+}
+.window-light .lattice {
+  position: absolute;
+  z-index: 2;
+  display: block;
+  background: linear-gradient(90deg, #302b21, #4d402f 52%, #27241d);
+  box-shadow: 2rpx 2rpx 5rpx rgba(12, 13, 11, .35);
+}
+.window-light .lattice-vertical {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 7rpx;
+  height: auto;
+  transform: translateX(-50%);
+}
+.window-light .lattice-horizontal-one,
+.window-light .lattice-horizontal-two {
+  left: 0;
+  right: 0;
+  width: auto;
+  height: 7rpx;
+}
+.window-light .lattice-horizontal-one { top: 35%; }
+.window-light .lattice-horizontal-two { top: 67%; }
+.light-beam {
+  position: absolute;
+  z-index: 0;
+  right: -34rpx;
+  top: 316rpx;
+  width: 560rpx;
+  height: 600rpx;
+  opacity: .25;
+  transform: rotate(7deg);
+  transform-origin: right top;
+  clip-path: polygon(61% 0, 91% 0, 100% 100%, 0 100%);
+  background: linear-gradient(155deg, rgba(255, 238, 191, .38), rgba(203, 213, 191, .1) 48%, transparent 82%);
+  filter: blur(14rpx);
+}
+.timber {
+  background:
+    repeating-linear-gradient(86deg, transparent 0 16rpx, rgba(16, 12, 9, .14) 17rpx 19rpx),
+    linear-gradient(90deg, #2b2119, #513b2a 44%, #32261d 76%, #211b16);
+  box-shadow:
+    inset -5rpx 0 9rpx rgba(10, 9, 7, .28),
+    8rpx 12rpx 25rpx rgba(8, 10, 9, .28);
+  opacity: .68;
+}
+.timber-left { left: 32rpx; width: 38rpx; height: 58%; }
+.timber-top { top: 82rpx; height: 28rpx; }
+.timber-diagonal {
+  right: -118rpx;
+  top: 22rpx;
+  width: 382rpx;
+  height: 24rpx;
+  transform: rotate(-38deg);
+  opacity: .34;
+}
+.kiln-arch {
+  right: -92rpx;
+  top: 34%;
+  width: 264rpx;
+  height: 306rpx;
+  opacity: .72;
+  border: 15rpx solid rgba(92, 67, 49, .56);
+  background:
+    repeating-linear-gradient(0deg, rgba(30, 23, 18, .15) 0 3rpx, transparent 3rpx 38rpx),
+    linear-gradient(110deg, #625040, #372e27 58%, #211d19);
+  box-shadow:
+    inset 14rpx 8rpx 22rpx rgba(216, 173, 113, .06),
+    -18rpx 24rpx 46rpx rgba(7, 9, 8, .25);
+}
+.kiln-arch .kiln-mouth {
+  position: absolute;
+  inset: 40rpx 46rpx 0;
+  border-radius: 86rpx 86rpx 5rpx 5rpx;
+  background: radial-gradient(ellipse at 55% 88%, #553224 0%, #241b17 44%, #111411 78%);
+  box-shadow: inset 0 18rpx 28rpx rgba(4, 6, 5, .72);
+}
+.kiln-arch .kiln-ember {
+  position: absolute;
+  top: auto;
+  left: 56rpx;
+  right: 54rpx;
+  bottom: 12rpx;
+  height: 74rpx;
+  border-radius: 50%;
+  opacity: .34;
+  background: radial-gradient(ellipse, rgba(199, 91, 44, .78), rgba(122, 52, 28, .18) 50%, transparent 74%);
+  filter: blur(12rpx);
+}
+.pottery-rack {
+  left: 84rpx;
+  top: 230rpx;
+  width: 226rpx;
+  height: 226rpx;
+  opacity: .28;
+  filter: blur(.6rpx);
+  transform: perspective(460rpx) rotateY(8deg);
+  transform-origin: left center;
+}
+.rack-shelf {
+  height: 9rpx;
+  background: linear-gradient(180deg, #705440, #34281f);
+  box-shadow: 0 9rpx 15rpx rgba(7, 9, 8, .42);
+}
+.rack-pot {
+  background: linear-gradient(100deg, #3b4039, #817261 48%, #4a463d);
+  box-shadow:
+    inset 10rpx 5rpx 14rpx rgba(225, 213, 180, .12),
+    8rpx 8rpx 12rpx rgba(8, 10, 9, .28);
+}
+.rack-pot:before { border-color: #5f574c; }
+.table-plane {
+  top: 55%;
+  background:
+    linear-gradient(180deg, rgba(105, 78, 56, .66), rgba(49, 38, 30, .88) 32%, rgba(22, 25, 22, .98)),
+    #342b24;
+  border-top: 2rpx solid rgba(196, 160, 116, .22);
+  box-shadow: inset 0 26rpx 38rpx rgba(199, 161, 113, .055);
+  clip-path: polygon(0 5%, 100% 0, 100% 100%, 0 100%);
+}
+.table-grain {
+  position: absolute;
+  inset: 0;
+  opacity: .34;
+  background:
+    repeating-linear-gradient(2deg, transparent 0 28rpx, rgba(218, 180, 132, .05) 29rpx, rgba(10, 12, 10, .1) 32rpx),
+    linear-gradient(104deg, rgba(255, 218, 164, .04), transparent 40%);
+}
+.perspective-line {
+  background: linear-gradient(rgba(218, 180, 132, .17), transparent 76%);
+}
+.line-left { left: 44%; transform: rotate(24deg); }
+.line-right { right: 44%; transform: rotate(-24deg); }
+.stage-floor-shadow {
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  width: 620rpx;
+  height: 240rpx;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(5, 8, 6, .42), transparent 69%);
+  filter: blur(16rpx);
+}
+.vignette {
+  background:
+    linear-gradient(180deg, rgba(7, 10, 8, .08), transparent 16%, transparent 72%, rgba(5, 7, 6, .3)),
+    radial-gradient(ellipse at 51% 38%, transparent 32%, rgba(7, 10, 8, .5) 100%);
+}
 /* 舞台区：顶栏与工序带之间的全部可视区域，flex 自适应高度（兼容任意安全区高度） */
 .stage-area {
   position: relative;

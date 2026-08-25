@@ -102,8 +102,16 @@ export function buildPotteryMesh(
     ? cachedTopology.ranges
     : ({} as Record<PotteryMeshPart, PotteryMeshRange>);
   const top = ringCount - 1;
-  const lipRadius = Math.min((outer[top] - inner[top]) / 2, DEFAULT_POTTERY_WALL);
-  const sideHeight = safeHeight - lipRadius;
+  // The lip must span the complete wall thickness. Capping this radial value
+  // at DEFAULT_POTTERY_WALL left a visible gap between the rounded lip and
+  // both wall surfaces after the user selected a thick wall. Keep the vertical
+  // crown restrained, but always bridge the full radial half-width.
+  const rimHalfWidth = Math.max(
+    MIN_POTTERY_WALL / 2,
+    (outer[top] - inner[top]) / 2
+  );
+  const rimHeight = Math.min(rimHalfWidth, DEFAULT_POTTERY_WALL, safeHeight * 0.18);
+  const sideHeight = safeHeight - rimHeight;
   const yAt = (ring: number) => -safeHeight / 2 + (ring / (ringCount - 1)) * sideHeight;
 
   const appendVertex = (
@@ -224,11 +232,20 @@ export function buildPotteryMesh(
     const phase = (band / rimBands) * Math.PI;
     const radialNormal = Math.cos(phase);
     const upNormal = Math.sin(phase);
+    const ellipseNormal = normalize(
+      radialNormal / Math.max(rimHalfWidth, 1e-6),
+      upNormal / Math.max(rimHeight, 1e-6),
+      0
+    );
     rimBases.push(
       appendRing(
-        rimCenterRadius + lipRadius * radialNormal,
-        yAt(top) + lipRadius * upNormal,
-        (cosine, sine) => [radialNormal * cosine, upNormal, radialNormal * sine],
+        rimCenterRadius + rimHalfWidth * radialNormal,
+        yAt(top) + rimHeight * upNormal,
+        (cosine, sine) => [
+          ellipseNormal[0] * cosine,
+          ellipseNormal[1],
+          ellipseNormal[0] * sine
+        ],
         (band / rimBands) * 0.35
       )
     );

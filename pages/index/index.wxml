@@ -3,10 +3,6 @@
   <view class="safe-top" style="height:{{statusBarHeight}}px"></view>
 
   <view class="topbar" style="height:{{navigationBarHeight}}px">
-    <view class="top-links">
-      <button class="top-link" bindtap="gallery" aria-label="打开本机作品">作品</button>
-      <button class="top-link" bindtap="settings" aria-label="打开工坊设置">设置</button>
-    </view>
     <view class="brand" aria-label="泥火青花">
       <image class="brand-logo" src="/assets/yao.png" mode="aspectFill"></image>
       <view class="brand-name display">泥火青花</view>
@@ -15,6 +11,10 @@
 
   <view class="intro">
     <view class="display title">一捧泥，<text>成一件心中器。</text></view>
+    <view class="top-links">
+      <button class="top-link" bindtap="gallery" aria-label="打开本机作品">作品</button>
+      <button class="top-link" bindtap="settings" aria-label="打开工坊设置">设置</button>
+    </view>
   </view>
 
   <view class="hero-art" aria-label="月窗前陈设的天青釉瓷瓶">

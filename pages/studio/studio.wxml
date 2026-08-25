@@ -1,11 +1,19 @@
 <view class="studio {{reduceMotion?'reduce-motion':''}}">
   <view class="workshop-bg">
+    <view class="wall-plaster"></view>
     <view class="wall-glow"></view>
-    <view class="window-light"><view></view><view></view></view>
+    <view class="window-bloom"></view>
+    <view class="window-light">
+      <view class="lattice lattice-vertical"></view>
+      <view class="lattice lattice-horizontal-one"></view>
+      <view class="lattice lattice-horizontal-two"></view>
+      <view class="window-paper"></view>
+    </view>
+    <view class="light-beam"></view>
     <view class="timber timber-left"></view>
     <view class="timber timber-top"></view>
     <view class="timber timber-diagonal"></view>
-    <view class="kiln-arch"><view></view></view>
+    <view class="kiln-arch"><view class="kiln-mouth"></view><view class="kiln-ember"></view></view>
     <view class="pottery-rack">
       <view class="rack-shelf shelf-upper"></view>
       <view class="rack-shelf shelf-lower"></view>
@@ -14,9 +22,11 @@
       <view class="rack-pot rack-pot-three"></view>
     </view>
     <view class="table-plane">
+      <view class="table-grain"></view>
       <view class="perspective-line line-left"></view>
       <view class="perspective-line line-right"></view>
     </view>
+    <view class="stage-floor-shadow"></view>
     <view class="vignette"></view>
   </view>
 

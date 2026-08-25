@@ -124,6 +124,39 @@ assert.ok(mesh.cavity.every((value) => value >= 0 && value <= 1), "内腔遮蔽�
 assert.ok(mesh.indices.every((index) => index < mesh.positions.length / 3), "索引必须落在顶点范围内");
 assert.ok(mesh.innerStartRing >= 2, "内腔必须留出有厚度的实心底足");
 
+const compressedThickOuter = Array.from({ length: ringCount }, (_, index) =>
+  0.47 + Math.sin((index / (ringCount - 1)) * Math.PI) * 0.1
+);
+const compressedThickInner = compressedThickOuter.map((radius, index) =>
+  index < 3 ? 0 : radius - 0.18
+);
+const compressedThickMesh = buildPotteryMesh(
+  compressedThickOuter,
+  compressedThickInner,
+  0.48,
+  radialSegments
+);
+const rimOffset = compressedThickMesh.ranges.rim.indexOffset;
+const rimOuterVertex = compressedThickMesh.indices[rimOffset];
+const lastRimBandOffset = rimOffset + 3 * radialSegments * 6;
+const rimInnerVertex = compressedThickMesh.indices[lastRimBandOffset + 1];
+const rimOuterX = compressedThickMesh.positions[rimOuterVertex * 3];
+const rimOuterY = compressedThickMesh.positions[rimOuterVertex * 3 + 1];
+const rimInnerX = compressedThickMesh.positions[rimInnerVertex * 3];
+const rimInnerY = compressedThickMesh.positions[rimInnerVertex * 3 + 1];
+assert.ok(
+  Math.abs(rimOuterX - compressedThickOuter.at(-1)) < 1e-6,
+  "厚壁压矮后口沿外缘必须与瓶身连续"
+);
+assert.ok(
+  Math.abs(rimInnerX - compressedThickInner.at(-1)) < 1e-6,
+  "厚壁压矮后口沿内缘必须与内壁连续"
+);
+assert.ok(
+  Math.abs(rimOuterY - rimInnerY) < 1e-6,
+  "厚壁压矮后口沿两侧接缝必须保持同高"
+);
+
 for (const shapeId of ["cup", "bowl", "vase", "jar", "plate"]) {
   const work = createWork(shapeId);
   for (const qualitySegments of [48, 64, 88]) {

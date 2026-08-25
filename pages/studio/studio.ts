@@ -86,8 +86,6 @@ Page({
     toolName: "手势塑形",
     shapingForms: SHAPING_FORMS,
     shapingForm: "curve" as ShapingForm,
-    gestureIntent: "steady",
-    gestureLabel: MOTION_LABELS.steady,
     glazes: GLAZES,
     glazeId: "celadon",
     paintColors: ["#315e73", "#a95955", "#d0b17c", "#202822", "#f1eee4", "#657858"],
@@ -307,8 +305,6 @@ Page({
     if (!selected) return;
     this.setData({
       shapingForm: selected.id,
-      gestureIntent: "steady",
-      gestureLabel: `${selected.name}受力 · ${selected.note}`,
       showHint: false
     });
     this.vibrate();
@@ -375,10 +371,6 @@ Page({
       this.commitGestureChange();
       this.gesture = this.cameraGesture(touches[0], touches[1]);
       this.setWheelState("orbit");
-      this.setData({
-        gestureIntent: "camera",
-        gestureLabel: "双指环看 · 上下越过口沿与底足"
-      });
       return;
     }
 
@@ -392,7 +384,6 @@ Page({
       // A lone finger never controls the camera. Starting outside the piece is
       // intentionally inert so accidental background drags cannot change view.
       this.gesture = null;
-      if (this.work.currentStage === "shaping") this.setGestureMotion("steady");
       return;
     }
 
@@ -425,7 +416,6 @@ Page({
       input,
       pending: []
     };
-    if (shaping) this.setGestureMotion("steady");
     this.setWheelState(shaping ? "shaping" : "idle");
   },
 
@@ -441,10 +431,6 @@ Page({
         this.commitGestureChange();
         this.gesture = { type: "camera2", distance, x, y, angle };
         this.setWheelState("orbit");
-        this.setData({
-          gestureIntent: "camera",
-          gestureLabel: "双指环看 · 上下越过口沿与底足"
-        });
       } else {
         if (this.gesture.distance > 2 && distance > 2) {
           this.engine?.dolly(distance / this.gesture.distance);
@@ -476,7 +462,6 @@ Page({
           const motion = samples[index].motion;
           if (motion && motion !== "steady") {
             this.gesture.motion = motion;
-            this.setGestureMotion(motion);
             break;
           }
         }
@@ -502,13 +487,9 @@ Page({
 
   touchEnd(event: WechatMiniprogramTouchEvent) {
     if (!this.work || !this.gesture) return;
-    const cameraGesture = this.gesture.type === "camera2";
     this.commitGestureChange();
     this.gesture = null;
     this.setWheelState("idle");
-    if (this.work.currentStage === "shaping" || cameraGesture) {
-      this.setGestureMotion("steady");
-    }
     this.syncData();
   },
 
@@ -645,13 +626,6 @@ Page({
       y: (a.clientY + b.clientY) / 2,
       angle: this.touchAngle(a, b)
     };
-  },
-
-  setGestureMotion(motion: ShapingMotion) {
-    if (this.data.gestureIntent === motion && this.data.gestureLabel === MOTION_LABELS[motion]) {
-      return;
-    }
-    this.setData({ gestureIntent: motion, gestureLabel: MOTION_LABELS[motion] });
   },
 
   profileChanged(before: number[], after: number[]): boolean {

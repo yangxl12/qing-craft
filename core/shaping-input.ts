@@ -184,6 +184,7 @@ export class ShapingInputSession {
   private lastTimestamp = 0;
   private lastHorizontalDirection = 0;
   private lastVerticalDirection = 0;
+  private lastMotion: ShapingMotion = "steady";
 
   constructor(options: ShapingInputOptions) {
     this.viewportWidth = Math.max(280, options.viewportWidth || 0);
@@ -222,6 +223,7 @@ export class ShapingInputSession {
     this.lastTimestamp = safePoint.timestamp;
     this.lastHorizontalDirection = 0;
     this.lastVerticalDirection = 0;
+    this.lastMotion = "steady";
   }
 
   push(point: ShapingInputPoint, profileAtCanvasY: (canvasY: number) => number): SweptInputSample[] {
@@ -236,6 +238,12 @@ export class ShapingInputSession {
     const rawDx = safePoint.x - this.lastRaw.x;
     const rawDy = safePoint.y - this.lastRaw.y;
     const motion = classifyShapingMotion(rawDx, rawDy, this.side);
+    const horizontalMotion = motion === "stretch" || motion === "compress";
+    const verticalMotion = motion === "smooth-up" || motion === "smooth-down";
+    const previousWasHorizontal =
+      this.lastMotion === "stretch" || this.lastMotion === "compress";
+    const previousWasVertical =
+      this.lastMotion === "smooth-up" || this.lastMotion === "smooth-down";
     const horizontalDirection = Math.abs(rawDx) >= 0.2 ? Math.sign(rawDx) : 0;
     const verticalDirection = Math.abs(rawDy) >= 0.2 ? Math.sign(rawDy) : 0;
     if (
@@ -252,6 +260,32 @@ export class ShapingInputSession {
       verticalDirection !== this.lastVerticalDirection
     ) {
       this.yFilter.reset(safePoint.y, safePoint.timestamp);
+    }
+
+    // Once the hand has travelled vertically to a new working height, the
+    // first inward/outward push must act exactly there. Without this axis
+    // handoff the Y low-pass filter trails behind and makes the clay feel as if
+    // it is being touched below the finger. The mirrored reset keeps a new
+    // vertical sweep from inheriting stale horizontal momentum as well.
+    if (horizontalMotion && previousWasVertical) {
+      const contactProfileY = clamp(
+        profileAtCanvasY(safePoint.y),
+        0,
+        this.profileCount - 1
+      );
+      this.yFilter.reset(safePoint.y, safePoint.timestamp);
+      this.lastFiltered = {
+        x: this.lastFiltered.x,
+        y: safePoint.y,
+        profileY: contactProfileY
+      };
+    } else if (verticalMotion && previousWasHorizontal) {
+      this.xFilter.reset(safePoint.x, safePoint.timestamp);
+      this.lastFiltered = {
+        x: safePoint.x,
+        y: this.lastFiltered.y,
+        profileY: this.lastFiltered.profileY
+      };
     }
 
     const filteredX = this.xFilter.filter(safePoint.x, safePoint.timestamp);
@@ -314,6 +348,7 @@ export class ShapingInputSession {
     );
     if (horizontalDirection) this.lastHorizontalDirection = horizontalDirection;
     if (verticalDirection) this.lastVerticalDirection = verticalDirection;
+    if (motion !== "steady") this.lastMotion = motion;
     return samples;
   }
 

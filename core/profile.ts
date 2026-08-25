@@ -109,7 +109,7 @@ export function constrainProfile(profile: number[], relaxed: boolean): number[] 
   return constrainSlopeAndCurvature(profile, relaxed);
 }
 
-function taubinPass(
+function fairingPass(
   profile: number[],
   weights: number[],
   amount: number,
@@ -122,15 +122,23 @@ function taubinPass(
     index <= Math.min(profile.length - 2, rangeEnd);
     index++
   ) {
-    const structuralProtection = index < 2 || index > profile.length - 3 ? 0.18 : 1;
+    const structuralProtection = index < 2 || index > profile.length - 3 ? 0.22 : 1;
     const influence = clamp(weights[index], 0, 1) * structuralProtection;
-    const laplacian = (profile[index - 1] + profile[index + 1]) * 0.5 - profile[index];
-    next[index] = profile[index] + laplacian * amount * influence;
+    const previous2 = profile[Math.max(0, index - 2)];
+    const previous = profile[index - 1];
+    const current = profile[index];
+    const following = profile[index + 1];
+    const following2 = profile[Math.min(profile.length - 1, index + 2)];
+    // A five-point bell filter removes the alternating dents left by repeated
+    // finger pushes while retaining broad shoulders, bellies and foot rings.
+    const fairRadius =
+      (previous2 + previous * 4 + current * 6 + following * 4 + following2) / 16;
+    next[index] = current + (fairRadius - current) * amount * influence;
   }
   return next;
 }
 
-/** Local, weighted Taubin smoothing with bounded volume compensation. */
+/** Local, weighted curve fairing with bounded volume compensation. */
 export function smoothProfileRange(
   profile: number[],
   centerStart: number,
@@ -153,9 +161,9 @@ export function smoothProfileRange(
   });
   const source = profile.map(finiteRadius);
   const beforeVolume = approximateProfileVolume(source.slice(rangeStart, rangeEnd + 1));
-  const passStrength = clamp(strength, 0, 0.32);
-  let next = taubinPass(source, weights, 0.45 * passStrength, rangeStart, rangeEnd);
-  next = taubinPass(next, weights, -0.47 * passStrength, rangeStart, rangeEnd);
+  const passStrength = clamp(strength, 0, 0.38);
+  const fairingAmount = clamp(passStrength * 2.35, 0, 0.72);
+  let next = fairingPass(source, weights, fairingAmount, rangeStart, rangeEnd);
 
   const afterVolume = approximateProfileVolume(next.slice(rangeStart, rangeEnd + 1));
   const volumeScale = clamp(
@@ -211,22 +219,68 @@ export function applyVerticalThrowing(
   let next = source.map((radius) => radius * responsiveScale);
   const targetClayVolume = approximateProfileVolume(next) * nextHeight;
 
-  const verticalDuration = samples.reduce((total, sample) => {
+  const verticalSamples = samples.filter((sample) => {
+    if (!Number.isFinite(sample.profileY)) return false;
+    const motion = sample.motion as ShapingMotion | undefined;
+    return (
+      Math.abs(Number.isFinite(sample.deltaHeight) ? sample.deltaHeight : 0) > 1e-8 ||
+      motion === "smooth-up" ||
+      motion === "smooth-down"
+    );
+  });
+  const verticalDuration = verticalSamples.reduce((total, sample) => {
     if (!Number.isFinite(sample.deltaHeight) || Math.abs(sample.deltaHeight) < 1e-8) {
       return total;
     }
     return total + clamp(sample.durationSeconds || 0, 0, 0.1);
   }, 0);
+  const verticalTravel = verticalSamples.reduce(
+    (total, sample) => total + clamp(sample.profileTravel || 0, 0, source.length),
+    0
+  );
+  const strokeStart = verticalSamples.length
+    ? verticalSamples.reduce(
+        (minimum, sample) => Math.min(minimum, clamp(sample.profileY, 0, source.length - 1)),
+        source.length - 1
+      )
+    : 0;
+  const strokeEnd = verticalSamples.length
+    ? verticalSamples.reduce(
+        (maximum, sample) => Math.max(maximum, clamp(sample.profileY, 0, source.length - 1)),
+        0
+      )
+    : source.length - 1;
+  const strokeDirection = verticalSamples.reduce((direction, sample) => {
+    const delta = Number.isFinite(sample.deltaHeight) ? sample.deltaHeight : 0;
+    if (Math.abs(delta) > 1e-8) return direction + delta;
+    return direction + (sample.motion === "smooth-up" ? 0.001 : sample.motion === "smooth-down" ? -0.001 : 0);
+  }, 0);
   const heightRatio = Math.abs(appliedHeightDelta) / Math.max(safeHeight, MIN_HEIGHT);
   const smoothingStrength = clamp(
-    heightRatio * 5.2 + verticalDuration * 0.18,
-    0.012,
-    0.22
+    heightRatio * 4.8 + verticalDuration * 0.32 + verticalTravel * 0.0045,
+    0.02,
+    0.3
   );
-  const smoothingPasses = Math.round(clamp(Math.ceil(heightRatio / 0.018), 1, 4));
+  const smoothingPasses = Math.round(
+    clamp(Math.ceil(verticalTravel / 9 + heightRatio / 0.045), 1, 3)
+  );
+  const lead = 4.2;
+  const trail = 1.4;
+  const rangeStart = strokeDirection < 0 ? strokeStart - lead : strokeStart - trail;
+  const rangeEnd = strokeDirection > 0 ? strokeEnd + lead : strokeEnd + trail;
   for (let pass = 0; pass < smoothingPasses; pass++) {
-    next = smoothProfileRange(next, 0, source.length - 1, smoothingStrength, relaxed, 4.8);
+    next = smoothProfileRange(next, rangeStart, rangeEnd, smoothingStrength, relaxed, 4.4);
   }
+  // Rotation and water also soften the untouched silhouette a little, but this
+  // pass stays deliberately weak so an intentional shoulder is not erased.
+  next = smoothProfileRange(
+    next,
+    0,
+    source.length - 1,
+    clamp(heightRatio * 0.32, 0.004, 0.03),
+    relaxed,
+    5.2
+  );
 
   // A small final correction prevents repeated pulls from creating or losing
   // noticeable material after the smoothing passes.
@@ -319,14 +373,14 @@ export function applySweptDeformation(
   const mostlyVertical = totalTravel > 0.3 && totalRadialIntent < totalTravel * 0.00035;
   const smoothingStrength =
     tool === "smooth"
-      ? clamp(totalDuration * 1.15 + totalTravel * 0.008, 0.012, 0.24)
+      ? clamp(totalDuration * 1.25 + totalTravel * 0.01, 0.018, 0.34)
       : tool === "collar"
         ? clamp(totalDuration * 0.25, 0, 0.05)
         : smoothDuration > 0
           ? clamp(
-              smoothDuration * 1.08 + smoothTravel * 0.0075 + smoothHeightIntent * 0.9,
-              0.012,
-              0.22
+              smoothDuration * 1.2 + smoothTravel * 0.009 + smoothHeightIntent * 1.15,
+              0.016,
+              0.3
             )
         : mostlyVertical
           ? clamp(totalDuration * 0.28 + totalTravel * 0.0012, 0, 0.055)
@@ -344,6 +398,17 @@ export function applySweptDeformation(
       const end = smoothDirection > 0 ? rangeEnd + lead : rangeEnd + trail;
       next = smoothProfileRange(next, start, end, smoothingStrength, relaxed, sigma);
     }
+  }
+  if (tool === "finger" && totalRadialIntent > 0 && minY <= maxY) {
+    // A wet rotating wall yields around the fingertip instead of leaving a
+    // single pinched ring. This light finishing pass keeps inward/outward
+    // pushes responsive while blending their edges into the side curve.
+    const radialFairing = clamp(
+      totalDuration * 0.08 + totalRadialIntent * 1.25,
+      0.006,
+      0.075
+    );
+    next = smoothProfileRange(next, minY, maxY, radialFairing, relaxed, sigma * 0.9);
   }
   return next;
 }

@@ -125,6 +125,34 @@ assert.ok(
   "向下平滑必须输出负向高度变化"
 );
 
+const positioned = new ShapingInputSession({
+  viewportWidth: 375,
+  viewportHeight: 550,
+  profileCount: 48,
+  side: 1
+});
+positioned.begin({ x: 260, y: 275, timestamp: 2700 }, profileAtY(275));
+positioned.push({ x: 260, y: 165, timestamp: 2820 }, profileAtY);
+const positionedPush = positioned.push({ x: 286, y: 165, timestamp: 2880 }, profileAtY);
+const reachedProfileY = profileAtY(165);
+assert.ok(
+  positionedPush.reduce((sum, sample) => sum + sample.deltaRadius, 0) > 0,
+  "纵向定位后向外推仍必须产生径向变形"
+);
+assert.ok(
+  positionedPush.every((sample) => Math.abs(sample.profileY - reachedProfileY) < 0.75),
+  "纵向定位后横向推拉必须落在手指当前高度，不能受滤波滞后拖低"
+);
+const positionedCompress = positioned.push({ x: 258, y: 165, timestamp: 2940 }, profileAtY);
+assert.ok(
+  positionedCompress.reduce((sum, sample) => sum + sample.deltaRadius, 0) < 0,
+  "同一定位高度反向内推必须立即产生收缩"
+);
+assert.ok(
+  positionedCompress.every((sample) => Math.abs(sample.profileY - reachedProfileY) < 0.75),
+  "内推反向时也必须继续作用在当前高度"
+);
+
 const fluid = new ShapingInputSession({
   viewportWidth: 375,
   viewportHeight: 550,

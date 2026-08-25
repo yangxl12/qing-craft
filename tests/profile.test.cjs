@@ -125,6 +125,10 @@ const roughness = (profile) => profile.slice(1, -1).reduce(
   0
 );
 assert.ok(roughness(smoothedUp) < roughness(directionalSource), "向上轻抹必须降低局部凹凸");
+assert.ok(
+  roughness(smoothedUp) < roughness(directionalSource) * 0.72,
+  "向上轻抹应产生肉眼可见的侧壁修顺"
+);
 assert.notDeepEqual(smoothedUp, smoothedDown, "上下轻抹应沿各自前进方向扩展受力区");
 
 const diagonalSamples = [{
@@ -156,6 +160,14 @@ assert.ok(raised.height > 1.2, "向上平滑必须让整个器身变高");
 assert.ok(lowered.height < 1.2, "向下平滑必须让整个器身变矮");
 assert.ok(roughness(raised.profile) < roughness(directionalSource), "增高时侧壁应整体趋于平滑");
 assert.ok(roughness(lowered.profile) < roughness(directionalSource), "压低时侧壁应整体趋于平滑");
+assert.ok(
+  roughness(raised.profile) < roughness(directionalSource) * 0.55,
+  "向上拉坯应同时明显消除侧壁折点"
+);
+assert.ok(
+  roughness(lowered.profile) < roughness(directionalSource) * 0.55,
+  "向下压坯应同时明显消除侧壁折点"
+);
 for (const result of [raised, lowered]) {
   const beforeClay = approximateProfileVolume(directionalSource) * 1.2;
   const afterClay = approximateProfileVolume(result.profile) * result.height;

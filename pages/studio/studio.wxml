@@ -78,17 +78,13 @@
       </view>
     </view>
 
-    <view wx:if="{{stageIndex===0}}" class="gesture-map motion-{{gestureIntent}}">
+    <view wx:if="{{stageIndex===0}}" class="gesture-map">
       <view class="gesture-map-title">手势塑形</view>
       <view class="gesture-row gesture-stretch"><view class="arrow-pair">←　→</view><text>拉伸</text></view>
       <view class="gesture-row gesture-compress"><view class="arrow-pair">→　←</view><text>压缩</text></view>
       <view class="gesture-row gesture-smooth-up"><view class="arrow-single">↑</view><text>向上平滑</text></view>
       <view class="gesture-row gesture-smooth-down"><view class="arrow-single">↓</view><text>向下平滑</text></view>
       <view class="gesture-camera"><view class="finger-pair"><view></view><view></view></view><text>双指 360° 环看</text></view>
-    </view>
-    <view wx:if="{{stageIndex===0}}" class="gesture-readout motion-{{gestureIntent}}">
-      <view class="gesture-pulse"></view>
-      <text>{{gestureLabel}}</text>
     </view>
 
     <view class="stage-label">
@@ -117,7 +113,7 @@
   <view class="tray {{stageIndex===0?'tray-shaping':''}}">
     <view wx:if="{{stageIndex===0}}" class="shaping-console">
       <view class="shaping-console-head">
-        <view><text>选择受力形态</text><small>单指沿器壁滑动，方向就是工具</small></view>
+        <view><text>选择受力形态</text><small>上下修顺，停在任意高度再向内外推拉</small></view>
         <view class="shaping-badge">拉坯中</view>
       </view>
       <view class="shape-mode-row">

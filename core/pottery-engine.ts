@@ -31,14 +31,14 @@ interface LightingPreset {
 
 const LIGHTING: Record<string, LightingPreset> = {
   workshop: {
-    keyDirection: [-0.58, 0.8, 0.46],
+    keyDirection: [-0.62, 0.72, 0.42],
     fillDirection: [0.58, 0.24, 0.78],
     keyColor: [1, 0.92, 0.79],
     fillColor: [0.43, 0.57, 0.69],
-    ambient: [0.3, 0.305, 0.295],
-    keyIntensity: 0.82,
-    fillIntensity: 0.2,
-    exposure: 2.5
+    ambient: [0.22, 0.23, 0.22],
+    keyIntensity: 0.98,
+    fillIntensity: 0.18,
+    exposure: 2.65
   },
   museum: {
     keyDirection: [-0.34, 0.91, 0.24],
@@ -60,6 +60,12 @@ const LIGHTING: Record<string, LightingPreset> = {
     fillIntensity: 0.21,
     exposure: 2.35
   }
+};
+
+const CLAY_GRAIN: Record<string, number> = {
+  porcelain: 0.4,
+  stoneware: 0.76,
+  red: 1
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -179,15 +185,21 @@ attribute float aCavity;
 uniform mat4 uViewProjection;
 uniform mat4 uModel;
 uniform float uHeight;
-varying vec3 vNormal;
-varying vec3 vPos;
-varying float vY;
-varying float vCavity;
-void main(){
-  vec4 world = uModel * vec4(aPosition, 1.0);
-  vPos = world.xyz;
-  vNormal = mat3(uModel) * aNormal;
-  vY = clamp(aPosition.y / uHeight + 0.5, 0.0, 1.0);
+  varying vec3 vNormal;
+  varying vec3 vPos;
+  varying vec3 vObjectPos;
+  varying vec3 vTangent;
+  varying float vY;
+  varying float vCavity;
+  void main(){
+    vec4 world = uModel * vec4(aPosition, 1.0);
+    vPos = world.xyz;
+    vObjectPos = aPosition;
+    vNormal = mat3(uModel) * aNormal;
+    vec3 objectTangent = vec3(-aPosition.z, 0.0, aPosition.x);
+    if (dot(objectTangent, objectTangent) < 0.000001) objectTangent = vec3(1.0, 0.0, 0.0);
+    vTangent = normalize(mat3(uModel) * objectTangent);
+    vY = clamp(aPosition.y / uHeight + 0.5, 0.0, 1.0);
   vCavity = aCavity;
   gl_Position = uViewProjection * world;
 }
@@ -195,10 +207,12 @@ void main(){
 
 const FS = `
 precision mediump float;
-varying vec3 vNormal;
-varying vec3 vPos;
-varying float vY;
-varying float vCavity;
+  varying vec3 vNormal;
+  varying vec3 vPos;
+  varying vec3 vObjectPos;
+  varying vec3 vTangent;
+  varying float vY;
+  varying float vCavity;
 uniform vec3 uBase;
 uniform vec3 uGlaze;
 uniform vec3 uAccent;
@@ -211,50 +225,114 @@ uniform vec3 uAmbient;
 uniform float uKeyIntensity;
 uniform float uFillIntensity;
 uniform float uExposure;
-uniform float uGlazeMix;
-uniform float uPattern;
-uniform float uMethod;
-void main(){
-  vec3 normal = normalize(vNormal);
-  vec3 viewDirection = normalize(uCamera - vPos);
-  vec3 keyDirection = normalize(uKeyDirection);
-  vec3 fillDirection = normalize(uFillDirection);
-  float key = max(dot(normal, keyDirection), 0.0);
-  float fill = max(dot(normal, fillDirection), 0.0);
+  uniform float uGlazeMix;
+  uniform float uPattern;
+  uniform float uMethod;
+  uniform float uClayWetness;
+  uniform float uClayGrain;
 
-  float angle = atan(vPos.z, vPos.x);
-  float glazeMask = 1.0;
-  if (uMethod == 1.0) glazeMask = smoothstep(0.48, 0.52, vY);
-  else if (uMethod == 2.0) glazeMask = 0.78 + 0.14 * sin(vY * 31.0 + angle * 2.0);
-  else if (uMethod == 3.0) glazeMask = smoothstep(-0.1, 0.22, sin(angle * 3.0 + vY * 13.0));
-  float surfaceGlaze = clamp(uGlazeMix * glazeMask, 0.0, 1.0);
+  float hash31(vec3 point){
+    vec3 value = fract(point * 0.1031);
+    value += dot(value, value.yzx + 33.33);
+    return fract((value.x + value.y) * value.z);
+  }
 
-  vec3 material = mix(uBase, uGlaze, surfaceGlaze);
+  float noise3(vec3 point){
+    vec3 cell = floor(point);
+    vec3 local = fract(point);
+    local = local * local * (3.0 - 2.0 * local);
+    float n000 = hash31(cell + vec3(0.0, 0.0, 0.0));
+    float n100 = hash31(cell + vec3(1.0, 0.0, 0.0));
+    float n010 = hash31(cell + vec3(0.0, 1.0, 0.0));
+    float n110 = hash31(cell + vec3(1.0, 1.0, 0.0));
+    float n001 = hash31(cell + vec3(0.0, 0.0, 1.0));
+    float n101 = hash31(cell + vec3(1.0, 0.0, 1.0));
+    float n011 = hash31(cell + vec3(0.0, 1.0, 1.0));
+    float n111 = hash31(cell + vec3(1.0, 1.0, 1.0));
+    float lower = mix(mix(n000, n100, local.x), mix(n010, n110, local.x), local.y);
+    float upper = mix(mix(n001, n101, local.x), mix(n011, n111, local.x), local.y);
+    return mix(lower, upper, local.z);
+  }
+
+  void main(){
+    // All marks are sampled in object space so their tiny irregularities rotate
+    // with the clay instead of appearing painted onto the room.
+    float angle = atan(vObjectPos.z, vObjectPos.x);
+    float glazeMask = 1.0;
+    if (uMethod == 1.0) glazeMask = smoothstep(0.48, 0.52, vY);
+    else if (uMethod == 2.0) glazeMask = 0.78 + 0.14 * sin(vY * 31.0 + angle * 2.0);
+    else if (uMethod == 3.0) glazeMask = smoothstep(-0.1, 0.22, sin(angle * 3.0 + vY * 13.0));
+    float surfaceGlaze = clamp(uGlazeMix * glazeMask, 0.0, 1.0);
+    float rawClay = 1.0 - smoothstep(0.08, 0.78, surfaceGlaze);
+    float wetClay = rawClay * uClayWetness;
+
+    float clayCloud = noise3(vObjectPos * vec3(5.2, 8.4, 5.2) + vec3(3.1, 7.7, 1.4));
+    float clayGrain = noise3(vObjectPos * vec3(38.0, 52.0, 38.0) + vec3(9.2, 2.4, 5.7));
+    float secondGrain = noise3(vObjectPos * vec3(43.0, 47.0, 43.0) + vec3(1.3, 8.6, 4.1));
+
+    vec3 geometricNormal = normalize(vNormal);
+    vec3 tangent = normalize(vTangent - geometricNormal * dot(vTangent, geometricNormal));
+    vec3 bitangent = normalize(cross(geometricNormal, tangent));
+    float microRelief = mix(0.032 * uClayGrain, 0.006, surfaceGlaze);
+    vec3 normal = normalize(
+      geometricNormal +
+      tangent * (clayGrain - 0.5) * microRelief +
+      bitangent * (secondGrain - 0.5) * microRelief
+    );
+    vec3 viewDirection = normalize(uCamera - vPos);
+    vec3 keyDirection = normalize(uKeyDirection);
+    vec3 fillDirection = normalize(uFillDirection);
+    float key = max(dot(normal, keyDirection), 0.0);
+    float fill = max(dot(normal, fillDirection), 0.0);
+
+    vec3 material = mix(uBase, uGlaze, surfaceGlaze);
   float mark = 0.0;
   if (uPattern == 1.0) mark = smoothstep(0.88, 1.0, sin(vY * 72.0));
   if (uPattern == 2.0) mark = smoothstep(0.83, 1.0, sin(angle * 8.0 + vY * 18.0));
   if (uPattern == 3.0) mark = smoothstep(0.76, 1.0, cos(angle * 12.0) * cos((vY - 0.55) * 24.0));
   if (uPattern == 4.0) mark = smoothstep(0.82, 1.0, sin(angle * 4.0 - vY * 22.0));
-  material = mix(material, uAccent, mark * 0.82);
+    material = mix(material, uAccent, mark * 0.82);
 
-  // Very low-amplitude wheel rings keep the clay tactile without looking noisy.
-  float throwingRing = sin(vY * 156.0 + sin(angle * 3.0) * 0.8);
-  material *= 1.0 + throwingRing * mix(0.006, 0.0025, surfaceGlaze);
+    // Wheel rings, cloudy slip and sparse mineral grains make raw clay read as
+    // damp material. Their amplitude stays below the point where it looks like
+    // a printed texture, especially on fine porcelain.
+    float throwingRing = sin(vY * 164.0 + sin(angle * 5.0 + clayCloud * 2.2) * 1.05);
+    float slipBand = sin(vY * 43.0 + angle * 1.7 + clayCloud * 2.4);
+    float mineral = smoothstep(0.78, 0.96, clayGrain) * uClayGrain;
+    float clayTone =
+      1.0 +
+      rawClay * (
+        throwingRing * 0.014 +
+        (clayCloud - 0.5) * 0.075 * uClayGrain +
+        slipBand * 0.012 * wetClay -
+        mineral * 0.045
+      );
+    material *= clayTone;
 
-  vec3 halfVector = normalize(keyDirection + viewDirection);
-  float specularPower = mix(18.0, 72.0, surfaceGlaze);
-  float specular = pow(max(dot(normal, halfVector), 0.0), specularPower);
-  specular *= mix(0.025, 0.28, surfaceGlaze);
-  float facing = max(dot(normal, viewDirection), 0.0);
-  float fresnel = pow(1.0 - facing, 3.0) * mix(0.018, 0.065, surfaceGlaze);
+    vec3 halfVector = normalize(keyDirection + viewDirection);
+    vec3 fillHalfVector = normalize(fillDirection + viewDirection);
+    float specularPower = mix(mix(20.0, 30.0, uClayWetness), 72.0, surfaceGlaze);
+    float specular = pow(max(dot(normal, halfVector), 0.0), specularPower);
+    specular *= mix(0.055 + uClayWetness * 0.095, 0.3, surfaceGlaze);
+    specular *= mix(0.72, 1.16, clayGrain);
+    float broadWetHighlight = pow(max(dot(normal, halfVector), 0.0), 7.0) * wetClay * 0.052;
+    float fillSpecular =
+      pow(max(dot(normal, fillHalfVector), 0.0), mix(14.0, 52.0, surfaceGlaze)) *
+      mix(0.025, 0.11, surfaceGlaze);
+    float facing = max(dot(normal, viewDirection), 0.0);
+    float fresnel = pow(1.0 - facing, 3.0) * mix(0.026 + wetClay * 0.024, 0.07, surfaceGlaze);
 
-  vec3 linearMaterial = pow(max(material, vec3(0.0)), vec3(2.2));
-  vec3 diffuseLight = uAmbient + uKeyColor * key * uKeyIntensity + uFillColor * fill * uFillIntensity;
-  float baseOcclusion = mix(0.84, 1.0, smoothstep(0.0, 0.16, vY));
-  float cavityOcclusion = mix(1.0, 0.6, vCavity);
-  vec3 linearColor = linearMaterial * diffuseLight * baseOcclusion * cavityOcclusion;
-  linearColor += (uKeyColor * specular + uFillColor * fresnel) * mix(1.0, 0.58, vCavity);
-  vec3 exposed = max(linearColor * uExposure, vec3(0.0));
+    vec3 linearMaterial = pow(max(material, vec3(0.0)), vec3(2.2));
+    vec3 diffuseLight = uAmbient + uKeyColor * key * uKeyIntensity + uFillColor * fill * uFillIntensity;
+    float baseOcclusion = mix(0.8, 1.0, smoothstep(0.0, 0.18, vY));
+    float cavityOcclusion = mix(1.0, 0.52, vCavity);
+    vec3 linearColor = linearMaterial * diffuseLight * baseOcclusion * cavityOcclusion;
+    linearColor += (
+      uKeyColor * (specular + broadWetHighlight) +
+      uFillColor * (fillSpecular + fresnel)
+    ) * mix(1.0, 0.48, vCavity);
+    linearColor += uKeyColor * smoothstep(0.9, 1.0, vY) * wetClay * 0.018;
+    vec3 exposed = max(linearColor * uExposure, vec3(0.0));
   vec3 mapped = exposed / (vec3(1.0) + exposed);
   gl_FragColor = vec4(pow(mapped, vec3(1.0 / 2.2)), 1.0);
 }
@@ -361,9 +439,6 @@ export class PotteryEngine {
   update(work: PotteryWork, renderNow = true) {
     this.work = work;
     this.rebuild();
-    this.targetRpm = this.autoRotate
-      ? calculatePotteryTargetRpm(this.meshRadius, this.rotationState)
-      : 0;
     this.ensureCameraFit();
     if (renderNow) this.render();
   }
@@ -372,13 +447,16 @@ export class PotteryEngine {
     this.autoRotate = value;
     this.rotationState = value ? "idle" : "reduced";
     this.targetRpm = value ? calculatePotteryTargetRpm(this.meshRadius, "idle") : 0;
-    if (!value) this.currentRpm = 0;
+    this.currentRpm = this.targetRpm;
   }
 
   setRotationState(value: PotteryRotationState) {
     this.rotationState = value;
     this.targetRpm = this.autoRotate ? calculatePotteryTargetRpm(this.meshRadius, value) : 0;
-    if (value === "reduced") this.currentRpm = 0;
+    // The CSS wheel receives the same target in Studio.setWheelState. Applying
+    // it immediately here keeps both angular velocities identical instead of
+    // letting the clay coast while the visible wheel has already changed pace.
+    this.currentRpm = this.targetRpm;
   }
 
   setBaseScreenY(value: number) {
@@ -641,6 +719,17 @@ export class PotteryEngine {
     gl.uniform1f(gl.getUniformLocation(program, "uKeyIntensity"), lighting.keyIntensity);
     gl.uniform1f(gl.getUniformLocation(program, "uFillIntensity"), lighting.fillIntensity);
     gl.uniform1f(gl.getUniformLocation(program, "uExposure"), lighting.exposure);
+
+    const clayWetness =
+      this.work.stageIndex === 0
+        ? 0.94
+        : this.work.stageIndex === 1
+          ? 0.72
+          : this.work.stageIndex === 2
+            ? 0.28
+            : 0.06;
+    gl.uniform1f(gl.getUniformLocation(program, "uClayGrain"), CLAY_GRAIN[this.work.clayId] ?? 0.62);
+    gl.uniform1f(gl.getUniformLocation(program, "uClayWetness"), clayWetness);
 
     const glazeMix = this.work.stageIndex >= 2 ? (this.work.stageIndex >= 3 ? 1 : 0.72) : 0;
     gl.uniform1f(gl.getUniformLocation(program, "uGlazeMix"), glazeMix);

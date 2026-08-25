@@ -3,9 +3,16 @@ import { cloneWork, createWork, PotteryWork } from "../../core/model";
 import {
   applySweptDeformation,
   applyVerticalThrowing,
+  measureWallThickness,
+  setWallThickness,
   ShapingForm,
   synchronizeInnerWall
 } from "../../core/profile";
+import {
+  MAX_POTTERY_WALL,
+  MIN_POTTERY_WALL,
+  POTTERY_MODEL_UNIT_MILLIMETERS
+} from "../../core/pottery-dimensions";
 import { PotteryEngine } from "../../core/pottery-engine";
 import {
   calculatePotteryBaseScreenY,
@@ -67,13 +74,26 @@ const SHAPE_OPTIONS = (["vase", "cup", "bowl", "jar", "plate"] as ShapeId[])
 const MOTION_LABELS: Record<ShapingMotion, string> = {
   stretch: "向外拉伸 · 放宽器腹",
   compress: "向内压缩 · 收紧器壁",
-  "smooth-up": "向上平滑 · 器身变高并修顺",
-  "smooth-down": "向下平滑 · 器身变矮并收稳",
+  "smooth-up": "向上抹平 · 器身升高，泥壁自然变薄",
+  "smooth-down": "向下抹平 · 器身降低，泥壁自然回厚",
   steady: "单指贴近器壁开始塑形"
 };
 
+// Ten slider steps per displayed millimetre keeps thin-wall control precise.
+const WALL_SLIDER_SCALE = POTTERY_MODEL_UNIT_MILLIMETERS * 10;
+const WALL_SLIDER_MIN = Math.round(MIN_POTTERY_WALL * WALL_SLIDER_SCALE);
+const WALL_SLIDER_MAX = Math.round(MAX_POTTERY_WALL * WALL_SLIDER_SCALE);
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function wallThicknessLabel(thickness: number): string {
+  if (thickness <= 0.026) return "极薄";
+  if (thickness <= 0.045) return "轻薄";
+  if (thickness <= 0.085) return "适中";
+  if (thickness <= 0.135) return "厚实";
+  return "加厚";
 }
 
 Page({
@@ -104,7 +124,7 @@ Page({
     canRedo: false,
     saveState: "已保存",
     hint: "按住器身，向外轻轻推",
-    cameraHelp: "单指只塑形；双指平移可 360° 环看，上下拖动查看口沿与底足，开合缩放。",
+    cameraHelp: "单指推拉并上下抹平；双指环看与缩放。缩小后仍可继续上拉，点回正完整看全器形。",
     showHint: false,
     kiln: false,
     kilnProgress: 0,
@@ -117,7 +137,13 @@ Page({
     wheelPeriodMs: 1579,
     wheelPaused: false,
     wheelState: "idle",
-    contactShadowWidth: 220
+    contactShadowWidth: 220,
+    wallThicknessMin: WALL_SLIDER_MIN,
+    wallThicknessMax: WALL_SLIDER_MAX,
+    wallThicknessValue: 70,
+    wallThicknessText: "7.0 mm",
+    wallThicknessLabel: "适中",
+    wallAdjusting: false
   },
 
   engine: null as PotteryEngine | null,
@@ -131,6 +157,9 @@ Page({
   kilnTimer: null as any,
   firstDeformTracked: false,
   layoutStageIndex: -1,
+  wallThicknessSnapshot: null as PotteryWork | null,
+  wallThicknessDirty: false,
+  lastWallUiUpdate: 0,
 
   onLoad(query: any) {
     const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
@@ -151,6 +180,7 @@ Page({
 
   onHide() {
     this.commitGestureChange();
+    this.commitWallThicknessChange();
     this.gesture = null;
     this.persist();
     this.engine?.setAutoRotate(false);
@@ -165,6 +195,7 @@ Page({
 
   onUnload() {
     this.commitGestureChange();
+    this.commitWallThicknessChange();
     this.persist();
     this.engine?.destroy();
     if (this.saveTimer) clearTimeout(this.saveTimer);
@@ -250,12 +281,96 @@ Page({
         clayName: CLAYS.find((item) => item.id === this.work!.clayId)?.name || "白瓷泥",
         canUndo: this.history.length > 0,
         canRedo: this.future.length > 0,
-        contactShadowWidth: this.contactShadowWidth()
+        contactShadowWidth: this.contactShadowWidth(),
+        ...this.wallThicknessData()
       },
       () => {
         if (layoutChanged) setTimeout(() => this.refreshCanvasLayout(), 0);
       }
     );
+  },
+
+  wallThicknessData() {
+    const thickness = this.work
+      ? measureWallThickness(this.work.outerRadius, this.work.innerRadius)
+      : 0.07;
+    return {
+      wallThicknessValue: Math.round(
+        clamp(thickness, MIN_POTTERY_WALL, MAX_POTTERY_WALL) * WALL_SLIDER_SCALE
+      ),
+      wallThicknessText: `${(
+        thickness * POTTERY_MODEL_UNIT_MILLIMETERS
+      ).toFixed(1)} mm`,
+      wallThicknessLabel: wallThicknessLabel(thickness)
+    };
+  },
+
+  syncWallThicknessData(force = false) {
+    if (!this.work || this.work.stageIndex !== 0 || this.wallThicknessSnapshot) return;
+    const now = Date.now();
+    if (!force && now - this.lastWallUiUpdate < 72) return;
+    this.lastWallUiUpdate = now;
+    this.setData(this.wallThicknessData());
+  },
+
+  applyWallThicknessValue(value: number) {
+    if (!this.work || this.work.stageIndex !== 0) return;
+    const requestedValue = Number.isFinite(value)
+      ? value
+      : Number(this.data.wallThicknessValue);
+    const sliderValue = Math.round(
+      clamp(requestedValue, WALL_SLIDER_MIN, WALL_SLIDER_MAX)
+    );
+    if (!this.wallThicknessSnapshot) {
+      this.wallThicknessSnapshot = cloneWork(this.work);
+      this.wallThicknessDirty = false;
+    }
+    const previousInner = this.work.innerRadius.slice();
+    this.work.innerRadius = setWallThickness(
+      this.work.outerRadius,
+      this.work.innerRadius,
+      sliderValue / WALL_SLIDER_SCALE
+    );
+    const changed = this.profileChanged(previousInner, this.work.innerRadius);
+    if (changed) {
+      this.wallThicknessDirty = true;
+      this.engine?.update(this.work);
+    }
+    const thickness = measureWallThickness(this.work.outerRadius, this.work.innerRadius);
+    this.setData({
+      wallThicknessText: `${(
+        thickness * POTTERY_MODEL_UNIT_MILLIMETERS
+      ).toFixed(1)} mm`,
+      wallThicknessLabel: wallThicknessLabel(thickness),
+      wallAdjusting: true,
+      saveState: "未保存"
+    });
+  },
+
+  changeWallThickness(event: any) {
+    this.applyWallThicknessValue(Number(event.detail?.value));
+  },
+
+  finishWallThickness(event: any) {
+    this.applyWallThicknessValue(Number(event.detail?.value));
+    this.commitWallThicknessChange();
+  },
+
+  commitWallThicknessChange() {
+    const snapshot = this.wallThicknessSnapshot;
+    if (!snapshot) return;
+    const changed = !!snapshot && this.wallThicknessDirty;
+    this.wallThicknessSnapshot = null;
+    this.wallThicknessDirty = false;
+    if (snapshot && changed) {
+      this.history.push(snapshot);
+      if (this.history.length > 50) this.history.shift();
+      this.future = [];
+      this.changed(false);
+      this.vibrate();
+    }
+    this.setData({ wallAdjusting: false });
+    this.syncWallThicknessData(true);
   },
 
   refreshCanvasLayout() {
@@ -436,6 +551,7 @@ Page({
 
   touchStart(event: WechatMiniprogramTouchEvent) {
     if (!this.work || !this.rect || this.data.kiln) return;
+    this.commitWallThicknessChange();
     const touches = event.touches;
     if (touches.length >= 2) {
       this.commitGestureChange();
@@ -598,6 +714,7 @@ Page({
       previousHeight,
       this.work.height
     );
+    this.syncWallThicknessData(false);
 
     const changed =
       this.profileChanged(previousOuter, this.work.outerRadius) ||
@@ -735,6 +852,7 @@ Page({
   },
 
   undo() {
+    this.commitWallThicknessChange();
     if (!this.work || !this.history.length) return;
     this.future.push(cloneWork(this.work));
     this.work = this.history.pop()!;
@@ -744,6 +862,7 @@ Page({
   },
 
   redo() {
+    this.commitWallThicknessChange();
     if (!this.work || !this.future.length) return;
     this.history.push(cloneWork(this.work));
     this.work = this.future.pop()!;
@@ -777,6 +896,7 @@ Page({
   },
 
   completeStage() {
+    this.commitWallThicknessChange();
     if (!this.work) return;
     const stage = this.work.currentStage;
     if (stage === "firing" || stage === "refire") {

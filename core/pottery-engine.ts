@@ -349,7 +349,7 @@ export class PotteryEngine {
   private ibo: any;
   private count = 0;
   private work: PotteryWork;
-  private viewYaw = 0.18;
+  private viewYaw = 0;
   private turntableAngle = 0;
   private pitch = 0.12;
   private zoomFactor = 1;
@@ -497,7 +497,7 @@ export class PotteryEngine {
   }
 
   resetCamera() {
-    this.viewYaw = 0.18;
+    this.viewYaw = 0;
     this.pitch = defaultPotteryPitch(this.meshRadius, this.meshHeight);
     this.zoomFactor = 1;
     this.resetCameraFit();

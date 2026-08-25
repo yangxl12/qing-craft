@@ -10,7 +10,15 @@ require.extensions[".ts"] = (module, filename) => {
   module._compile(output, filename);
 };
 
-const { applySweptDeformation } = require("../core/profile.ts");
+const {
+  applySweptDeformation,
+  applyVerticalThrowing
+} = require("../core/profile.ts");
+const {
+  MAX_POTTERY_HEIGHT,
+  MAX_POTTERY_RADIUS,
+  MIN_POTTERY_RADIUS
+} = require("../core/pottery-dimensions.ts");
 const {
   classifyShapingMotion,
   normalizeElapsedSeconds,
@@ -125,6 +133,92 @@ assert.ok(
   "向下平滑必须输出负向高度变化"
 );
 
+const sensitive = new ShapingInputSession({
+  viewportWidth: 375,
+  viewportHeight: 550,
+  profileCount: 48,
+  side: 1
+});
+sensitive.begin({ x: 250, y: 250, timestamp: 2650 }, profileAtY(250));
+const sensitiveRadius = sensitive.push(
+  { x: 290, y: 250, timestamp: 2730 },
+  profileAtY
+).reduce((sum, sample) => sum + sample.deltaRadius, 0);
+assert.ok(
+  sensitiveRadius > 0.065,
+  `40px 推拉应立即产生高灵敏形变，实际 ${sensitiveRadius}`
+);
+const sensitiveHeight = sensitive.push(
+  { x: 290, y: 130, timestamp: 2850 },
+  profileAtY
+).reduce((sum, sample) => sum + sample.deltaHeight, 0);
+assert.ok(
+  sensitiveHeight > 0.15,
+  `快速上滑应立即产生高灵敏增高，实际 ${sensitiveHeight}`
+);
+
+function radialStroke(profile, outward) {
+  const session = new ShapingInputSession({
+    viewportWidth: 375,
+    viewportHeight: 550,
+    profileCount: 48,
+    side: 1
+  });
+  const startX = outward ? 245 : 345;
+  const endX = outward ? 345 : 245;
+  session.begin({ x: startX, y: 220, timestamp: 4000 }, 24);
+  const samples = session.push(
+    { x: endX, y: 220, timestamp: 4180 },
+    () => 24
+  );
+  return applySweptDeformation(profile, samples, {
+    tool: "finger",
+    form: "curve",
+    relaxed: false
+  });
+}
+
+let gestureExpanded = Array(48).fill(0.55);
+let gestureCompressed = Array(48).fill(0.55);
+for (let stroke = 0; stroke < 12; stroke++) {
+  gestureExpanded = radialStroke(gestureExpanded, true);
+  gestureCompressed = radialStroke(gestureCompressed, false);
+}
+assert.ok(
+  gestureExpanded[24] >= MAX_POTTERY_RADIUS - 0.03,
+  "连续向外手势必须真正抵达极大塑型范围"
+);
+assert.ok(
+  gestureCompressed[24] <= MIN_POTTERY_RADIUS + 0.03,
+  "连续向内手势必须真正抵达极细塑型范围"
+);
+
+let gestureTall = { profile: Array(48).fill(0.55), height: 1.2 };
+for (let stroke = 0; stroke < 12; stroke++) {
+  const session = new ShapingInputSession({
+    viewportWidth: 375,
+    viewportHeight: 550,
+    profileCount: 48,
+    side: 1
+  });
+  session.begin({ x: 260, y: 290, timestamp: 5000 }, profileAtY(290));
+  const samples = session.push(
+    { x: 260, y: 110, timestamp: 5180 },
+    profileAtY
+  );
+  gestureTall = applyVerticalThrowing(
+    gestureTall.profile,
+    gestureTall.height,
+    samples,
+    false
+  );
+}
+assert.equal(
+  gestureTall.height,
+  MAX_POTTERY_HEIGHT,
+  "连续上滑必须通过真实输入链路抵达极高上限"
+);
+
 const positioned = new ShapingInputSession({
   viewportWidth: 375,
   viewportHeight: 550,
@@ -194,4 +288,4 @@ assert.equal(normalizeElapsedSeconds(1000, 1000), 1 / 120, "重复时间戳必�
 assert.equal(normalizeElapsedSeconds(900, 1000), 1 / 120, "倒退时间戳必须获得安全 dt");
 assert.equal(normalizeElapsedSeconds(3000, 1000), 1 / 60, "后台恢复的大间隔必须重置");
 
-console.log("shaping input tests passed: 2D sweep, height intent, diagonal composition, rate equivalence");
+console.log("shaping input tests passed: high sensitivity, 2D sweep, height intent and rate equivalence");

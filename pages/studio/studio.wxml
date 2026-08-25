@@ -76,8 +76,36 @@
       <view class="gesture-map-title">手势塑形</view>
       <view class="gesture-row"><view class="arrow-pair">←　→</view><text>拉伸</text></view>
       <view class="gesture-row"><view class="arrow-pair">→　←</view><text>压缩</text></view>
-      <view class="gesture-row"><view class="arrow-single">↕</view><text>修顺高低</text></view>
+      <view class="gesture-row"><view class="arrow-single">↕</view><text>抹平高低</text></view>
       <view class="gesture-camera"><view class="finger-pair"><view></view><view></view></view><text>双指环看</text></view>
+    </view>
+
+    <view wx:if="{{stageIndex===0}}" class="wall-caliper {{wallAdjusting?'active':''}}">
+      <view class="wall-caliper-head">
+        <view class="caliper-glyph"><view></view><view></view></view>
+        <text>泥壁厚度</text>
+        <view class="wall-state">{{wallThicknessLabel}}</view>
+        <text class="wall-value">{{wallThicknessText}}</text>
+      </view>
+      <view class="wall-slider-row">
+        <text>薄</text>
+        <slider
+          class="wall-slider"
+          min="{{wallThicknessMin}}"
+          max="{{wallThicknessMax}}"
+          step="1"
+          value="{{wallThicknessValue}}"
+          activeColor="#a8ccb8"
+          backgroundColor="rgba(218,232,223,.22)"
+          block-color="#eef4ef"
+          block-size="16"
+          aria-label="调整泥壁厚度，当前{{wallThicknessText}}"
+          bindchanging="changeWallThickness"
+          bindchange="finishWallThickness"
+        ></slider>
+        <text>厚</text>
+      </view>
+      <view class="wall-link">上拉变薄 · 下压回厚</view>
     </view>
 
     <view wx:if="{{stageIndex===0}}" class="form-switcher" aria-label="受力形态">

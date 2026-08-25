@@ -2,7 +2,9 @@ import { CLAYS, GLAZES, SHAPES, ClayId, ShapeId } from "./catalog";
 import {
   DEFAULT_POTTERY_WALL,
   MAX_POTTERY_HEIGHT,
+  MAX_POTTERY_RADIUS,
   MIN_POTTERY_HEIGHT,
+  MIN_POTTERY_RADIUS,
   MIN_POTTERY_WALL
 } from "./pottery-dimensions";
 
@@ -36,7 +38,7 @@ export function glazeColor(work: PotteryWork): string { return (GLAZES.find(v=>v
 export function validateWork(raw: any): PotteryWork | null {
   if (!raw || raw.schemaVersion !== 1 || !Array.isArray(raw.outerRadius) || raw.outerRadius.length < 8) return null;
   const work = raw as PotteryWork;
-  work.outerRadius = work.outerRadius.map(r => Number.isFinite(r) ? Math.max(.18, Math.min(1.25, r)) : .5);
+  work.outerRadius = work.outerRadius.map(r => Number.isFinite(r) ? Math.max(MIN_POTTERY_RADIUS, Math.min(MAX_POTTERY_RADIUS, r)) : .5);
   const storedInner = Array.isArray(work.innerRadius) ? work.innerRadius : [];
   work.innerRadius = work.outerRadius.map((outer, index) => {
     if (index < 3) return 0;

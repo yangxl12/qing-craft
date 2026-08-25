@@ -17,7 +17,10 @@ const { createWork, validateWork } = require("../core/model.ts");
 const { profileDeltaFromDrag } = require("../core/profile.ts");
 const {
   DEFAULT_POTTERY_WALL,
-  MAX_POTTERY_HEIGHT
+  MAX_POTTERY_HEIGHT,
+  MAX_POTTERY_RADIUS,
+  MIN_POTTERY_RADIUS,
+  MIN_POTTERY_WALL
 } = require("../core/pottery-dimensions.ts");
 const {
   POTTERY_VERTICAL_FOV,
@@ -47,7 +50,10 @@ for (let index = 3; index < freshCup.outerRadius.length; index++) {
     "新作品应使用更轻薄且均匀的初始器壁"
   );
 }
-assert.ok(MAX_POTTERY_HEIGHT > 1.8, "制坯高度上限应高于旧的 1.8");
+assert.ok(MAX_POTTERY_HEIGHT >= 3.4, "制坯高度上限应支持极高器形");
+assert.ok(MIN_POTTERY_RADIUS <= 0.09, "制坯主体应能压缩到极细半径");
+assert.ok(MAX_POTTERY_RADIUS >= 1.65, "制坯主体应能拉伸到极大半径");
+assert.ok(MIN_POTTERY_WALL <= 0.018, "内腔应支持接近真实薄壁的最小厚度");
 assert.ok(
   POTTERY_MANIPULATION_VERTICAL_FILL > 0.64,
   "高器形应能利用两侧控件之间更高的中央画面"
@@ -68,6 +74,25 @@ for (let index = 3; index < upgradedDraft.innerRadius.length; index++) {
     "旧制坯草稿加载后也应采用更薄的器壁"
   );
 }
+
+const extremeDraft = JSON.parse(JSON.stringify(freshCup));
+extremeDraft.outerRadius = extremeDraft.outerRadius.map((_, index) =>
+  index % 2 ? MAX_POTTERY_RADIUS : MIN_POTTERY_RADIUS
+);
+extremeDraft.height = MAX_POTTERY_HEIGHT;
+const restoredExtremeDraft = validateWork(extremeDraft);
+assert.ok(restoredExtremeDraft, "极限自由造型必须能从本地存储恢复");
+assert.equal(restoredExtremeDraft.height, MAX_POTTERY_HEIGHT, "极高器形重载后不能被旧上限截断");
+assert.equal(
+  Math.min(...restoredExtremeDraft.outerRadius),
+  MIN_POTTERY_RADIUS,
+  "极细半径重载后不能被旧下限撑开"
+);
+assert.equal(
+  Math.max(...restoredExtremeDraft.outerRadius),
+  MAX_POTTERY_RADIUS,
+  "极宽半径重载后不能被旧上限压回"
+);
 
 const ringCount = 48;
 const radialSegments = 64;
@@ -158,7 +183,15 @@ for (let index = 0; index < mesh.normals.length; index += 3) {
 for (const sample of [
   { name: "cup", radius: 0.59, footRadius: 0.52, height: 1.2 },
   { name: "bowl", radius: 0.9, footRadius: 0.56, height: 1.2 },
-  { name: "plate", radius: 1.14, footRadius: 0.72, height: 0.58 }
+  { name: "plate", radius: 1.14, footRadius: 0.72, height: 0.58 },
+  { name: "extreme-tall", radius: 0.32, footRadius: 0.2, height: MAX_POTTERY_HEIGHT },
+  { name: "extreme-wide", radius: MAX_POTTERY_RADIUS, footRadius: 0.72, height: 0.72 },
+  {
+    name: "extreme-freeform",
+    radius: MAX_POTTERY_RADIUS,
+    footRadius: MAX_POTTERY_RADIUS,
+    height: MAX_POTTERY_HEIGHT
+  }
 ]) {
   const aspect = 0.72;
   const pitch = defaultPotteryPitch(sample.radius, sample.height);
@@ -294,8 +327,11 @@ assert.ok(turn30.rpm < 26, "一秒后应平滑接近观察目标转速");
 
 const gentleDrag = profileDeltaFromDrag(4, 375);
 const delayedEvent = profileDeltaFromDrag(80, 375);
-assert.ok(gentleDrag > 0 && gentleDrag < 0.004, "日常捏塑移动应细腻响应");
-assert.ok(delayedEvent < 0.014, "单次延迟触摸事件不能让器形骤然跳变");
+assert.ok(
+  gentleDrag > 0.008 && gentleDrag < 0.012,
+  "小幅捏塑移动也应立即产生高灵敏响应"
+);
+assert.ok(delayedEvent < 0.05, "单次延迟触摸事件仍不能让器形失控跳变");
 assert.equal(profileDeltaFromDrag(Number.NaN, 375), 0, "异常触摸位移不能改变器形");
 
-console.log("pottery engine tests passed: mesh, camera fit, 360 orbit, gentle shaping input");
+console.log("pottery engine tests passed: extreme mesh, complete camera fit, 360 orbit and sensitive input");

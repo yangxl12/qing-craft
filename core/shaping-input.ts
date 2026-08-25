@@ -109,8 +109,8 @@ export class OneEuroFilter {
   private ready = false;
 
   constructor(
-    private minCutoff = 1.55,
-    private beta = 0.022,
+    private minCutoff = 2.35,
+    private beta = 0.045,
     private derivativeCutoff = 1
   ) {}
 
@@ -153,12 +153,15 @@ export function normalizeElapsedSeconds(timestamp: number, previousTimestamp: nu
   if (!Number.isFinite(timestamp)) return 1 / 60;
   const elapsed = (timestamp - previousTimestamp) / 1000;
   if (elapsed <= 0) return 1 / 120;
-  if (elapsed > 0.1) return 1 / 60;
-  return clamp(elapsed, 1 / 240, 0.1);
+  // A busy phone can occasionally miss several touch frames. Preserve up to
+  // 250 ms of real hand travel so the clay catches up instead of feeling
+  // suddenly numb; larger gaps are treated as an app/background discontinuity.
+  if (elapsed > 0.25) return 1 / 60;
+  return clamp(elapsed, 1 / 240, 0.25);
 }
 
 function normalizedTimestamp(timestamp: number, previous: number, elapsedSeconds: number): number {
-  if (!Number.isFinite(timestamp) || timestamp <= previous || timestamp - previous > 100) {
+  if (!Number.isFinite(timestamp) || timestamp <= previous || timestamp - previous > 250) {
     return previous + elapsedSeconds * 1000;
   }
   return timestamp;
@@ -194,8 +197,8 @@ export class ShapingInputSession {
     );
     this.profileCount = Math.max(2, Math.round(options.profileCount || 0));
     this.side = options.side;
-    this.maxRadiusPerSecond = clamp(options.maxRadiusPerSecond ?? 0.28, 0.05, 1);
-    this.maxHeightPerSecond = clamp(options.maxHeightPerSecond ?? 0.42, 0.08, 0.8);
+    this.maxRadiusPerSecond = clamp(options.maxRadiusPerSecond ?? 0.9, 0.05, 2);
+    this.maxHeightPerSecond = clamp(options.maxHeightPerSecond ?? 1.35, 0.08, 2.4);
     this.maxProfileStep = clamp(options.maxProfileStep ?? 0.5, 0.2, 2);
     this.xFilter = new OneEuroFilter(
       options.minCutoff,
@@ -314,8 +317,8 @@ export class ShapingInputSession {
       horizontalVelocity < 4 ? 0 : rawDx * componentWeight(rawDx, rawDy);
     const stableRawDy =
       verticalVelocity < 4 ? 0 : rawDy * componentWeight(rawDy, rawDx);
-    const requestedRadiusDelta = (stableRawDx * 0.34 * this.side) / this.viewportWidth;
-    const requestedHeightDelta = (-stableRawDy * 1.04) / this.viewportHeight;
+    const requestedRadiusDelta = (stableRawDx * 0.9 * this.side) / this.viewportWidth;
+    const requestedHeightDelta = (-stableRawDy * 1.65) / this.viewportHeight;
     const segmentRadiusDelta = clamp(
       requestedRadiusDelta,
       -this.maxRadiusPerSecond * elapsedSeconds,

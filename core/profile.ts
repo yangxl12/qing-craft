@@ -2,8 +2,10 @@ import { ShapingMotion, SweptInputSample } from "./shaping-input";
 import {
   DEFAULT_POTTERY_WALL,
   MAX_POTTERY_HEIGHT,
+  MAX_POTTERY_RADIUS,
   MAX_POTTERY_WALL,
   MIN_POTTERY_HEIGHT,
+  MIN_POTTERY_RADIUS,
   MIN_POTTERY_WALL
 } from "./pottery-dimensions";
 
@@ -22,15 +24,16 @@ export interface VerticalThrowingResult {
   height: number;
 }
 
-const MIN_RADIUS = 0.18;
-const MAX_RADIUS = 1.25;
-
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
 function finiteRadius(value: number): number {
-  return clamp(Number.isFinite(value) ? value : 0.5, MIN_RADIUS, MAX_RADIUS);
+  return clamp(
+    Number.isFinite(value) ? value : 0.5,
+    MIN_POTTERY_RADIUS,
+    MAX_POTTERY_RADIUS
+  );
 }
 
 /** Three pressure footprints inspired by the curve/cone/square ribs in the reference. */
@@ -58,22 +61,98 @@ export function shapingKernelWeight(
 export function profileDeltaFromDrag(deltaPixels: number, viewportWidth: number): number {
   if (!Number.isFinite(deltaPixels)) return 0;
   const safeWidth = Math.max(280, Number.isFinite(viewportWidth) ? viewportWidth : 0);
-  const capped = clamp(deltaPixels, -14, 14);
-  return capped * (0.34 / safeWidth);
+  const capped = clamp(deltaPixels, -20, 20);
+  return capped * (0.9 / safeWidth);
 }
 
 export function approximateProfileVolume(profile: number[]): number {
   return profile.reduce((total, radius) => total + finiteRadius(radius) ** 2, 0);
 }
 
+function smoothStep(edgeStart: number, edgeEnd: number, value: number): number {
+  const amount = clamp(
+    (value - edgeStart) / Math.max(0.0001, edgeEnd - edgeStart),
+    0,
+    1
+  );
+  return amount * amount * (3 - amount * 2);
+}
+
+/** Median working-wall thickness, excluding the intentionally solid foot. */
+export function measureWallThickness(
+  outerRadius: number[],
+  innerRadius: number[]
+): number {
+  const start = Math.max(3, Math.floor(outerRadius.length * 0.22));
+  const samples: number[] = [];
+  for (let index = start; index < outerRadius.length; index++) {
+    const outer = finiteRadius(outerRadius[index]);
+    const inner = innerRadius[index];
+    const thickness = outer - inner;
+    if (Number.isFinite(inner) && inner >= 0.035 && Number.isFinite(thickness)) {
+      samples.push(clamp(thickness, MIN_POTTERY_WALL, MAX_POTTERY_WALL));
+    }
+  }
+  if (!samples.length) return DEFAULT_POTTERY_WALL;
+  samples.sort((left, right) => left - right);
+  const middle = Math.floor(samples.length / 2);
+  return samples.length % 2
+    ? samples[middle]
+    : (samples[middle - 1] + samples[middle]) / 2;
+}
+
+/**
+ * Moves the real inner surface to the requested working thickness. The lower
+ * rings retain a soft support gradient, like a potter deliberately leaving a
+ * little more clay above the foot while pulling the wall very thin.
+ */
+export function setWallThickness(
+  outerRadius: number[],
+  innerRadius: number[],
+  thickness: number
+): number[] {
+  const target = clamp(
+    Number.isFinite(thickness) ? thickness : DEFAULT_POTTERY_WALL,
+    MIN_POTTERY_WALL,
+    MAX_POTTERY_WALL
+  );
+  const storedInnerStart = innerRadius.findIndex(
+    (radius, index) => index > 0 && Number.isFinite(radius) && radius > 0.035
+  );
+  const innerStart = clamp(
+    storedInnerStart < 0 ? 3 : storedInnerStart,
+    2,
+    Math.max(2, outerRadius.length - 2)
+  );
+  const supportEnd = Math.max(innerStart + 2, (outerRadius.length - 1) * 0.22);
+  return outerRadius.map((outerValue, index) => {
+    if (index < innerStart) return 0;
+    const outer = finiteRadius(outerValue);
+    const footSupport = 1 - smoothStep(innerStart, supportEnd, index);
+    const rimSupport = smoothStep(outerRadius.length - 2, outerRadius.length - 1, index);
+    const supportedTarget =
+      target + (Math.max(DEFAULT_POTTERY_WALL, target) - target) * footSupport;
+    const localTarget = clamp(
+      supportedTarget * (1 + rimSupport * 0.06),
+      MIN_POTTERY_WALL,
+      MAX_POTTERY_WALL
+    );
+    return clamp(
+      outer - localTarget,
+      0.035,
+      Math.max(0.035, outer - MIN_POTTERY_WALL)
+    );
+  });
+}
+
 /** Radius, bidirectional slope and curvature protection for both authoring modes. */
 export function constrainSlopeAndCurvature(profile: number[], relaxed: boolean): number[] {
   if (!profile.length) return [];
   const next = profile.map(finiteRadius);
-  const maxSlope = relaxed ? 0.075 : 0.125;
-  const maxCurvature = relaxed ? 0.052 : 0.095;
+  const maxSlope = relaxed ? 0.105 : 0.2;
+  const maxCurvature = relaxed ? 0.082 : 0.16;
 
-  next[0] = Math.max(0.28, next[0]);
+  next[0] = Math.max(MIN_POTTERY_RADIUS * 1.25, next[0]);
   if (next.length > 1) next[1] = Math.max(next[0] * 0.94, next[1]);
 
   const limitSlope = () => {
@@ -443,7 +522,7 @@ export function synchronizeInnerWall(
     Number.isFinite(nextHeight) &&
     (previousHeight as number) > 0 &&
     (nextHeight as number) > 0
-      ? clamp((previousHeight as number) / (nextHeight as number), 0.55, 1.35)
+      ? clamp((previousHeight as number) / (nextHeight as number), 0.32, 1.65)
       : 1;
   return nextOuter.map((outer, index) => {
     const safeOuter = finiteRadius(outer);

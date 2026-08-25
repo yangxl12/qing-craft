@@ -16,13 +16,19 @@ const {
   approximateProfileVolume,
   constrainSlopeAndCurvature,
   deformProfile,
+  measureWallThickness,
+  setWallThickness,
   shapingKernelWeight,
   smoothProfileRange,
   synchronizeInnerWall
 } = require("../core/profile.ts");
 const { buildPotteryMesh } = require("../core/pottery-mesh.ts");
 const {
+  DEFAULT_POTTERY_WALL,
   MAX_POTTERY_HEIGHT,
+  MAX_POTTERY_RADIUS,
+  MAX_POTTERY_WALL,
+  MIN_POTTERY_RADIUS,
   MIN_POTTERY_WALL
 } = require("../core/pottery-dimensions.ts");
 
@@ -54,14 +60,17 @@ const pushed = deformProfile(base, 24, 0.1);
 assert.ok(pushed[24] > base[24], "触点应向外鼓起");
 assert.ok(pushed[24] > pushed[10], "影响应集中在触点邻域");
 assert.ok(pushed.every(Number.isFinite), "生产算法不应产生 NaN");
-assert.ok(pushed.every((radius) => radius >= 0.18 && radius <= 1.25), "半径必须在保护范围内");
+assert.ok(
+  pushed.every((radius) => radius >= MIN_POTTERY_RADIUS && radius <= MAX_POTTERY_RADIUS),
+  "半径必须在扩展后的保护范围内"
+);
 
 const jagged = Array.from({ length: 48 }, (_, index) =>
   index % 2 ? 0.92 : 0.35
 );
 for (const relaxed of [true, false]) {
   const constrained = constrainSlopeAndCurvature(jagged, relaxed);
-  const maxSlope = relaxed ? 0.075 : 0.125;
+  const maxSlope = relaxed ? 0.105 : 0.2;
   for (let index = 1; index < constrained.length; index++) {
     assert.ok(
       Math.abs(constrained[index] - constrained[index - 1]) <= maxSlope + 1e-9,
@@ -203,7 +212,10 @@ const inner = previousOuter.map((radius, index) => (index < 3 ? 0 : radius - 0.1
 const nextOuter = previousOuter.map((radius, index) => radius + (index > 10 ? 0.025 : 0));
 const nextInner = synchronizeInnerWall(previousOuter, nextOuter, inner);
 for (let index = 3; index < 48; index++) {
-  assert.ok(nextInner[index] <= nextOuter[index] - 0.075 + 1e-9, "内壁不得穿出最小壁厚");
+  assert.ok(
+    nextInner[index] <= nextOuter[index] - MIN_POTTERY_WALL + 1e-9,
+    "内壁不得穿出最小壁厚"
+  );
   assert.ok(
     Math.abs((nextOuter[index] - nextInner[index]) - 0.11) < 1e-9,
     "外轮廓变化后应保留原壁厚"
@@ -226,11 +238,95 @@ assert.ok(
   "拉高变薄后仍必须保留安全的最小壁厚"
 );
 
+const manualOuter = Array.from({ length: 48 }, (_, index) => 0.56 + index * 0.0015);
+const manualInner = manualOuter.map((radius, index) =>
+  index < 3 ? 0 : radius - DEFAULT_POTTERY_WALL
+);
+const ultraThinInner = setWallThickness(manualOuter, manualInner, MIN_POTTERY_WALL);
+const ultraThinWall = measureWallThickness(manualOuter, ultraThinInner);
+assert.ok(
+  ultraThinWall <= MIN_POTTERY_WALL + 0.001,
+  `厚度滑块必须能得到极薄泥壁，实际 ${ultraThinWall}`
+);
+const thickInner = setWallThickness(manualOuter, ultraThinInner, MAX_POTTERY_WALL);
+assert.ok(
+  measureWallThickness(manualOuter, thickInner) >= MAX_POTTERY_WALL - 0.001,
+  "厚度滑块必须覆盖从极薄到加厚的完整区间"
+);
+assert.ok(
+  manualOuter[3] - ultraThinInner[3] > ultraThinWall,
+  "极薄器壁仍应在底足上方保留渐进支撑"
+);
+const deepFloorInner = manualOuter.map((radius, index) =>
+  index < 7 ? 0 : radius - DEFAULT_POTTERY_WALL
+);
+const adjustedDeepFloor = setWallThickness(
+  manualOuter,
+  deepFloorInner,
+  MIN_POTTERY_WALL
+);
+assert.ok(
+  adjustedDeepFloor.slice(0, 7).every((radius) => radius === 0),
+  "手动调厚不能挖穿作品原有的实心底足"
+);
+
+const autoThinInner = synchronizeInnerWall(
+  manualOuter,
+  manualOuter,
+  manualInner,
+  1.2,
+  2.4
+);
+const autoThickInner = synchronizeInnerWall(
+  manualOuter,
+  manualOuter,
+  manualInner,
+  1.2,
+  0.6
+);
+assert.ok(
+  measureWallThickness(manualOuter, autoThinInner) <
+    measureWallThickness(manualOuter, manualInner),
+  "上拉升高必须自动让工作壁变薄"
+);
+assert.ok(
+  measureWallThickness(manualOuter, autoThickInner) >
+    measureWallThickness(manualOuter, manualInner),
+  "下压降低必须自动让工作壁增厚"
+);
+
+const narrow = constrainSlopeAndCurvature(Array(48).fill(MIN_POTTERY_RADIUS), false);
+const expanded = constrainSlopeAndCurvature(Array(48).fill(MAX_POTTERY_RADIUS), false);
+assert.ok(
+  Math.max(...narrow.slice(2)) <= MIN_POTTERY_RADIUS + 1e-9,
+  "自由塑型必须允许把主体压缩到极细半径"
+);
+assert.ok(
+  Math.min(...expanded) >= MAX_POTTERY_RADIUS - 1e-9,
+  "自由塑型必须允许把主体拉伸到极大半径"
+);
+const ultraThinMesh = buildPotteryMesh(manualOuter, ultraThinInner, MAX_POTTERY_HEIGHT, 88);
+assert.ok(ultraThinMesh.positions.every(Number.isFinite), "极薄高器形仍必须生成有效顶点");
+assert.ok(ultraThinMesh.normals.every(Number.isFinite), "极薄高器形仍必须生成有效法线");
+const extremeOuter = Array(48).fill(MAX_POTTERY_RADIUS);
+const extremeInner = setWallThickness(
+  extremeOuter,
+  Array(48).fill(MAX_POTTERY_RADIUS - DEFAULT_POTTERY_WALL),
+  MIN_POTTERY_WALL
+);
+const extremeMesh = buildPotteryMesh(extremeOuter, extremeInner, MAX_POTTERY_HEIGHT, 88);
+assert.ok(extremeMesh.positions.every(Number.isFinite), "极宽、极高、极薄组合仍必须可渲染");
+assert.ok(extremeMesh.normals.every(Number.isFinite), "极限组合的法线仍必须有效");
+
 let stress = base;
 for (let index = 0; index < 100; index++) {
   stress = deformProfile(stress, (index * 17) % 48, index % 2 ? 0.5 : -0.5);
   assert.ok(stress.every(Number.isFinite));
-  assert.ok(stress.every((radius) => radius >= 0.18 && radius <= 1.25));
+  assert.ok(
+    stress.every(
+      (radius) => radius >= MIN_POTTERY_RADIUS && radius <= MAX_POTTERY_RADIUS
+    )
+  );
 }
 
-console.log("profile tests passed: 2D sweep, vertical throwing, smoothing, volume and wall safety");
+console.log("profile tests passed: unrestricted range, vertical throwing, smoothing, dynamic wall and mesh safety");

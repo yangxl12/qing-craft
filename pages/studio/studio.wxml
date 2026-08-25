@@ -1,5 +1,13 @@
 <view class="studio {{reduceMotion?'reduce-motion':''}}">
-  <view class="workshop-bg">
+  <view wx:if="{{stageIndex===0}}" class="shaping-workshop-bg" aria-hidden="true">
+    <image
+      class="shaping-workshop-image"
+      src="/assets/studio-shaping-workshop-day.jpg"
+      mode="aspectFill"
+    ></image>
+    <view class="shaping-workshop-grade"></view>
+  </view>
+  <view wx:else class="workshop-bg">
     <view class="wall-plaster"></view>
     <view class="wall-glow"></view>
     <view class="window-bloom"></view>

@@ -35,17 +35,17 @@ export function calculatePotteryBaseScreenY(viewportHeight: number): number {
   return clamp(0.72 + ((safeHeight - 568) / (932 - 568)) * 0.03, 0.72, 0.75);
 }
 
-/** Aligns the WebGL foot with the measured top edge of the CSS turntable. */
+/** Aligns the WebGL foot with the measured center contact line of the CSS turntable. */
 export function calculatePotteryBaseScreenYFromLayout(
   canvasTop: number,
   canvasHeight: number,
-  wheelTop: number
+  contactLineY: number
 ): number {
   const safeHeight = Number.isFinite(canvasHeight) ? Math.max(1, canvasHeight) : 1;
-  if (!Number.isFinite(canvasTop) || !Number.isFinite(wheelTop)) {
+  if (!Number.isFinite(canvasTop) || !Number.isFinite(contactLineY)) {
     return POTTERY_BASE_SCREEN_Y;
   }
-  return clamp((wheelTop - canvasTop) / safeHeight, 0.6, 0.9);
+  return clamp((contactLineY - canvasTop) / safeHeight, 0.6, 0.93);
 }
 
 /** Wider clay has a lower target RPM so its edge keeps a controllable speed. */

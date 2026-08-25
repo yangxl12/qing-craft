@@ -72,6 +72,7 @@
       class="wheel-root {{wheelPaused?'wheel-paused':''}} wheel-{{wheelState}}"
       style="--wheel-period:{{wheelPeriodMs}}ms; --contact-shadow-width:{{contactShadowWidth}}rpx;"
     >
+      <view id="wheelContact" class="wheel-contact-anchor"></view>
       <view class="contact-shadow"></view>
       <view class="wheel-head">
         <view class="wheel-head-spin">
@@ -176,14 +177,20 @@
     </view>
   </view>
 
-  <view class="ring-band">
-    <view wx:for="{{stages}}" wx:key="id" class="ring-step {{index===stageIndex?'active':''}} {{index<stageIndex?'done':''}}">
-      <view>{{index<stageIndex?'✓':item.short}}</view><text>{{item.name}}</text>
-    </view>
+  <view wx:if="{{stageIndex<=1}}" class="stage-footer">
+    <view class="stage-footer-title">{{stageName}}</view>
+    <button
+      class="stage-next"
+      aria-label="进入下一道工序：{{nextStageName}}"
+      bindtap="completeStage"
+    >
+      <text>{{nextStageName}}</text>
+      <view class="stage-next-icon">→</view>
+    </button>
   </view>
 
-  <view class="tray {{stageIndex===0?'tray-shaping':''}}">
-    <scroll-view wx:if="{{stageIndex!==0&&tools.length}}" class="tool-scroll" scroll-x show-scrollbar="false">
+  <view wx:else class="tray">
+    <scroll-view wx:if="{{tools.length}}" class="tool-scroll" scroll-x show-scrollbar="false">
       <view class="tool-row">
         <view wx:for="{{tools}}" wx:key="id" data-id="{{item.id}}" bindtap="chooseTool" class="tool {{tool===item.id?'active':''}}">
           <view>{{item.name}}</view><text>{{item.name}}</text>
@@ -202,9 +209,9 @@
       <button class="symmetry" bindtap="cycleSymmetry">{{symmetryLabels[work.symmetry]}}</button>
     </view>
     <view class="tray-bottom">
-      <view wx:if="{{stageIndex!==0}}" class="tool-hint">{{toolName}}</view>
-      <button class="complete {{stageIndex===0?'complete-arrow':''}}" aria-label="进入下一道工序" bindtap="completeStage">
-        {{stageIndex===0?'→':(stageIndex===6?'查看成品':'完成'+stageName+' →')}}
+      <view class="tool-hint">{{toolName}}</view>
+      <button class="complete" aria-label="进入下一道工序" bindtap="completeStage">
+        {{stageIndex===6?'查看成品':'完成'+stageName+' →'}}
       </button>
     </view>
   </view>

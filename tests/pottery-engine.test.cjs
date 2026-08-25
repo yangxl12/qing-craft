@@ -327,7 +327,12 @@ assert.equal(calculatePotteryBaseScreenY(932), 0.75, "长屏接触线可下移�
 assert.equal(
   calculatePotteryBaseScreenYFromLayout(100, 500, 525),
   0.85,
-  "WebGL 器底必须跟随实测转盘上沿"
+  "WebGL 器底必须跟随实测转盘接触线"
+);
+assert.equal(
+  calculatePotteryBaseScreenYFromLayout(0, 500, 480),
+  0.93,
+  "转盘中心接近舞台底部时仍应保留完整器底观察范围"
 );
 assert.ok(
   calculatePotteryBaseScreenY(812) > 0.739 && calculatePotteryBaseScreenY(812) < 0.741,

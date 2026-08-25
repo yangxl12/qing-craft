@@ -102,9 +102,9 @@ Page({
     fallback: false,
     statusBarHeight: 20,
     work: null as PotteryWork | null,
-    stages: STAGES,
     stageIndex: 0,
     stageName: "制坯",
+    nextStageName: "装饰",
     tools: TOOLS.shaping,
     tool: "",
     toolName: "手势塑形",
@@ -204,12 +204,25 @@ Page({
   initCanvas() {
     const query = wx.createSelectorQuery().in(this);
     query.select("#potteryCanvas").fields({ node: true, size: true, rect: true });
-    query.select("#wheelRoot").boundingClientRect();
+    query.select("#wheelContact").boundingClientRect();
     query.exec((results: any[]) => {
         const info = results && results[0];
         const wheelInfo = results && results[1];
+        const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+        const baseScreenY = wheelInfo && info?.height
+          ? calculatePotteryBaseScreenYFromLayout(
+              info.top || 0,
+              info.height,
+              wheelInfo.top
+            )
+          : calculatePotteryBaseScreenY(system.windowHeight || info?.height || 812);
         if (!info?.node) {
-          this.setData({ fallback: true, ready: true });
+          this.setData({
+            fallback: true,
+            ready: true,
+            baseScreenY,
+            baseScreenPercent: Math.round(baseScreenY * 1000) / 10
+          });
           return;
         }
         this.canvas = info.node;
@@ -221,16 +234,8 @@ Page({
         };
         try {
           this.engine = new PotteryEngine(info.node, this.work!);
-          const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
           const dpr = Math.min(system.pixelRatio || 2, 2);
           const reduceMotion = !!(wx.getStorageSync("palm-kiln-settings") || {}).reduceMotion;
-          const baseScreenY = wheelInfo
-            ? calculatePotteryBaseScreenYFromLayout(
-                info.top || 0,
-                info.height,
-                wheelInfo.top
-              )
-            : calculatePotteryBaseScreenY(system.windowHeight || info.height);
           this.engine.resize(info.width, info.height, dpr);
           this.engine.setBaseScreenY(baseScreenY);
           this.engine.setFrameProcessor(() => this.flushShapingFrame(false));
@@ -247,6 +252,8 @@ Page({
           this.setData({
             fallback: true,
             ready: true,
+            baseScreenY,
+            baseScreenPercent: Math.round(baseScreenY * 1000) / 10,
             hint: "已进入轻量模式，作品仍可完成",
             showHint: true
           });
@@ -271,6 +278,7 @@ Page({
         work: this.work,
         stageIndex: this.work.stageIndex,
         stageName: stage.name,
+        nextStageName: STAGES[this.work.stageIndex + 1]?.name || "查看成品",
         tools,
         tool: selected?.id || "",
         toolName: selected?.name || "",
@@ -375,7 +383,7 @@ Page({
     if (!this.engine || !this.canvas) return;
     const query = wx.createSelectorQuery().in(this);
     query.select("#potteryCanvas").fields({ size: true, rect: true });
-    query.select("#wheelRoot").boundingClientRect();
+    query.select("#wheelContact").boundingClientRect();
     query.exec((results: any[]) => {
       const info = results && results[0];
       const wheelInfo = results && results[1];

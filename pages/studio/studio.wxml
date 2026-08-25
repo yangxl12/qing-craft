@@ -22,12 +22,9 @@
 
   <view class="safe-top" style="height:{{statusBarHeight}}px"></view>
   <view class="topbar">
-    <view class="top-button" role="button" aria-label="退出创作台" bindtap="close">退出</view>
-    <view class="work-title">
-      <view class="display">{{work.title}}</view>
-      <text class="{{saveState==='已保存'?'saved':''}}">● {{saveState}}</text>
-    </view>
     <view class="top-actions">
+      <view class="top-action top-exit" role="button" aria-label="退出创作台" bindtap="close">退出</view>
+      <view class="top-action top-reset" role="button" aria-label="视角回正" bindtap="resetCamera">回正</view>
       <view class="circle {{!canUndo?'disabled':''}}" role="button" aria-label="撤销" bindtap="undo">↶</view>
       <view class="circle {{!canRedo?'disabled':''}}" role="button" aria-label="重做" bindtap="redo">↷</view>
       <view class="circle" role="button" aria-label="查看手势帮助" bindtap="help">?</view>
@@ -56,10 +53,7 @@
       catchtouchend="touchEnd"
       catchtouchcancel="touchEnd"
     >
-      <view
-        class="fallback-pot shape-{{work.shapeId}}"
-        style="background:{{stageIndex>=3 ? '#84a99a' : '#c7c2b6'}}"
-      ></view>
+      <view class="fallback-pot shape-{{work.shapeId}}" style="background:{{stageIndex>=3 ? '#84a99a' : '#c7c2b6'}}"></view>
       <view class="fallback-note">轻量剖面模式</view>
     </view>
 
@@ -80,99 +74,99 @@
 
     <view wx:if="{{stageIndex===0}}" class="gesture-map">
       <view class="gesture-map-title">手势塑形</view>
-      <view class="gesture-row gesture-stretch"><view class="arrow-pair">←　→</view><text>拉伸</text></view>
-      <view class="gesture-row gesture-compress"><view class="arrow-pair">→　←</view><text>压缩</text></view>
-      <view class="gesture-row gesture-smooth-up"><view class="arrow-single">↑</view><text>向上平滑</text></view>
-      <view class="gesture-row gesture-smooth-down"><view class="arrow-single">↓</view><text>向下平滑</text></view>
-      <view class="gesture-camera"><view class="finger-pair"><view></view><view></view></view><text>双指 360° 环看</text></view>
+      <view class="gesture-row"><view class="arrow-pair">←　→</view><text>拉伸</text></view>
+      <view class="gesture-row"><view class="arrow-pair">→　←</view><text>压缩</text></view>
+      <view class="gesture-row"><view class="arrow-single">↕</view><text>修顺高低</text></view>
+      <view class="gesture-camera"><view class="finger-pair"><view></view><view></view></view><text>双指环看</text></view>
     </view>
 
-    <view class="stage-label">
-      <view class="eyebrow">工序 {{stageIndex+1}} / 7</view>
-      <view class="display">{{stageName}}</view>
+    <view wx:if="{{stageIndex===0}}" class="form-switcher" aria-label="受力形态">
+      <view
+        wx:for="{{shapingForms}}"
+        wx:key="id"
+        class="form-chip {{shapingForm===item.id?'active':''}}"
+        role="button"
+        aria-label="选择{{item.name}}塑形"
+        data-id="{{item.id}}"
+        bindtap="chooseShapingForm"
+      >{{item.name}}</view>
     </view>
-    <view class="hint panel" wx:if="{{showHint||showHelp}}" bindtap="hideHint">
-      <view class="teacher-mark">师</view>
-      <view>
-        <text>{{showHelp?cameraHelp:hint}}</text>
-        <small>点一下收起</small>
+
+    <view wx:if="{{stageIndex===0}}" class="material-dock">
+      <view wx:if="{{shapeMenuOpen}}" class="choice-popover shape-popover">
+        <view class="choice-title">器形</view>
+        <view class="choice-grid">
+          <view
+            wx:for="{{shapeOptions}}"
+            wx:key="id"
+            class="choice-item {{work.shapeId===item.id?'active':''}}"
+            role="button"
+            aria-label="选择{{item.glyph}}"
+            data-id="{{item.id}}"
+            bindtap="chooseBaseShape"
+          >{{item.glyph}}</view>
+        </view>
       </view>
+      <view wx:if="{{clayMenuOpen}}" class="choice-popover clay-popover">
+        <view class="choice-title">泥料</view>
+        <view
+          wx:for="{{clayOptions}}"
+          wx:key="id"
+          class="clay-choice {{work.clayId===item.id?'active':''}}"
+          role="button"
+          aria-label="选择{{item.name}}"
+          data-id="{{item.id}}"
+          bindtap="chooseClay"
+        >
+          <view class="clay-dot" style="background:{{item.wet}}"></view>
+          <text>{{item.name}}</text>
+        </view>
+      </view>
+      <view class="dock-row">
+        <view class="dock-trigger {{shapeMenuOpen?'open':''}}" role="button" aria-label="展开器形选择" bindtap="toggleShapeMenu">
+          <text>器形</text><view>{{shapeName}}</view><small>{{shapeMenuOpen?'−':'+'}}</small>
+        </view>
+        <view class="dock-trigger {{clayMenuOpen?'open':''}}" role="button" aria-label="展开泥料选择" bindtap="toggleClayMenu">
+          <text>泥料</text><view>{{clayName}}</view><small>{{clayMenuOpen?'−':'+'}}</small>
+        </view>
+      </view>
+    </view>
+
+    <view class="hint panel" wx:if="{{showHelp||(showHint&&stageIndex!==0)}}" bindtap="hideHint">
+      <text>{{showHelp?cameraHelp:hint}}</text>
+      <small>轻触收起</small>
     </view>
   </view>
 
   <view class="ring-band">
-    <view
-      wx:for="{{stages}}"
-      wx:key="id"
-      class="ring-step {{index===stageIndex?'active':''}} {{index<stageIndex?'done':''}}"
-    >
+    <view wx:for="{{stages}}" wx:key="id" class="ring-step {{index===stageIndex?'active':''}} {{index<stageIndex?'done':''}}">
       <view>{{index<stageIndex?'✓':item.short}}</view><text>{{item.name}}</text>
     </view>
   </view>
 
   <view class="tray {{stageIndex===0?'tray-shaping':''}}">
-    <view wx:if="{{stageIndex===0}}" class="shaping-console">
-      <view class="shaping-console-head">
-        <view><text>选择受力形态</text><small>上下修顺，停在任意高度再向内外推拉</small></view>
-        <view class="shaping-badge">拉坯中</view>
-      </view>
-      <view class="shape-mode-row">
-        <view
-          wx:for="{{shapingForms}}"
-          wx:key="id"
-          role="button"
-          aria-label="选择{{item.name}}塑形"
-          data-id="{{item.id}}"
-          bindtap="chooseShapingForm"
-          class="shape-mode {{shapingForm===item.id?'active':''}}"
-        >
-          <view class="form-glyph glyph-{{item.id}}"></view>
-          <view class="shape-copy"><text>{{item.name}}</text><small>{{item.note}}</small></view>
-        </view>
-      </view>
-    </view>
-    <scroll-view wx:elif="{{tools.length}}" class="tool-scroll" scroll-x show-scrollbar="false">
+    <scroll-view wx:if="{{stageIndex!==0&&tools.length}}" class="tool-scroll" scroll-x show-scrollbar="false">
       <view class="tool-row">
-        <view
-          wx:for="{{tools}}"
-          wx:key="id"
-          data-id="{{item.id}}"
-          bindtap="chooseTool"
-          class="tool {{tool===item.id?'active':''}}"
-        >
+        <view wx:for="{{tools}}" wx:key="id" data-id="{{item.id}}" bindtap="chooseTool" class="tool {{tool===item.id?'active':''}}">
           <view>{{item.name}}</view><text>{{item.name}}</text>
         </view>
       </view>
     </scroll-view>
     <scroll-view wx:if="{{stageIndex===2}}" class="swatch-scroll" scroll-x show-scrollbar="false">
       <view class="swatch-row">
-        <view
-          wx:for="{{glazes}}"
-          wx:key="id"
-          class="swatch-item {{glazeId===item.id?'active':''}}"
-          data-id="{{item.id}}"
-          bindtap="chooseGlaze"
-        >
+        <view wx:for="{{glazes}}" wx:key="id" class="swatch-item {{glazeId===item.id?'active':''}}" data-id="{{item.id}}" bindtap="chooseGlaze">
           <view style="background:{{item.fired}}"></view><text>{{item.name}}</text>
         </view>
       </view>
     </scroll-view>
     <view wx:if="{{stageIndex===4}}" class="paint-row">
-      <view
-        wx:for="{{paintColors}}"
-        wx:key="*this"
-        class="paint-dot"
-        style="background:{{item}}"
-        data-color="{{item}}"
-        bindtap="choosePaint"
-      ></view>
+      <view wx:for="{{paintColors}}" wx:key="*this" class="paint-dot" style="background:{{item}}" data-color="{{item}}" bindtap="choosePaint"></view>
       <button class="symmetry" bindtap="cycleSymmetry">{{symmetryLabels[work.symmetry]}}</button>
     </view>
     <view class="tray-bottom">
-      <button class="reset" bindtap="resetCamera">◎ 视角回正</button>
       <view wx:if="{{stageIndex!==0}}" class="tool-hint">{{toolName}}</view>
-      <button class="complete" bindtap="completeStage">
-        {{stageIndex===6?'查看成品':'完成'+stageName}} →
+      <button class="complete {{stageIndex===0?'complete-arrow':''}}" aria-label="进入下一道工序" bindtap="completeStage">
+        {{stageIndex===0?'→':(stageIndex===6?'查看成品':'完成'+stageName+' →')}}
       </button>
     </view>
   </view>

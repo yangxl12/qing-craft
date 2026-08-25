@@ -1,24 +1,20 @@
 <view class="home {{entrance ? 'is-in' : ''}}">
   <view class="paper-grain"></view>
-  <view class="safe-top"></view>
+  <view class="safe-top" style="height:{{statusBarHeight}}px"></view>
 
-  <view class="topbar">
-    <view class="brand">
-      <view class="brand-seal display">窑</view>
-      <view class="brand-copy">
-        <view class="brand-name display">掌心窑</view>
-        <view class="brand-en">PALM KILN</view>
-      </view>
+  <view class="topbar" style="height:{{navigationBarHeight}}px">
+    <view class="top-links">
+      <button class="top-link" bindtap="gallery" aria-label="打开本机作品">作品</button>
+      <button class="top-link" bindtap="settings" aria-label="打开工坊设置">设置</button>
     </view>
-    <button class="settings-btn" bindtap="settings" aria-label="工坊设置" hover-class="settings-btn--pressed">
-      <view class="settings-glyph"><text></text><text></text><text></text></view>
-    </button>
+    <view class="brand" aria-label="泥火青花">
+      <image class="brand-logo" src="/assets/yao.png" mode="aspectFill"></image>
+      <view class="brand-name display">泥火青花</view>
+    </view>
   </view>
 
   <view class="intro">
-    <view class="intro-kicker"><text></text>宋韵陶艺工房</view>
     <view class="display title">一捧泥，<text>成一件心中器。</text></view>
-    <view class="subtitle">循七道工序，在方寸之间慢慢塑成。</view>
   </view>
 
   <view class="hero-art" aria-label="月窗前陈设的天青釉瓷瓶">
@@ -35,25 +31,14 @@
   </view>
 
   <view class="actions">
-    <button wx:if="{{hasDraft}}" class="draft-card" bindtap="continueWork" hover-class="draft-card--pressed">
-      <view class="draft-main">
-        <view class="draft-kicker">续作 · 本机草稿</view>
-        <view class="draft-title display">{{draftTitle}}</view>
-      </view>
-      <view class="draft-go">续作 <text>›</text></view>
+    <button class="action action-primary" bindtap="start" hover-class="action--pressed">
+      <text>开始</text><text class="action-arrow">→</text>
     </button>
-
-    <button class="start-btn" bindtap="start" hover-class="start-btn--pressed">
-      <view class="start-copy">
-        <view class="start-title">开始创作</view>
-        <view class="start-sub">选器形、择泥料，开启七道工序</view>
-      </view>
-      <view class="start-arrow">→</view>
+    <button wx:if="{{hasDraft}}" class="action action-secondary" bindtap="continueWork" hover-class="action--pressed">
+      <text>续作</text><text class="action-arrow">↗</text>
     </button>
-  </view>
-
-  <view class="bottom-nav">
-    <view class="nav active"><text class="nav-dot"></text>创作</view>
-    <view class="nav" bindtap="gallery">本机作品</view>
+    <button wx:else class="action action-secondary" bindtap="gallery" hover-class="action--pressed">
+      <text>作品</text><text class="action-arrow">↗</text>
+    </button>
   </view>
 </view>

@@ -1,7 +1,6 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/setup/setup",
     "pages/studio/studio",
     "pages/gallery/gallery",
     "pages/result/result",

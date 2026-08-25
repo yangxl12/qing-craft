@@ -1,5 +1,5 @@
-import { GLAZES, STAGES, TOOLS } from "../../core/catalog";
-import { cloneWork, PotteryWork } from "../../core/model";
+import { CLAYS, GLAZES, SHAPES, ClayId, ShapeId, STAGES, TOOLS } from "../../core/catalog";
+import { cloneWork, createWork, PotteryWork } from "../../core/model";
 import {
   applySweptDeformation,
   applyVerticalThrowing,
@@ -56,9 +56,13 @@ type StudioGesture = EditGesture | CameraGesture;
 
 const SHAPING_FORMS: { id: ShapingForm; name: string; note: string }[] = [
   { id: "curve", name: "曲线", note: "圆润过渡" },
-  { id: "cone", name: "锥型", note: "集中塑出肩线" },
+  { id: "cone", name: "锥形", note: "集中塑出肩线" },
   { id: "square", name: "方形", note: "形成平直器壁" }
 ];
+
+const SHAPE_OPTIONS = (["vase", "cup", "bowl", "jar", "plate"] as ShapeId[])
+  .map((id) => SHAPES.find((item) => item.id === id)!)
+  .filter(Boolean);
 
 const MOTION_LABELS: Record<ShapingMotion, string> = {
   stretch: "向外拉伸 · 放宽器腹",
@@ -86,6 +90,12 @@ Page({
     toolName: "手势塑形",
     shapingForms: SHAPING_FORMS,
     shapingForm: "curve" as ShapingForm,
+    shapeOptions: SHAPE_OPTIONS,
+    clayOptions: CLAYS,
+    shapeName: "瓶",
+    clayName: "白瓷泥",
+    shapeMenuOpen: false,
+    clayMenuOpen: false,
     glazes: GLAZES,
     glazeId: "celadon",
     paintColors: ["#315e73", "#a95955", "#d0b17c", "#202822", "#f1eee4", "#657858"],
@@ -236,6 +246,8 @@ Page({
         tool: selected?.id || "",
         toolName: selected?.name || "",
         glazeId: this.work.glazeId,
+        shapeName: SHAPES.find((item) => item.id === this.work!.shapeId)?.glyph || "瓶",
+        clayName: CLAYS.find((item) => item.id === this.work!.clayId)?.name || "白瓷泥",
         canUndo: this.history.length > 0,
         canRedo: this.future.length > 0,
         contactShadowWidth: this.contactShadowWidth()
@@ -307,6 +319,64 @@ Page({
       shapingForm: selected.id,
       showHint: false
     });
+    this.vibrate();
+  },
+
+  toggleShapeMenu() {
+    this.setData({
+      shapeMenuOpen: !this.data.shapeMenuOpen,
+      clayMenuOpen: false
+    });
+  },
+
+  toggleClayMenu() {
+    this.setData({
+      clayMenuOpen: !this.data.clayMenuOpen,
+      shapeMenuOpen: false
+    });
+  },
+
+  chooseBaseShape(event: WechatMiniprogramTouchEvent) {
+    if (!this.work || this.work.stageIndex !== 0) return;
+    const shapeId = event.currentTarget.dataset.id as ShapeId;
+    const selected = SHAPES.find((item) => item.id === shapeId);
+    if (!selected) return;
+    if (shapeId === this.work.shapeId) {
+      this.setData({ shapeMenuOpen: false });
+      return;
+    }
+
+    const defaultTitle = SHAPES.some((item) => this.work!.title === `我的${item.name}`);
+    const template = createWork(shapeId, this.work.clayId, "free");
+    this.pushHistory();
+    this.work.shapeId = shapeId;
+    this.work.mode = "free";
+    this.work.height = template.height;
+    this.work.outerRadius = template.outerRadius;
+    this.work.innerRadius = template.innerRadius;
+    if (defaultTitle) this.work.title = `我的${selected.name}`;
+    this.setData({ shapeMenuOpen: false });
+    this.changed();
+    this.syncData();
+    this.setWheelState("idle");
+    this.vibrate();
+  },
+
+  chooseClay(event: WechatMiniprogramTouchEvent) {
+    if (!this.work || this.work.stageIndex !== 0) return;
+    const clayId = event.currentTarget.dataset.id as ClayId;
+    if (!CLAYS.some((item) => item.id === clayId)) return;
+    if (clayId === this.work.clayId) {
+      this.setData({ clayMenuOpen: false });
+      return;
+    }
+
+    this.pushHistory();
+    this.work.clayId = clayId;
+    this.work.mode = "free";
+    this.setData({ clayMenuOpen: false });
+    this.changed();
+    this.syncData();
     this.vibrate();
   },
 

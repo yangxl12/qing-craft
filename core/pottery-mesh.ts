@@ -1,3 +1,5 @@
+import { DEFAULT_POTTERY_WALL, MIN_POTTERY_WALL } from "./pottery-dimensions";
+
 export type PotteryMeshPart = "outer" | "inner" | "rim" | "bottom" | "floor";
 
 export interface PotteryMeshRange {
@@ -17,8 +19,6 @@ export interface PotteryMesh {
   ranges: Record<PotteryMeshPart, PotteryMeshRange>;
 }
 
-const MIN_WALL = 0.065;
-const DEFAULT_WALL = 0.11;
 const MIN_CAVITY_RADIUS = 0.035;
 
 interface CachedPotteryTopology {
@@ -71,7 +71,7 @@ export function buildPotteryMesh(
       index > 0 &&
       Number.isFinite(radius) &&
       radius > MIN_CAVITY_RADIUS &&
-      radius < outer[index] - MIN_WALL * 0.5
+      radius < outer[index] - MIN_POTTERY_WALL * 0.5
   );
   const innerStartRing = clamp(
     Math.max(storedInnerStart < 0 ? minimumFloorRing : storedInnerStart, minimumFloorRing),
@@ -82,9 +82,13 @@ export function buildPotteryMesh(
   const inner = outer.map((radius, index) => {
     if (index < innerStartRing) return 0;
     const stored = innerRadius[index];
-    const fallback = radius - DEFAULT_WALL;
+    const fallback = radius - DEFAULT_POTTERY_WALL;
     const candidate = Number.isFinite(stored) && stored > MIN_CAVITY_RADIUS ? stored : fallback;
-    return clamp(candidate, MIN_CAVITY_RADIUS, Math.max(MIN_CAVITY_RADIUS, radius - MIN_WALL));
+    return clamp(
+      candidate,
+      MIN_CAVITY_RADIUS,
+      Math.max(MIN_CAVITY_RADIUS, radius - MIN_POTTERY_WALL)
+    );
   });
 
   const topologyKey = `${ringCount}:${segments}:${innerStartRing}`;
@@ -98,7 +102,7 @@ export function buildPotteryMesh(
     ? cachedTopology.ranges
     : ({} as Record<PotteryMeshPart, PotteryMeshRange>);
   const top = ringCount - 1;
-  const lipRadius = Math.min((outer[top] - inner[top]) / 2, 0.075);
+  const lipRadius = Math.min((outer[top] - inner[top]) / 2, DEFAULT_POTTERY_WALL);
   const sideHeight = safeHeight - lipRadius;
   const yAt = (ring: number) => -safeHeight / 2 + (ring / (ringCount - 1)) * sideHeight;
 

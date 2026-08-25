@@ -10,6 +10,7 @@ import {
   defaultPotteryPitch,
   normalizePotteryYaw,
   POTTERY_BASE_SCREEN_Y,
+  POTTERY_MANIPULATION_VERTICAL_FILL,
   POTTERY_MAX_PITCH,
   POTTERY_MIN_PITCH,
   POTTERY_VERTICAL_FOV,
@@ -632,7 +633,7 @@ export class PotteryEngine {
       this.meshHeight,
       this.aspect,
       this.pitch,
-      0.64,
+      POTTERY_MANIPULATION_VERTICAL_FILL,
       0.86
     );
     this.fitDistance = Math.max(this.fitDistance, hardFit);

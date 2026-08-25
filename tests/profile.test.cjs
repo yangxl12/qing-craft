@@ -21,6 +21,10 @@ const {
   synchronizeInnerWall
 } = require("../core/profile.ts");
 const { buildPotteryMesh } = require("../core/pottery-mesh.ts");
+const {
+  MAX_POTTERY_HEIGHT,
+  MIN_POTTERY_WALL
+} = require("../core/pottery-dimensions.ts");
 
 const base = Array(48).fill(0.55);
 
@@ -158,6 +162,20 @@ const lowered = applyVerticalThrowing(
 );
 assert.ok(raised.height > 1.2, "向上平滑必须让整个器身变高");
 assert.ok(lowered.height < 1.2, "向下平滑必须让整个器身变矮");
+const fullyRaised = applyVerticalThrowing(
+  base,
+  MAX_POTTERY_HEIGHT - 0.04,
+  [{
+    profileY: 40,
+    deltaRadius: 0,
+    deltaHeight: 0.2,
+    durationSeconds: 0.1,
+    profileTravel: 3,
+    motion: "smooth-up"
+  }],
+  true
+);
+assert.equal(fullyRaised.height, MAX_POTTERY_HEIGHT, "向上拉坯应能延伸到新的高度上限");
 assert.ok(roughness(raised.profile) < roughness(directionalSource), "增高时侧壁应整体趋于平滑");
 assert.ok(roughness(lowered.profile) < roughness(directionalSource), "压低时侧壁应整体趋于平滑");
 assert.ok(
@@ -191,6 +209,22 @@ for (let index = 3; index < 48; index++) {
     "外轮廓变化后应保留原壁厚"
   );
 }
+
+const tallInner = synchronizeInnerWall(
+  previousOuter,
+  nextOuter,
+  inner,
+  1.2,
+  MAX_POTTERY_HEIGHT
+);
+const lowerWall = nextOuter[4] - tallInner[4];
+const upperWall = nextOuter[40] - tallInner[40];
+assert.ok(upperWall < 0.075, "向上拉坯后上段器壁应明显薄于旧的视觉下限");
+assert.ok(lowerWall > upperWall, "底足附近应比拉高后的上段器壁保留更多支撑");
+assert.ok(
+  upperWall >= MIN_POTTERY_WALL - 1e-9,
+  "拉高变薄后仍必须保留安全的最小壁厚"
+);
 
 let stress = base;
 for (let index = 0; index < 100; index++) {

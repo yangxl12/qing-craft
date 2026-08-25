@@ -2,6 +2,9 @@ export const POTTERY_VERTICAL_FOV = 0.62;
 export const POTTERY_BASE_SCREEN_Y = 0.74;
 export const POTTERY_MIN_ZOOM_FACTOR = 0.62;
 export const POTTERY_MAX_ZOOM_FACTOR = 2.2;
+// The controls sit at the sides, so a lifted form can safely use more of the
+// clear center column before the camera starts pulling back.
+export const POTTERY_MANIPULATION_VERTICAL_FILL = 0.72;
 // Stop short of the poles so lookAt keeps a stable up vector while still
 // revealing the full mouth and the underside of the foot.
 export const POTTERY_MIN_PITCH = -1.28;

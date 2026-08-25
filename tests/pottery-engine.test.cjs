@@ -13,12 +13,17 @@ require.extensions[".ts"] = (module, filename) => {
 };
 
 const { buildPotteryMesh } = require("../core/pottery-mesh.ts");
-const { createWork } = require("../core/model.ts");
+const { createWork, validateWork } = require("../core/model.ts");
 const { profileDeltaFromDrag } = require("../core/profile.ts");
+const {
+  DEFAULT_POTTERY_WALL,
+  MAX_POTTERY_HEIGHT
+} = require("../core/pottery-dimensions.ts");
 const {
   POTTERY_VERTICAL_FOV,
   POTTERY_BASE_SCREEN_Y,
   POTTERY_MAX_PITCH,
+  POTTERY_MANIPULATION_VERTICAL_FILL,
   POTTERY_MIN_PITCH,
   advancePotteryTurntable,
   advancePotteryTurntableFrame,
@@ -33,6 +38,36 @@ const {
   normalizePotteryYaw,
   potteryRpmToPeriodMs
 } = require("../core/pottery-scene.ts");
+
+const freshCup = createWork("cup");
+for (let index = 3; index < freshCup.outerRadius.length; index++) {
+  assert.ok(
+    Math.abs(freshCup.outerRadius[index] - freshCup.innerRadius[index] - DEFAULT_POTTERY_WALL) <
+      1e-9,
+    "新作品应使用更轻薄且均匀的初始器壁"
+  );
+}
+assert.ok(MAX_POTTERY_HEIGHT > 1.8, "制坯高度上限应高于旧的 1.8");
+assert.ok(
+  POTTERY_MANIPULATION_VERTICAL_FILL > 0.64,
+  "高器形应能利用两侧控件之间更高的中央画面"
+);
+const oldThickDraft = JSON.parse(JSON.stringify(freshCup));
+oldThickDraft.innerRadius = oldThickDraft.outerRadius.map((radius, index) =>
+  index < 3 ? 0 : radius - 0.11
+);
+const upgradedDraft = validateWork(oldThickDraft);
+assert.ok(upgradedDraft, "旧制坯草稿必须仍可加载");
+for (let index = 3; index < upgradedDraft.innerRadius.length; index++) {
+  assert.ok(
+    Math.abs(
+      upgradedDraft.outerRadius[index] -
+        upgradedDraft.innerRadius[index] -
+        DEFAULT_POTTERY_WALL
+    ) < 1e-9,
+    "旧制坯草稿加载后也应采用更薄的器壁"
+  );
+}
 
 const ringCount = 48;
 const radialSegments = 64;
@@ -156,6 +191,35 @@ for (const sample of [
     `${sample.name} 器底可见前沿必须落在转盘接触线`
   );
 }
+
+const tallHeight = MAX_POTTERY_HEIGHT;
+const tallRadius = 0.45;
+const tallFootRadius = 0.38;
+const tallAspect = 0.72;
+const tallPitch = defaultPotteryPitch(tallRadius, tallHeight);
+const tallDistance = calculatePotteryCameraDistance(
+  tallRadius,
+  tallHeight,
+  tallAspect,
+  tallPitch,
+  POTTERY_MANIPULATION_VERTICAL_FILL,
+  0.86
+);
+const tallFocus = calculatePotteryFocusY(
+  tallHeight,
+  tallDistance,
+  tallPitch,
+  POTTERY_BASE_SCREEN_Y,
+  tallFootRadius
+);
+const tallTopRelative = tallHeight / 2 - tallFocus;
+const tallTopDepth = tallDistance - tallTopRelative * Math.sin(tallPitch);
+const tallTopNdc =
+  (tallTopRelative * Math.cos(tallPitch)) /
+  (tallTopDepth * Math.tan(POTTERY_VERTICAL_FOV / 2));
+const tallTopScreenY = (1 - tallTopNdc) / 2;
+assert.ok(tallTopScreenY >= 0.025, "极限高器形的口沿必须保留防裁切余量");
+assert.ok(tallTopScreenY <= 0.065, "极限高器形应尽量向中央画面顶部延伸");
 
 const fullOrbit = calculatePotteryOrbitDelta(375, 0, 375, 600);
 assert.ok(Math.abs(fullOrbit.yaw - Math.PI * 2) < 1e-10, "横向移动一屏必须可查看完整 360 度");

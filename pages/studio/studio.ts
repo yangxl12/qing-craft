@@ -594,7 +594,9 @@ Page({
     this.work.innerRadius = synchronizeInnerWall(
       previousOuter,
       this.work.outerRadius,
-      this.work.innerRadius
+      this.work.innerRadius,
+      previousHeight,
+      this.work.height
     );
 
     const changed =

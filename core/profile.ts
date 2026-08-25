@@ -1,4 +1,11 @@
 import { ShapingMotion, SweptInputSample } from "./shaping-input";
+import {
+  DEFAULT_POTTERY_WALL,
+  MAX_POTTERY_HEIGHT,
+  MAX_POTTERY_WALL,
+  MIN_POTTERY_HEIGHT,
+  MIN_POTTERY_WALL
+} from "./pottery-dimensions";
 
 export type ShapingTool = "finger" | "collar" | "smooth";
 export type ShapingForm = "curve" | "cone" | "square";
@@ -17,9 +24,6 @@ export interface VerticalThrowingResult {
 
 const MIN_RADIUS = 0.18;
 const MAX_RADIUS = 1.25;
-const MIN_WALL = 0.075;
-const MIN_HEIGHT = 0.45;
-const MAX_HEIGHT = 1.8;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -191,12 +195,20 @@ export function applyVerticalThrowing(
   relaxed = true
 ): VerticalThrowingResult {
   const source = constrainSlopeAndCurvature(profile, relaxed);
-  const safeHeight = clamp(Number.isFinite(height) ? height : 1.1, MIN_HEIGHT, MAX_HEIGHT);
+  const safeHeight = clamp(
+    Number.isFinite(height) ? height : 1.1,
+    MIN_POTTERY_HEIGHT,
+    MAX_POTTERY_HEIGHT
+  );
   const requestedHeightDelta = samples.reduce((total, sample) => {
     const delta = Number.isFinite(sample.deltaHeight) ? sample.deltaHeight : 0;
     return total + delta;
   }, 0);
-  const nextHeight = clamp(safeHeight + requestedHeightDelta, MIN_HEIGHT, MAX_HEIGHT);
+  const nextHeight = clamp(
+    safeHeight + requestedHeightDelta,
+    MIN_POTTERY_HEIGHT,
+    MAX_POTTERY_HEIGHT
+  );
   const appliedHeightDelta = nextHeight - safeHeight;
   if (!source.length || Math.abs(appliedHeightDelta) < 1e-8) {
     return { profile: source, height: safeHeight };
@@ -255,7 +267,8 @@ export function applyVerticalThrowing(
     if (Math.abs(delta) > 1e-8) return direction + delta;
     return direction + (sample.motion === "smooth-up" ? 0.001 : sample.motion === "smooth-down" ? -0.001 : 0);
   }, 0);
-  const heightRatio = Math.abs(appliedHeightDelta) / Math.max(safeHeight, MIN_HEIGHT);
+  const heightRatio =
+    Math.abs(appliedHeightDelta) / Math.max(safeHeight, MIN_POTTERY_HEIGHT);
   const smoothingStrength = clamp(
     heightRatio * 4.8 + verticalDuration * 0.32 + verticalTravel * 0.0045,
     0.02,
@@ -413,19 +426,46 @@ export function applySweptDeformation(
   return next;
 }
 
-/** Keeps the previous wall thickness while the outer silhouette moves. */
+/**
+ * Follows the outer silhouette and thins a lifted wall like real wheel
+ * throwing. The foot changes less than the upper wall so it can still support
+ * a tall wet form.
+ */
 export function synchronizeInnerWall(
   previousOuter: number[],
   nextOuter: number[],
-  innerRadius: number[]
+  innerRadius: number[],
+  previousHeight?: number,
+  nextHeight?: number
 ): number[] {
+  const heightScale =
+    Number.isFinite(previousHeight) &&
+    Number.isFinite(nextHeight) &&
+    (previousHeight as number) > 0 &&
+    (nextHeight as number) > 0
+      ? clamp((previousHeight as number) / (nextHeight as number), 0.55, 1.35)
+      : 1;
   return nextOuter.map((outer, index) => {
     const safeOuter = finiteRadius(outer);
     const previousInner = innerRadius[index];
     if (index < 2 || !Number.isFinite(previousInner) || previousInner <= 0.035) return 0;
     const previousWall = (previousOuter[index] || safeOuter) - previousInner;
-    const wall = clamp(Number.isFinite(previousWall) ? previousWall : 0.11, MIN_WALL, 0.22);
-    return clamp(safeOuter - wall, 0.035, Math.max(0.035, safeOuter - MIN_WALL));
+    const supportFade = clamp(
+      (index - 2) / Math.max(1, nextOuter.length * 0.22),
+      0,
+      1
+    );
+    const localScale = 1 + (heightScale - 1) * supportFade;
+    const wall = clamp(
+      (Number.isFinite(previousWall) ? previousWall : DEFAULT_POTTERY_WALL) * localScale,
+      MIN_POTTERY_WALL,
+      MAX_POTTERY_WALL
+    );
+    return clamp(
+      safeOuter - wall,
+      0.035,
+      Math.max(0.035, safeOuter - MIN_POTTERY_WALL)
+    );
   });
 }
 

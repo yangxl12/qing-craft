@@ -13,7 +13,7 @@
 - 作品、设置与匿名事件全部保存在微信小程序同步本地存储中。
 - UI 使用原生 WXML/WXSS，所有页面均采用自定义导航栏。
 - 当前没有 Git 元数据、锁文件、CI、Lint、格式化配置或组件库。
-- `assets/` 目前为空；根目录两张 JPG 是产品/视觉参考图，没有被代码引用。
+- `assets/` 包含首页/制坯背景与装饰资产许可记录；根目录 JPG 仍是未被代码引用的产品/视觉参考图。
 
 主流程：
 
@@ -39,7 +39,7 @@ studio: 制坯 → 装饰 → 上釉 → 高温烧制 → 釉上彩绘 → 低�
 | 2D 导出 | 微信 Canvas 2D | 用于 1080×1440 纪念海报合成 |
 | 状态 | 页面实例字段 + `Page.data` | 没有全局状态库；作品编辑态主要由 `studio.ts` 持有 |
 | 持久化 | `wx.getStorageSync` / `wx.setStorageSync` | 作品索引、作品本体、设置、教程标记、匿名事件 |
-| 测试 | Node 内置 `assert` | 目前只有一份剖面算法测试，无测试框架 |
+| 测试 | Node 内置 `assert` | 4 份脚本覆盖剖面、触控输入、网格/相机和装饰/迁移/存储契约，无测试框架 |
 | 包管理 | npm | 只有 `typescript` 开发依赖；仓库没有 `package-lock.json` |
 | 微信基础库 | 私有配置当前为 3.17.1 | `project.private.config.json` 会覆盖公共配置中的 3.7.0 |
 
@@ -53,7 +53,7 @@ npm run typecheck
 npm test
 ```
 
-截至 2026-08-24，`npm run typecheck` 与 `npm test` 均通过。测试脚本不依赖微信运行时，但完整交互、WebGL、导出、相册权限和分享必须在微信开发者工具或真机验证。
+截至 2026-08-25，`npm run typecheck` 与 `npm test` 均通过。测试脚本不依赖微信运行时，但完整交互、WebGL、导出、相册权限和分享必须在微信开发者工具或真机验证。
 
 ## 3. 代码架构
 
@@ -62,6 +62,7 @@ flowchart TB
     App[app.ts / app.json] --> Pages[pages/* 页面与流程]
     Pages --> Catalog[core/catalog.ts\n静态配置]
     Pages --> Model[core/model.ts\n作品模型]
+    Pages --> Decoration[core/decoration.ts\n纹样目录、布局与校验]
     Pages --> Profile[core/profile.ts\n剖面变形]
     Pages --> Storage[services/storage.ts\n本地作品仓库]
     Pages --> Analytics[services/analytics.ts\n本地匿名事件]
@@ -92,7 +93,7 @@ flowchart TB
 | 字段 | 含义 |
 | --- | --- |
 | `workId` | 本地作品 ID，格式大致为 `work_<时间戳>_<随机串>` |
-| `schemaVersion` | 当前固定为 `1` |
+| `schemaVersion` | 当前为 `2`；加载 schema 1 时会先保留恢复副本再显式迁移 |
 | `status` | `draft` 或 `completed` |
 | `title` | 作品名，默认“我的{器形名}” |
 | `currentStage` / `stageIndex` | 当前工序字符串与 0-based 索引，二者需要始终一致 |
@@ -100,14 +101,13 @@ flowchart TB
 | `height` | 陶坯高度，校验范围 0.45–1.8 |
 | `outerRadius[48]` | 从底到口的 48 点外轮廓半径 |
 | `innerRadius[48]` | 内腔半径；底部前两三个采样点通常为 0 |
-| `decorations[]` | 装饰类型与位置参数；当前渲染只使用最后一个装饰的类型 |
+| `decorationComposition` | 风格、套版、最多 5 个主纹/边饰/点彩层、最多 8 枚落印、款识和固定窑烧种子 |
 | `glazeId` / `glazeMethod` | 釉色和施釉方式 |
-| `paintColor` / `paintPattern` / `symmetry` | 彩绘色、程序化纹样编号和对称选项 |
 | `createdAt` / `updatedAt` / `revision` | 本地时间与版本信息 |
 
 新作品由 `createWork()` 创建：器形目录中的 8 点 profile 会线性采样为 48 点；内半径由外半径减去约 0.11 得到。
 
-`validateWork()` 目前只检查 schema、外轮廓数组和长度，并钳制外半径与高度。它不会完整校验枚举值、内轮廓长度、阶段一致性或迁移旧 schema。新增字段或 schema 时必须同时处理默认值、校验和迁移，不能只改接口。
+`validateWork()` 会校验/钳制轮廓、器形、泥料、阶段、釉色和装饰组合，并强制恢复 `currentStage === STAGES[stageIndex].id`。`services/storage.ts` 在迁移或发现装饰数据被修复时写入 `palm-kiln-work-recovery:<id>`，不会用不可识别数据静默覆盖原作。新增字段或 schema 时仍必须同时处理默认值、校验、恢复副本和迁移。
 
 ### 4.2 七道工序
 
@@ -116,10 +116,10 @@ flowchart TB
 | 索引 | ID | 页面含义 | 主要行为 |
 | --- | --- | --- | --- |
 | 0 | `shaping` | 制坯 | 推拉剖面、开口、拉高、压低、收口、修口、修足、平滑 |
-| 1 | `decorate` | 装饰 | 添加装饰记录，并映射为程序化表面纹样 |
+| 1 | `decorate` | 装饰 | 一键套版或自由组合主纹、边饰与落印，调整分区、大小、旋转、疏密、对称和工艺 |
 | 2 | `glaze` | 上釉 | 选择 12 种釉和 4 种施釉方式 |
 | 3 | `firing` | 高温烧制 | 播放约 3 秒的模拟窑烧进度，可跳过 |
-| 4 | `paint` | 釉上彩绘 | 选择颜色和程序化纹样；不保存真实笔迹 |
+| 4 | `paint` | 釉上彩绘 | 为现有主纹添加一个釉上点彩层，并完成写款；不保存真实笔迹 |
 | 5 | `refire` | 低温烤花 | 复用窑烧进度，然后进入成品阶段 |
 | 6 | `finished` | 成品 | 再点击一次进入 `result` 页面 |
 
@@ -133,6 +133,8 @@ flowchart TB
 | `palm-kiln-work-index` | `services/storage.ts` | 按创建/首次保存顺序维护的作品 ID 数组；读取时再按 `updatedAt` 排序 |
 | `palm-kiln-active-work` | `services/storage.ts` | 最近保存作品的 ID |
 | `palm-kiln-work:<id>` | `services/storage.ts` | 完整 `PotteryWork` |
+| `palm-kiln-work-recovery:<id>` | `services/storage.ts` | schema 迁移或装饰数据修复前的原始作品副本 |
+| `palm-kiln-private-stamps` | `services/storage.ts` | 最多 3 枚本机私款的文字与排版参数 |
 | `palm-kiln-tutorial-seen` | `studio.ts` | 是否收起过首次制坯提示 |
 | `palm-kiln-analytics-v1` | `services/analytics.ts` | 最近 200 条匿名本地事件 |
 
@@ -142,10 +144,10 @@ flowchart TB
 
 - 撤销/重做使用 `cloneWork()` 的完整 JSON 快照，分别放在 `history` / `future` 数组中。
 - 最多保留 50 个历史快照，只存在当前 `studio` 页面内存中，不随草稿持久化。
-- 手势编辑从按下到抬起合并成一次历史；大多数工具操作和工序推进也会推入历史。当前 `cycleSymmetry()` 是例外：它会保存但不会先创建撤销快照。
+- 制坯和装饰拖动从按下到抬起合并成一次历史；装饰、点彩、写款、工具操作和工序推进也会推入历史。
 - `changed()` 会更新引擎和页面，设置“保存中…”，然后以 500 ms 防抖调用 `persist()`。
 - 页面隐藏、卸载和主动退出也会立即持久化。
-- `saveWork()` 更新的是待写入副本的 `updatedAt` / `revision`，没有把这两个值回写页面内的 `work`；因此 revision 目前更像“本次加载后的版本号”，不是严格的每次保存递增计数，部分页面也可能暂时展示保存前的时间。
+- `saveWork()` 先验证完整副本，再写作品本体、active ID 和索引；成功后会把 `updatedAt` / `revision` 回写页面内作品，失败时保留内存态并由创作台提示重试。
 
 ## 5. 塑形与 WebGL 实现
 
@@ -162,18 +164,18 @@ flowchart TB
 
 ### 5.2 网格
 
-`PotteryEngine.rebuild()` 每次作品变化都会重建完整网格：
+`PotteryEngine.rebuild()` 只在高度或内外剖面变化时更新网格；装饰、釉色和款识参数只更新 uniform/文字纹理：
 
 - 高度环固定取 `outerRadius.length`，正常为 48。
 - 圆周段数由画质决定：低 48、中 64、高 88。
 - 分别生成外表面和内表面，然后连接顶部口沿。
 - 位置、法线和索引使用三个 WebGL Buffer；索引为 `Uint16Array`。
-- 变形时当前没有局部 buffer 更新或触摸事件帧合并。
+- 同拓扑变形通过 `bufferSubData` 更新位置与法线；制坯触控事件按渲染帧合并。
 
 ### 5.3 材质与相机
 
 - 顶点着色器输出世界位置、法线和归一化高度。
-- 片元着色器实现单方向漫反射、釉色混合、简化高光、4 种施釉遮罩和 4 种程序化装饰/彩绘纹样。
+- 片元着色器实现双方向光、釉色混合、微表面、4 种施釉遮罩、13 路装饰合成（5 层 + 8 印）、语义分区、21 个程序化纹样/边饰变体和固定种子烧后差异；款识由本地离屏 Canvas 生成透明纹理。
 - 泥料在 `stageIndex >= 3` 后切换到烧后颜色；釉在上釉阶段以 0.72 混合，烧制后全量混合。
 - 相机支持 orbit、dolly、回正和自动旋转，缩放被限制在 2.25–4.8。
 - 渲染器创建 Canvas 时使用 `preserveDrawingBuffer: true`，供成品图导出。
@@ -265,14 +267,15 @@ digital-ceramics/
 | `project.config.json` | 微信开发者工具公共配置；小程序类型、TS 编译插件、`touristappid`、基础库 3.7.0 等 |
 | `project.private.config.json` | 本机开发者工具覆盖配置；当前把基础库覆盖为 3.17.1，并启用热重载/API Hook 等 |
 | `sitemap.json` | 允许索引所有页面 |
-| `assets/` | 预留资源目录，当前为空 |
+| `assets/` | 首页与制坯场景图片，以及 `decoration/ASSET_LICENSES.md` 装饰资产来源记录 |
 
 ### 7.2 `core/`
 
 | 文件 | 内容与用途 |
 | --- | --- |
 | `core/catalog.ts` | 所有内置目录：5 种器形、3 种泥、12 种釉、7 道工序及各工序工具/提示文案 |
-| `core/model.ts` | `PotteryWork`/`Decoration` 类型，新建、深拷贝、泥/釉颜色解析和最小作品校验 |
+| `core/decoration.ts` | 3 风格包、15 母纹样、6 边饰、6 套构图、写款目录、器形分区、布局/迁移/校验纯函数 |
+| `core/model.ts` | schema 2 `PotteryWork` 类型、新建、深拷贝、泥/釉颜色解析、完整作品校验和 schema 1 迁移入口 |
 | `core/profile.ts` | 纯剖面算法：高斯形变、半径/斜率约束、平滑及离散制坯工具 |
 | `core/pottery-engine.ts` | 最小 WebGL 引擎：矩阵、GLSL、网格/法线/索引生成、相机、材质、渲染循环和资源释放 |
 
@@ -341,7 +344,10 @@ digital-ceramics/
 
 | 文件/目录 | 内容与用途 |
 | --- | --- |
-| `tests/profile.test.cjs` | 用 Node assert 验证高斯局部性、半径边界、NaN 和 100 次压力形变 |
+| `tests/profile.test.cjs` | 用 Node assert 验证剖面变形、垂直拉坯、平滑和器壁安全 |
+| `tests/shaping-input.test.cjs` | 验证高灵敏触控、二维扫掠、速度无关性和高低意图 |
+| `tests/pottery-engine.test.cjs` | 验证生产网格、相机、转盘与极端器形安全 |
+| `tests/decoration.test.cjs` | 验证内容数量、五器形套版、闭合边饰、写款限制、schema 迁移、恢复副本、私款和复制一致性 |
 | `types/index.d.ts` | `wx`、`App`、`Page`、`getCurrentPages` 及触摸事件的最小全局声明 |
 
 ## 8. 当前实现与 PRD 的重要差距
@@ -350,24 +356,23 @@ digital-ceramics/
 
 | 领域 | 当前真实实现 | PRD 目标/后续方向 |
 | --- | --- | --- |
-| 装饰 | 选择工具后追加固定位置记录，着色器把最后一种类型映射为全局纹样 | 器表定位、连续纹样、可编辑附件和不穿模杯耳 |
-| 彩绘 | 颜色 + 1–4 的程序化纹样编号；没有真实笔迹 | 圆柱 UV 笔迹、橡皮、图层、跨接缝和对称绘画 |
-| 对称 | 只循环保存 `symmetry` 值，渲染不消费它 | 无/左右/四向真实镜像 |
+| 装饰 | 已有 6 套构图、15 母纹样、6 边饰、语义分区、5 层与 8 印的参数化编辑和程序化渲染 | P1 扩充矢量素材、图层显隐/复制和更精确的轮廓命中 |
+| 彩绘 | 在前序装饰之上叠加 1 个釉上强调色层；没有真实笔迹 | 圆柱 UV 笔迹、橡皮、更多图层和跨接缝绘画 |
+| 对称 | 主纹支持单体、左右、四向；边饰按整数重复闭合圆周 | P1 增加更复杂的径向和自定义重复路径 |
 | 展台灯光 | 只切换 CSS 背景 | 不重载模型的真实光照预设 |
-| WebGL 降级 | 静态 WXSS 陶器，可推进步骤但不可真正塑形 | 可完成核心流程的 2D 剖面编辑器 |
+| WebGL 降级 | 可套版、配色、写款、完成流程并导出带主纹/款识摘要的 2D 图；不开放精细落印 | 可真正塑形和精细定位的完整 2D 编辑器 |
 | 画质 | 用户手动决定 48/64/88 圆周段数 | 首次校准、运行时 FPS 监测和自动降档 |
 | 自动旋转 | `reduceMotion` 只在部分初始化/手势结束路径生效 | 全流程一致地禁用非必要动画 |
 | 声音/引导设置 | 值会保存，但没有音频系统，`guidance` 未接入提示逻辑 | 设置实时影响声音与技师提示强度 |
 | 分享 | 分享路径仅含本地 ID，同设备外无法取得作品 | 可访问的作品预览/云数据与“同款创作”落地页 |
 | 删除 | 立即移除本地数据 | 7 天可恢复回收站 |
-| 复制成品 | 改为 `draft`，但保留原来的 `finished`/阶段 6，进入创作台后并不会回到制坯 | 明确“从哪个阶段继续”或创建可编辑的新版本 |
 | 缩略图 | 按器形绘制通用 CSS 图 | 实际作品缩略图 |
-| 撤销覆盖 | 对称选项不推历史；历史也不会跨页面重启恢复 | 所有作品变更可撤销，并按产品决策持久化关键历史 |
-| 埋点 | 仅 `creation_start`、`first_deform`、`stage_complete`、`export_result`，且只存本地 | 完整漏斗、性能、错误与受控上报 |
-| 数据恢复 | schema 1 的最小校验，无迁移/备份 | 兼容迁移、异常保留原始数据、云冲突处理 |
-| 测试 | 单个 Node 脚本复制了一份算法 | 直接测试生产函数，以及页面、存储、WebGL、真机性能测试 |
+| 撤销覆盖 | 装饰、点彩与写款操作已接入页面内历史；历史不会跨页面重启恢复 | 按产品决策持久化关键历史 |
+| 埋点 | 已覆盖装饰进入、套版、层调整、烧后预览、写款和完成，仍只存本地 | 性能、错误与受控上报 |
+| 数据恢复 | schema 2 显式迁移 schema 1，并保留恢复副本 | 后续 schema、备份管理和云冲突处理 |
+| 测试 | 4 个 Node 脚本直接加载生产 TypeScript 函数 | 页面自动化、WebGL 真机编译、导出与性能矩阵 |
 
-另外，测试中的 `constrain()` / `deform()` 是生产算法的手工副本，而不是从 `core/profile.ts` 导入；修改生产算法时必须同步测试，最好后续建立可直接加载 TypeScript 源码的测试方案，避免测试与实现漂移。
+测试脚本通过 TypeScript 的 `transpileModule` 直接加载生产模块，不再维护剖面或装饰算法副本；涉及页面、WXML、真实 WebGL 编译、导出与性能的行为仍需开发者工具或真机验证。
 
 ## 9. 改动指南与不变量
 

@@ -726,6 +726,13 @@
   text-align: center;
   pointer-events: none;
 }
+.topbar { height: 100rpx; }
+.top-action,
+.circle {
+  height: 88rpx;
+  min-width: 88rpx;
+}
+.circle { width: 88rpx; flex-basis: 88rpx; }
 .work-title view {
   font-size: 28rpx;
 }
@@ -1493,6 +1500,496 @@
 .reduce-motion .clay-choice,
 .reduce-motion .wall-caliper { transition: none; }
 .reduce-motion .choice-popover { animation: none; }
+
+/* 装饰工作台：以一只器形剖面卡作为套版的识别核心，其余控件保持安静。 */
+.work-title {
+  left: auto;
+  right: 20rpx;
+  width: 176rpx;
+  transform: none;
+  text-align: right;
+}
+.work-title view { color: rgba(247, 249, 245, .94); font-size: 19rpx; font-weight: 700; }
+.work-title text { display: block; margin-top: 2rpx; font-size: 14rpx; }
+.decor-tray,
+.paint-tray {
+  position: relative;
+  z-index: 8;
+  flex: none;
+  width: 100%;
+  height: calc(760rpx + env(safe-area-inset-bottom));
+  padding: 20rpx 22rpx calc(18rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  overflow: hidden;
+  color: #26322c;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.72), transparent 50rpx),
+    #f1f3ee;
+  border-radius: 34rpx 34rpx 0 0;
+  box-shadow: 0 -18rpx 48rpx rgba(14, 23, 19, .24);
+}
+.paint-tray { height: calc(716rpx + env(safe-area-inset-bottom)); }
+.decor-head {
+  height: 94rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+.decor-mode-tabs {
+  height: 88rpx;
+  padding: 5rpx;
+  box-sizing: border-box;
+  display: flex;
+  border-radius: 18rpx;
+  background: #dfe5df;
+}
+.decor-mode-tabs > view {
+  min-width: 126rpx;
+  min-height: 78rpx;
+  padding: 0 20rpx;
+  box-sizing: border-box;
+  border-radius: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #68746e;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+.decor-mode-tabs > view.active {
+  color: #f8faf7;
+  background: #486c5c;
+  box-shadow: 0 5rpx 13rpx rgba(42, 71, 58, .2);
+}
+.fired-peek {
+  min-width: 150rpx;
+  height: 88rpx;
+  padding: 0 18rpx;
+  box-sizing: border-box;
+  border: 1rpx solid #b6c3ba;
+  border-radius: 18rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #496458;
+  background: rgba(255,255,255,.58);
+  font-size: 18rpx;
+  font-weight: 700;
+}
+.fired-peek.active {
+  color: #fff7e9;
+  background: #a6563e;
+  border-color: #93452f;
+}
+.style-scroll,
+.template-scroll,
+.motif-scroll,
+.layer-scroll { width: 100%; white-space: nowrap; }
+.style-row,
+.template-row,
+.motif-row,
+.layer-row { display: flex; }
+.style-row { gap: 10rpx; padding: 8rpx 1rpx 10rpx; }
+.style-chip {
+  width: 220rpx;
+  min-height: 88rpx;
+  padding: 9rpx 14rpx;
+  box-sizing: border-box;
+  border-radius: 15rpx;
+  color: #5c6862;
+  background: #e5e9e4;
+  border: 2rpx solid transparent;
+  white-space: normal;
+}
+.style-chip text,
+.style-chip small { display: block; }
+.style-chip text { font-family: "Songti SC", "STSong", serif; font-size: 19rpx; font-weight: 700; }
+.style-chip small { margin-top: 3rpx; color: #7b857f; font-size: 13rpx; line-height: 1.25; }
+.style-chip.active { color: #294338; background: #d8e5dd; border-color: #648c79; }
+.style-chip.active small { color: #547064; }
+.template-row { gap: 14rpx; padding: 2rpx 2rpx 12rpx; }
+.template-card {
+  position: relative;
+  width: 300rpx;
+  height: 156rpx;
+  padding: 12rpx;
+  box-sizing: border-box;
+  border-radius: 22rpx;
+  display: grid;
+  grid-template-columns: 104rpx 1fr;
+  grid-template-rows: 1fr 30rpx;
+  color: #33443c;
+  background: #e5e9e4;
+  border: 2rpx solid transparent;
+  white-space: normal;
+}
+.template-card.active {
+  color: #f5f7f2;
+  background: linear-gradient(145deg, #5d8573, #365b4c);
+  border-color: #294b3d;
+  box-shadow: 0 10rpx 24rpx rgba(47, 80, 66, .2);
+}
+.template-card.unusual:not(.active) { background: #e8e6df; }
+.template-visual { position: relative; grid-row: 1 / 3; }
+.template-pot-mini {
+  position: absolute;
+  left: 10rpx;
+  top: 4rpx;
+  width: 74rpx;
+  height: 108rpx;
+  overflow: hidden;
+  border: 3rpx solid currentColor;
+  border-top-width: 2rpx;
+  border-radius: 25% 25% 35% 35% / 10% 10% 22% 22%;
+  opacity: .78;
+}
+.template-pot-mini.shape-bowl { top: 27rpx; height: 67rpx; border-radius: 10% 10% 42% 42%; }
+.template-pot-mini.shape-plate { top: 46rpx; height: 37rpx; border-radius: 12% 12% 48% 48%; }
+.template-pot-mini.shape-vase { width: 68rpx; border-radius: 18% 18% 42% 42%; clip-path: polygon(34% 0,66% 0,69% 20%,90% 49%,78% 100%,22% 100%,10% 49%,31% 20%); background: rgba(76,111,95,.08); }
+.template-pot-mini > view {
+  position: absolute;
+  left: 9rpx;
+  right: 9rpx;
+  height: 5rpx;
+  border-radius: 6rpx;
+  background: currentColor;
+}
+.template-pot-mini > view:first-child { top: 26%; }
+.template-pot-mini > view:nth-child(2) { top: 52%; height: 15rpx; opacity: .76; }
+.template-pot-mini > view:last-child { top: 78%; }
+.template-seal {
+  position: absolute;
+  right: 8rpx;
+  bottom: 6rpx;
+  width: 28rpx;
+  height: 28rpx;
+  border: 2rpx solid #a85643;
+  color: #a85643;
+  font-family: "Songti SC", serif;
+  font-size: 15rpx;
+  text-align: center;
+  line-height: 28rpx;
+}
+.template-card.active .template-seal { color: #f1c2b5; border-color: #f1c2b5; }
+.template-copy { min-width: 0; padding-top: 4rpx; }
+.template-copy text,
+.template-copy small { display: block; }
+.template-copy text { font-family: "Songti SC", serif; font-size: 23rpx; font-weight: 700; }
+.template-copy small { height: 52rpx; margin-top: 5rpx; overflow: hidden; color: #77837c; font-size: 15rpx; line-height: 1.45; }
+.template-card.active .template-copy small { color: rgba(242,248,244,.72); }
+.template-status { align-self: end; color: #61786d; font-size: 14rpx; font-weight: 700; }
+.template-card.active .template-status { color: #d7e8df; }
+.custom-builder { height: 212rpx; }
+.decor-section-tabs { height: 94rpx; display: flex; gap: 8rpx; }
+.decor-section-tabs > view {
+  flex: 1;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  border-radius: 15rpx;
+  color: #6d7772;
+  background: #e3e8e3;
+  font-size: 18rpx;
+  font-weight: 700;
+}
+.decor-section-tabs > view small { color: #8b948f; font-size: 13rpx; }
+.decor-section-tabs > view.active { color: #fff; background: #52796a; }
+.decor-section-tabs > view.active small { color: #d9e7e0; }
+.motif-row { gap: 10rpx; padding: 3rpx 2rpx 9rpx; }
+.motif-card {
+  width: 88rpx;
+  height: 96rpx;
+  flex: none;
+  border-radius: 17rpx;
+  color: #59655f;
+  background: #e5e9e4;
+  text-align: center;
+  border: 2rpx solid transparent;
+}
+.motif-card > view {
+  height: 61rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Songti SC", serif;
+  font-size: 29rpx;
+}
+.motif-card > text { display: block; font-size: 15rpx; }
+.motif-card.armed { color: #fff; background: #a6563e; border-color: #8e432e; }
+.layer-row { gap: 8rpx; padding: 1rpx 1rpx 8rpx; }
+.layer-chip {
+  height: 88rpx;
+  padding: 0 15rpx 0 7rpx;
+  flex: none;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  gap: 7rpx;
+  color: #5d6963;
+  background: #e2e7e2;
+  border: 2rpx solid transparent;
+  font-size: 15rpx;
+}
+.layer-glyph {
+  width: 58rpx;
+  height: 58rpx;
+  border-radius: 11rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(83,117,101,.1);
+  font-family: "Songti SC", serif;
+}
+.layer-chip.active { color: #29463a; background: #d6e5dc; border-color: #648b78; font-weight: 700; }
+.layer-chip.hidden { opacity: .48; }
+.decor-controls {
+  height: 112rpx;
+  padding: 7rpx 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  border-top: 1rpx solid rgba(45,61,53,.08);
+}
+.control-context { width: 190rpx; flex: none; padding-right: 10rpx; box-sizing: border-box; }
+.control-context text,
+.control-context small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.control-context text { font-size: 18rpx; font-weight: 700; }
+.control-context small { margin-top: 4rpx; color: #7b867f; font-size: 13rpx; }
+.control-actions { flex: 1; min-width: 0; display: flex; gap: 7rpx; overflow-x: auto; }
+.control-actions button,
+.accent-controls button {
+  min-width: 90rpx;
+  height: 88rpx;
+  padding: 0 13rpx;
+  flex: none;
+  border-radius: 16rpx;
+  color: #4b5c53;
+  background: #dfe5df;
+  font-size: 15rpx;
+  line-height: 88rpx;
+}
+.control-actions button:after,
+.accent-controls button:after,
+.decor-bottom button:after,
+.inscription-options button:after,
+.inscription-actions button:after { border: 0; }
+.control-actions button.danger,
+.accent-controls button.danger { color: #9c4938; background: #eee2de; }
+.decor-bottom {
+  position: absolute;
+  left: 22rpx;
+  right: 22rpx;
+  bottom: calc(14rpx + env(safe-area-inset-bottom));
+  height: 92rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.decor-bottom > text { flex: 1; color: #758079; font-size: 15rpx; text-align: center; }
+.decor-bottom button {
+  height: 88rpx;
+  padding: 0 21rpx;
+  border-radius: 18rpx;
+  font-size: 18rpx;
+  line-height: 88rpx;
+}
+.decor-bottom .quiet,
+.inscription-actions .quiet { color: #5b6861; background: #e0e5e0; }
+.decor-bottom .decor-complete,
+.inscription-actions .apply-mark { color: #fff; background: #202b26; font-weight: 700; }
+.decor-selection-label {
+  position: absolute;
+  z-index: 13;
+  left: 50%;
+  bottom: 24rpx;
+  min-width: 160rpx;
+  padding: 9rpx 17rpx;
+  transform: translateX(-50%);
+  border: 1rpx solid rgba(166,204,185,.54);
+  border-radius: 15rpx;
+  color: #f3f8f4;
+  background: rgba(43,69,57,.72);
+  text-align: center;
+  pointer-events: none;
+}
+.decor-selection-label text,
+.decor-selection-label small { display: block; }
+.decor-selection-label text { font-size: 17rpx; font-weight: 700; }
+.decor-selection-label small { margin-top: 2rpx; color: #c5d9cf; font-size: 13rpx; }
+.fallback-decor {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: calc(100% - var(--base-screen-percent) + 120rpx);
+  transform: translateX(-50%);
+  width: 148rpx;
+  height: 80rpx;
+  border-top: 5rpx double #315e73;
+  border-bottom: 5rpx double #315e73;
+  color: #315e73;
+  text-align: center;
+  pointer-events: none;
+}
+.fallback-decor text { display: block; font-family: "Songti SC", serif; font-size: 34rpx; line-height: 48rpx; }
+.fallback-decor small { display: block; font-size: 12rpx; }
+.fallback-decor.fired-true { color: #214d6a; border-color: #214d6a; filter: saturate(1.25); }
+.fallback-inscription {
+  position: absolute;
+  z-index: 6;
+  left: calc(50% + 62rpx);
+  bottom: calc(100% - var(--base-screen-percent) + 28rpx);
+  max-width: 76rpx;
+  padding: 5rpx;
+  border: 2rpx solid #a84f43;
+  color: #a84f43;
+  font-size: 12rpx;
+  line-height: 1.15;
+  white-space: pre-line;
+  pointer-events: none;
+}
+
+/* 釉上彩与写款共用一只托盘，不打开第二层页面。 */
+.paint-head { margin-bottom: 10rpx; }
+.panel-copy { padding: 5rpx 4rpx 13rpx; }
+.panel-copy text,
+.panel-copy small { display: block; }
+.panel-copy text { font-family: "Songti SC", serif; font-size: 23rpx; font-weight: 700; }
+.panel-copy small { margin-top: 4rpx; color: #7b857f; font-size: 15rpx; }
+.accent-panel .paint-row {
+  height: 118rpx;
+  padding: 0 2rpx 10rpx;
+  gap: 10rpx;
+  overflow-x: auto;
+}
+.paint-color {
+  width: 96rpx;
+  height: 100rpx;
+  flex: none;
+  border-radius: 18rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  color: #67736c;
+  background: #e3e8e3;
+  border: 2rpx solid transparent;
+}
+.paint-color-dot {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 3rpx rgba(255,255,255,.38), 0 0 0 2rpx rgba(40,50,45,.12);
+}
+.paint-color text { font-size: 14rpx; }
+.paint-color.active { color: #2f493d; background: #d7e4dc; border-color: #5c826f; font-weight: 700; }
+.accent-controls { display: flex; gap: 9rpx; padding: 12rpx 2rpx; border-top: 1rpx solid #dce1dc; }
+.inscription-scroll {
+  height: 536rpx;
+  padding: 0 3rpx 108rpx;
+  box-sizing: border-box;
+}
+.inscription-kicker {
+  padding: 4rpx 2rpx 10rpx;
+  color: #53665c;
+  font-family: "Songti SC", serif;
+  font-size: 20rpx;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+.inscription-types { display: flex; gap: 8rpx; margin-bottom: 10rpx; }
+.inscription-types > view {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 15rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6d7872;
+  background: #e2e7e2;
+  font-size: 17rpx;
+  font-weight: 700;
+}
+.inscription-types > view.active { color: #fff; background: #52796a; }
+.inscription-input {
+  width: 100%;
+  min-height: 74rpx;
+  padding: 17rpx 19rpx;
+  box-sizing: border-box;
+  border: 2rpx solid #cdd7d0;
+  border-radius: 18rpx;
+  color: #28362f;
+  background: #fbfcf9;
+  font-family: "Songti SC", serif;
+  font-size: 24rpx;
+  line-height: 1.35;
+}
+.inscription-input.invalid { border-color: #b55c48; background: #fff8f5; }
+.inscription-error { padding: 6rpx 4rpx; color: #a44d3b; font-size: 15rpx; }
+.blessing-row { display: flex; gap: 8rpx; padding: 8rpx 1rpx 11rpx; }
+.blessing-row view {
+  height: 88rpx;
+  padding: 0 16rpx;
+  flex: none;
+  border-radius: 16rpx;
+  color: #5d6962;
+  background: #e2e7e2;
+  font-size: 16rpx;
+  line-height: 88rpx;
+}
+.inscription-options { margin-top: 10rpx; }
+.option-line { height: 96rpx; display: flex; align-items: center; border-top: 1rpx solid #dde2dd; }
+.option-line > text { width: 70rpx; flex: none; color: #66736b; font-size: 16rpx; }
+.option-line scroll-view { flex: 1; min-width: 0; white-space: nowrap; }
+.option-line scroll-view > view { display: flex; gap: 7rpx; }
+.option-line button {
+  height: 88rpx;
+  padding: 0 15rpx;
+  flex: none;
+  border-radius: 14rpx;
+  color: #5b6961;
+  background: #e2e7e2;
+  font-size: 15rpx;
+  line-height: 88rpx;
+}
+.option-line button.active { color: #fff; background: #52796a; }
+.private-marks { margin-top: 13rpx; padding-top: 12rpx; border-top: 1rpx solid #dbe1dc; }
+.private-marks > text { color: #66736b; font-size: 16rpx; }
+.private-row { display: flex; gap: 9rpx; padding-top: 9rpx; }
+.private-row > view {
+  width: 190rpx;
+  min-height: 88rpx;
+  padding: 9rpx 12rpx;
+  box-sizing: border-box;
+  border-radius: 16rpx;
+  color: #394b42;
+  background: #e1e7e2;
+}
+.private-mark-text { display: block; overflow: hidden; font-family: "Songti SC", serif; font-size: 17rpx; white-space: pre-line; }
+.private-row small { display: block; margin-top: 5rpx; color: #9a503f; font-size: 13rpx; }
+.inscription-actions { display: flex; gap: 9rpx; margin-top: 14rpx; }
+.inscription-actions button {
+  height: 88rpx;
+  padding: 0 19rpx;
+  border-radius: 17rpx;
+  font-size: 17rpx;
+  line-height: 88rpx;
+}
+.inscription-actions .apply-mark { margin-left: auto; }
+.inscription-actions .danger { color: #a04b39; background: #eee1dc; }
+.privacy-note { padding: 12rpx 3rpx 24rpx; color: #89918d; font-size: 13rpx; }
+.paint-bottom { border-top: 1rpx solid rgba(43,60,51,.09); }
+.paint-bottom > text { text-align: left; }
+
+.reduce-motion .decor-mode-tabs > view,
+.reduce-motion .style-chip,
+.reduce-motion .template-card,
+.reduce-motion .motif-card,
+.reduce-motion .layer-chip,
+.reduce-motion .fired-peek { transition: none; }
 
 @media (max-height: 700px) {
   .gesture-map { top: 8rpx; }

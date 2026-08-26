@@ -40,6 +40,10 @@
 
   <view class="safe-top" style="height:{{statusBarHeight}}px"></view>
   <view class="topbar">
+    <view class="work-title">
+      <view>{{stageName}} · {{stageIndex+1}} / 7</view>
+      <text class="{{saveState==='已保存'?'saved':''}}">{{saveState}}</text>
+    </view>
     <view class="top-actions">
       <view class="top-action top-exit" role="button" aria-label="退出创作台" bindtap="close">退出</view>
       <view class="top-action top-reset" role="button" aria-label="视角回正" bindtap="resetCamera">回正</view>
@@ -61,6 +65,7 @@
       bindtouchmove="touchMove"
       bindtouchend="touchEnd"
       bindtouchcancel="touchEnd"
+      bindlongpress="deleteSelectedDecoration"
     ></canvas>
     <view
       wx:else
@@ -70,8 +75,16 @@
       catchtouchmove="touchMove"
       catchtouchend="touchEnd"
       catchtouchcancel="touchEnd"
+      bindlongpress="deleteSelectedDecoration"
     >
       <view class="fallback-pot shape-{{work.shapeId}}" style="background:{{stageIndex>=3 ? '#84a99a' : '#c7c2b6'}}"></view>
+      <view wx:if="{{decorationCount||stampCount}}" class="fallback-decor fired-{{firedPreview}}">
+        <text>{{selectedDecorationName||'纹'}}</text>
+        <small>{{decorationCount}} 层 · {{stampCount}} 印</small>
+      </view>
+      <view wx:if="{{work.decorationComposition.inscription}}" class="fallback-inscription">
+        {{work.decorationComposition.inscription.text}}
+      </view>
       <view class="fallback-note">轻量剖面模式</view>
     </view>
 
@@ -183,9 +196,14 @@
       <text>{{showHelp?cameraHelp:hint}}</text>
       <small>轻触收起</small>
     </view>
+
+    <view wx:if="{{(stageIndex===1||stageIndex===4)&&selectedDecoration}}" class="decor-selection-label">
+      <text>{{selectedDecorationName}}</text>
+      <small>{{selectedDecorationRole}} · {{selectedAnchorName}}</small>
+    </view>
   </view>
 
-  <view wx:if="{{stageIndex<=1}}" class="stage-footer">
+  <view wx:if="{{stageIndex===0}}" class="stage-footer">
     <view class="stage-footer-title">{{stageName}}</view>
     <button
       class="stage-next"
@@ -195,6 +213,197 @@
       <text>{{nextStageName}}</text>
       <view class="stage-next-icon">→</view>
     </button>
+  </view>
+
+  <view wx:elif="{{stageIndex===1}}" class="decor-tray">
+    <view class="decor-head">
+      <view class="decor-mode-tabs">
+        <view class="{{decorMode==='template'?'active':''}}" role="button" aria-label="选择一套完整纹样" data-id="template" bindtap="setDecorMode">选一套</view>
+        <view class="{{decorMode==='custom'?'active':''}}" role="button" aria-label="自己搭配纹样" data-id="custom" bindtap="setDecorMode">自己搭</view>
+      </view>
+      <view
+        class="fired-peek {{firedPreview?'active':''}}"
+        role="button"
+        aria-label="按住查看烧后效果"
+        bindtouchstart="previewFiredStart"
+        bindtouchend="previewFiredEnd"
+        bindtouchcancel="previewFiredEnd"
+      >{{firedPreview?'烧后显色':'按住看烧后'}}</view>
+    </view>
+
+    <scroll-view class="style-scroll" scroll-x show-scrollbar="false">
+      <view class="style-row">
+        <view
+          wx:for="{{stylePacks}}"
+          wx:key="id"
+          class="style-chip {{stylePackId===item.id?'active':''}}"
+          role="button"
+          aria-label="切换到{{item.name}}"
+          data-id="{{item.id}}"
+          bindtap="chooseStylePack"
+        ><text>{{item.name}}</text><small>{{item.note}}</small></view>
+      </view>
+    </scroll-view>
+
+    <scroll-view wx:if="{{decorMode==='template'}}" class="template-scroll" scroll-x show-scrollbar="false">
+      <view class="template-row">
+        <view
+          wx:for="{{templates}}"
+          wx:key="id"
+          class="template-card {{item.active?'active':''}} {{item.recommended?'':'unusual'}}"
+          role="button"
+          aria-label="用{{item.name}}套版"
+          data-id="{{item.id}}"
+          bindtap="applyDecorTemplate"
+        >
+          <view class="template-visual">
+            <view class="template-pot-mini shape-{{work.shapeId}}"><view></view><view></view><view></view></view>
+            <view class="template-seal">{{item.glyph}}</view>
+          </view>
+          <view class="template-copy"><text>{{item.name}}</text><small>{{item.note}}</small></view>
+          <view class="template-status">{{item.active?'已用这套':(item.recommended?'适合当前器形':'已自动适配')}}</view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view wx:else class="custom-builder">
+      <view class="decor-section-tabs">
+        <view class="{{decorSection==='main'?'active':''}}" data-id="main" bindtap="setDecorSection">主纹 <small>最多 2</small></view>
+        <view class="{{decorSection==='border'?'active':''}}" data-id="border" bindtap="setDecorSection">边饰 <small>最多 2</small></view>
+        <view wx:if="{{!fallback}}" class="{{decorSection==='stamp'?'active':''}}" data-id="stamp" bindtap="setDecorSection">落印 <small>{{stampCount}} / 8</small></view>
+      </view>
+      <scroll-view class="motif-scroll" scroll-x show-scrollbar="false">
+        <view class="motif-row">
+          <view
+            wx:for="{{decorSection==='border'?borders:(decorSection==='stamp'?stampMotifs:motifs)}}"
+            wx:key="id"
+            class="motif-card {{pendingStampMotifId===item.id?'armed':''}}"
+            role="button"
+            aria-label="选择{{item.name}}"
+            data-id="{{item.id}}"
+            bindtap="chooseDecorMotif"
+          ><view>{{item.glyph}}</view><text>{{item.name}}</text></view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <scroll-view wx:if="{{decorationLayers.length}}" class="layer-scroll" scroll-x show-scrollbar="false">
+      <view class="layer-row">
+        <view
+          wx:for="{{decorationLayers}}"
+          wx:key="id"
+          class="layer-chip {{item.selected?'active':''}} {{item.visible?'':'hidden'}}"
+          data-id="{{item.id}}"
+          bindtap="selectDecoration"
+          aria-label="编辑{{item.roleName}}{{item.name}}"
+        ><text class="layer-glyph">{{item.glyph}}</text><text>{{item.roleName}}·{{item.name}}</text></view>
+      </view>
+    </scroll-view>
+
+    <view wx:if="{{selectedDecoration&&!fallback}}" class="decor-controls">
+      <view class="control-context">
+        <text>{{selectedDecorationRole}} · {{selectedDecorationName}}</text>
+        <small>{{selectedTechniqueName}} / {{selectedAnchorName}} / {{selectedRepeatName}}</small>
+      </view>
+      <view class="control-actions">
+        <button data-action="anchor" bindtap="adjustDecoration">换位置</button>
+        <button data-action="size" bindtap="adjustDecoration">大小 {{selectedDecoration.scale}}</button>
+        <button data-action="rotate" bindtap="adjustDecoration">转 15°</button>
+        <button wx:if="{{selectedDecorationRole==='边饰'}}" data-action="density" bindtap="adjustDecoration">疏密</button>
+        <button wx:else data-action="repeat" bindtap="adjustDecoration">{{selectedRepeatName}}</button>
+        <button data-action="technique" bindtap="adjustDecoration">{{selectedTechniqueName}}</button>
+        <button class="danger" bindtap="deleteSelectedDecoration">移除</button>
+      </view>
+    </view>
+
+    <view class="decor-bottom">
+      <button class="quiet" bindtap="clearDecoration">保持素面</button>
+      <text>{{decorationCount}} 层 · {{stampCount}} 枚落印</text>
+      <button class="decor-complete" bindtap="completeStage">完成装饰 →</button>
+    </view>
+  </view>
+
+  <view wx:elif="{{stageIndex===4}}" class="paint-tray">
+    <view class="decor-head paint-head">
+      <view class="decor-mode-tabs">
+        <view class="{{paintPanel==='accent'?'active':''}}" data-id="accent" bindtap="setPaintPanel">点彩</view>
+        <view class="{{paintPanel==='inscription'?'active':''}}" data-id="inscription" bindtap="setPaintPanel">写款</view>
+      </view>
+      <view
+        class="fired-peek {{firedPreview?'active':''}}"
+        bindtouchstart="previewFiredStart"
+        bindtouchend="previewFiredEnd"
+        bindtouchcancel="previewFiredEnd"
+      >{{firedPreview?'烤后定色':'按住看烤后'}}</view>
+    </view>
+
+    <view wx:if="{{paintPanel==='accent'}}" class="accent-panel">
+      <view class="panel-copy"><text>给主纹点一处颜色</text><small>釉上彩会叠在前序纹样之上，不会覆盖刻花或青花。</small></view>
+      <view class="paint-row">
+        <view
+          wx:for="{{paintColors}}"
+          wx:key="id"
+          class="paint-color {{accentColorId===item.id?'active':''}}"
+          data-id="{{item.id}}"
+          bindtap="choosePaint"
+          aria-label="选择{{item.name}}"
+        ><view class="paint-color-dot" style="background:{{item.color}}"></view><text>{{item.name}}</text></view>
+      </view>
+      <view wx:if="{{selectedDecoration}}" class="accent-controls">
+        <button data-action="size" bindtap="adjustDecoration">大小</button>
+        <button data-action="rotate" bindtap="adjustDecoration">旋转</button>
+        <button data-action="repeat" bindtap="adjustDecoration">{{selectedRepeatName}}</button>
+        <button class="danger" bindtap="deleteSelectedDecoration">移除点彩</button>
+      </view>
+    </view>
+
+    <scroll-view wx:else class="inscription-scroll" scroll-y show-scrollbar="false">
+      <view class="inscription-kicker">写款收尾</view>
+      <view class="inscription-types">
+        <view wx:for="{{inscriptionContentTypes}}" wx:key="id" class="{{inscriptionDraft.contentType===item.id?'active':''}}" data-id="{{item.id}}" bindtap="chooseInscriptionContent">{{item.name}}</view>
+      </view>
+      <textarea
+        class="inscription-input {{inscriptionError?'invalid':''}}"
+        value="{{inscriptionDraft.text}}"
+        maxlength="20"
+        auto-height="true"
+        placeholder="写下名字、日期或祝语"
+        aria-label="写款内容，最多十二个字"
+        bindinput="inputInscription"
+      ></textarea>
+      <view wx:if="{{inscriptionError}}" class="inscription-error">{{inscriptionError}}</view>
+      <scroll-view wx:if="{{inscriptionDraft.contentType==='blessing'}}" class="blessing-scroll" scroll-x show-scrollbar="false">
+        <view class="blessing-row"><view wx:for="{{blessings}}" wx:key="*this" data-text="{{item}}" bindtap="chooseBlessing">{{item}}</view></view>
+      </scroll-view>
+
+      <view class="inscription-options">
+        <view class="option-line"><text>版式</text><scroll-view scroll-x><view><button wx:for="{{inscriptionLayouts}}" wx:key="id" class="{{inscriptionDraft.layoutId===item.id?'active':''}}" data-kind="layout" data-id="{{item.id}}" bindtap="chooseInscriptionOption">{{item.name}}</button></view></scroll-view></view>
+        <view class="option-line"><text>表现</text><scroll-view scroll-x><view><button wx:for="{{inscriptionStyles}}" wx:key="id" class="{{inscriptionDraft.styleId===item.id?'active':''}}" data-kind="style" data-id="{{item.id}}" bindtap="chooseInscriptionOption">{{item.name}}</button></view></scroll-view></view>
+        <view class="option-line"><text>字形</text><scroll-view scroll-x><view><button wx:for="{{inscriptionTypefaces}}" wx:key="id" class="{{inscriptionDraft.typefaceId===item.id?'active':''}}" data-kind="typeface" data-id="{{item.id}}" bindtap="chooseInscriptionOption">{{item.name}}</button></view></scroll-view></view>
+        <view class="option-line"><text>落点</text><scroll-view scroll-x><view><button wx:for="{{inscriptionAnchors}}" wx:key="id" class="{{inscriptionDraft.anchor===item.id?'active':''}}" data-kind="anchor" data-id="{{item.id}}" bindtap="chooseInscriptionOption">{{item.name}}</button></view></scroll-view></view>
+      </view>
+
+      <view wx:if="{{privateMarks.length}}" class="private-marks">
+        <text>本机私款</text>
+        <view class="private-row">
+          <view wx:for="{{privateMarks}}" wx:key="id" data-index="{{index}}" bindtap="applyPrivateMark">
+            <text class="private-mark-text">{{item.inscription.text}}</text>
+            <small data-index="{{index}}" catchtap="replacePrivateMark">用当前替换</small>
+          </view>
+        </view>
+      </view>
+      <view class="inscription-actions">
+        <button class="quiet" bindtap="saveCurrentPrivateMark">存为私款</button>
+        <button wx:if="{{work.decorationComposition.inscription}}" class="danger" bindtap="removeInscription">移除现款</button>
+        <button class="apply-mark" bindtap="applyInscription">落款</button>
+      </view>
+      <view class="privacy-note">款识只保存在本机，不会写入埋点或日志。</view>
+    </scroll-view>
+
+    <view class="decor-bottom paint-bottom">
+      <text>{{work.decorationComposition.inscription?'已写款':'写款可跳过'}}</text>
+      <button class="decor-complete" bindtap="completeStage">完成彩绘 →</button>
+    </view>
   </view>
 
   <view wx:else class="tray">
@@ -212,10 +421,6 @@
         </view>
       </view>
     </scroll-view>
-    <view wx:if="{{stageIndex===4}}" class="paint-row">
-      <view wx:for="{{paintColors}}" wx:key="*this" class="paint-dot" style="background:{{item}}" data-color="{{item}}" bindtap="choosePaint"></view>
-      <button class="symmetry" bindtap="cycleSymmetry">{{symmetryLabels[work.symmetry]}}</button>
-    </view>
     <view class="tray-bottom">
       <view class="tool-hint">{{toolName}}</view>
       <button class="complete" aria-label="进入下一道工序" bindtap="completeStage">

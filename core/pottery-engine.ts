@@ -1,4 +1,9 @@
 import { clayColor, glazeColor, PotteryWork } from "./model";
+import {
+  borderRepeatCount,
+  decorationColorHex,
+  motifShaderCode
+} from "./decoration";
 import { buildPotteryMesh } from "./pottery-mesh";
 import {
   advancePotteryTurntableFrame,
@@ -229,8 +234,132 @@ uniform float uExposure;
   uniform float uGlazeMix;
   uniform float uPattern;
   uniform float uMethod;
-  uniform float uClayWetness;
-  uniform float uClayGrain;
+uniform float uClayWetness;
+uniform float uClayGrain;
+uniform vec4 uLayerA[13];
+uniform vec4 uLayerB[13];
+uniform vec4 uLayerC[13];
+uniform float uFiredPreview;
+uniform float uKilnSeed;
+uniform float uMaxRadius;
+uniform sampler2D uInscription;
+uniform vec4 uInscriptionParams;
+uniform vec3 uInscriptionColor;
+
+float wrappedDistance(float value, float center){
+  return abs(fract(value - center + 0.5) - 0.5);
+}
+
+vec2 rotatePoint(vec2 point, float angle){
+  float cosine = cos(angle);
+  float sine = sin(angle);
+  return vec2(point.x * cosine - point.y * sine, point.x * sine + point.y * cosine);
+}
+
+float lineMask(float distanceValue, float width){
+  return 1.0 - smoothstep(width, width + 0.055, distanceValue);
+}
+
+float motifMask(float code, vec2 point){
+  float radius = length(point);
+  float angle = atan(point.y, point.x);
+  float mask = 0.0;
+  if (code < 1.5) {
+    float petals = abs(sin(angle * 4.0));
+    mask = lineMask(abs(radius - (0.38 + petals * 0.24)), 0.08);
+    mask = max(mask, 1.0 - smoothstep(0.14, 0.23, radius));
+  } else if (code < 2.5) {
+    float petals = abs(cos(angle * 5.0));
+    mask = lineMask(abs(radius - (0.34 + petals * 0.3)), 0.09);
+    mask = max(mask, lineMask(abs(radius - 0.22), 0.06));
+  } else if (code < 3.5) {
+    float branch = lineMask(abs(point.y - point.x * 0.38), 0.055);
+    float blossoms = 1.0 - smoothstep(0.12, 0.2, min(length(point-vec2(-.38,-.14)), min(length(point-vec2(.05,.04)), length(point-vec2(.42,.2)))));
+    mask = max(branch, blossoms);
+  } else if (code < 4.5) {
+    float stem = lineMask(abs(point.x), 0.07) * step(abs(point.y), .9);
+    float joints = lineMask(abs(fract((point.y + 1.0) * 2.4) - .5), .075);
+    float leaves = lineMask(abs(point.y - abs(point.x) * 1.7), .08) * step(.15, abs(point.x));
+    mask = max(stem, max(joints, leaves));
+  } else if (code < 5.5) {
+    float body = 1.0 - smoothstep(.0, .14, abs(length(point * vec2(.72, 1.35)) - .48));
+    float tail = lineMask(abs(abs(point.x + .55) - abs(point.y) * .75), .08) * step(-.9, point.x) * (1.0-step(-.38, point.x));
+    mask = max(body, tail);
+  } else if (code < 6.5) {
+    float neck = lineMask(abs(point.x + sin(point.y * 2.2) * .18), .07) * step(-.1, point.y);
+    float wings = lineMask(abs(abs(point.x) * .65 + point.y - .05), .075) * step(.15, abs(point.x));
+    mask = max(neck, wings);
+  } else if (code < 7.5) {
+    float wings = lineMask(abs(abs(point.x) * .75 + abs(point.y) - .55), .1);
+    mask = max(wings, lineMask(abs(point.x), .07));
+  } else if (code < 8.5) {
+    float wings = lineMask(abs(length(abs(point) - vec2(.34,.18)) - .25), .08);
+    mask = max(wings, lineMask(abs(point.x), .055));
+  } else if (code < 9.5) {
+    float coil = lineMask(abs(radius - (.25 + angle * .075)), .085);
+    mask = max(coil, lineMask(abs(point.y + sin(point.x * 5.0) * .18), .06));
+  } else if (code < 10.5) {
+    float cloudA = lineMask(abs(length(point - vec2(-.32,.02)) - .32), .075);
+    float cloudB = lineMask(abs(length(point - vec2(.18,.12)) - .4), .075);
+    mask = max(cloudA, max(cloudB, lineMask(abs(point.y + .28), .06) * step(-.55, point.x)));
+  } else if (code < 11.5) {
+    mask = lineMask(abs(point.y - sin(point.x * 5.5) * .22), .075);
+    mask = max(mask, lineMask(abs(point.y + .38 - sin(point.x * 5.5 + 1.7) * .17), .055));
+  } else if (code < 12.5) {
+    float box = max(abs(point.x), abs(point.y));
+    mask = lineMask(abs(box - .58), .07);
+    mask = max(mask, lineMask(min(abs(point.x), abs(point.y)), .065) * step(box, .5));
+  } else if (code < 13.5) {
+    vec2 cell = abs(fract((point + 1.0) * 2.0) - .5);
+    mask = lineMask(min(abs(cell.x - .32), abs(cell.y - .32)), .07);
+  } else if (code < 14.5) {
+    float head = lineMask(abs(length(point - vec2(0.0,.18)) - .38), .08);
+    mask = max(head, lineMask(abs(abs(point.x) + point.y - .55), .07));
+  } else if (code < 15.5) {
+    float petal = lineMask(abs(abs(point.x) + abs(point.y + .05) * .72 - .58), .075);
+    mask = max(petal, lineMask(abs(point.y + .58), .055));
+  } else if (code < 16.5) {
+    mask = lineMask(min(abs(abs(point.x) - .32), abs(abs(point.y) - .32)), .07);
+  } else if (code < 17.5) {
+    mask = lineMask(abs(length(point - vec2(0.0,.2)) - .34), .075);
+    mask = max(mask, lineMask(abs(abs(point.x) + point.y - .52), .06));
+  } else if (code < 18.5) {
+    mask = lineMask(abs(abs(point.x) + abs(point.y) * .68 - .55), .07);
+  } else if (code < 19.5) {
+    mask = lineMask(abs(point.y - sin(point.x * 6.283) * .23), .07);
+    mask = max(mask, lineMask(abs(point.y + .4 - sin(point.x * 6.283 + 1.4) * .17), .05));
+  } else if (code < 20.5) {
+    mask = lineMask(abs(point.y - sin(point.x * 5.2) * .32), .07);
+    mask = max(mask, 1.0 - smoothstep(.11,.19,length(point-vec2(.12,.06))));
+  } else {
+    float dots = 1.0 - smoothstep(.15,.25,length(point));
+    mask = dots;
+  }
+  return clamp(mask, 0.0, 1.0);
+}
+
+float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
+  if (layerA.x < .5) return 0.0;
+  float surfaceU = atan(vObjectPos.z, vObjectPos.x) / 6.2831853 + .5;
+  float density = mod(layerC.x, 32.0);
+  float anchor = floor(layerC.x / 32.0);
+  float surfaceMask = 1.0 - step(.48, vCavity);
+  vec2 point;
+  if (anchor > 4.5) {
+    float wantedCavity = anchor < 5.5 ? step(.52, vCavity) : (1.0 - step(-.62, normalize(vNormal).y));
+    if (anchor > 5.5) wantedCavity *= 1.0 - step(.35, vCavity);
+    point = vec2(-vObjectPos.x, vObjectPos.z) / max(.08, uMaxRadius * layerB.z * .72);
+    point = rotatePoint(point, layerB.w);
+    return motifMask(layerA.y, point) * wantedCavity;
+  }
+  float copies = layerA.w < .5 ? 1.0 : layerA.w < 1.5 ? 2.0 : layerA.w < 2.5 ? 4.0 : max(6.0, density);
+  float localU = fract((surfaceU - layerB.x) * copies + .5) - .5;
+  float horizontalScale = layerA.w > 2.5 ? .82 : .17 * layerB.z * copies;
+  point = vec2(localU / max(.035, horizontalScale), (vY - layerB.y) / max(.035, .16 * layerB.z));
+  point = rotatePoint(point, layerB.w);
+  float verticalMask = 1.0 - smoothstep(.72, 1.05, abs(point.y));
+  return motifMask(layerA.y, point) * surfaceMask * verticalMask;
+}
 
   float hash31(vec3 point){
     vec3 value = fract(point * 0.1031);
@@ -259,6 +388,7 @@ uniform float uExposure;
     // All marks are sampled in object space so their tiny irregularities rotate
     // with the clay instead of appearing painted onto the room.
     float angle = atan(vObjectPos.z, vObjectPos.x);
+    float surfaceU = angle / 6.2831853 + .5;
     float glazeMask = 1.0;
     if (uMethod == 1.0) glazeMask = smoothstep(0.48, 0.52, vY);
     else if (uMethod == 2.0) glazeMask = 0.78 + 0.14 * sin(vY * 31.0 + angle * 2.0);
@@ -287,12 +417,50 @@ uniform float uExposure;
     float fill = max(dot(normal, fillDirection), 0.0);
 
     vec3 material = mix(uBase, uGlaze, surfaceGlaze);
-  float mark = 0.0;
-  if (uPattern == 1.0) mark = smoothstep(0.88, 1.0, sin(vY * 72.0));
-  if (uPattern == 2.0) mark = smoothstep(0.83, 1.0, sin(angle * 8.0 + vY * 18.0));
-  if (uPattern == 3.0) mark = smoothstep(0.76, 1.0, cos(angle * 12.0) * cos((vY - 0.55) * 24.0));
-  if (uPattern == 4.0) mark = smoothstep(0.82, 1.0, sin(angle * 4.0 - vY * 22.0));
-    material = mix(material, uAccent, mark * 0.82);
+    float reliefShade = 0.0;
+    for (int layerIndex = 0; layerIndex < 13; layerIndex++) {
+      vec4 layerA = uLayerA[layerIndex];
+      vec4 layerB = uLayerB[layerIndex];
+      vec4 layerC = uLayerC[layerIndex];
+      float mark = decorationLayerMask(layerA, layerB, layerC);
+      float kilnVariation = .93 + .07 * noise3(vObjectPos * 13.0 + vec3(uKilnSeed * .0001 + float(layerIndex)));
+      mark *= mix(1.0, kilnVariation, uFiredPreview);
+      vec3 markColor = layerC.yzw;
+      if (layerA.z < .5) {
+        material *= 1.0 - mark * mix(.1, .2, uFiredPreview);
+        reliefShade = max(reliefShade, mark * .18);
+      } else if (layerA.z < 1.5) {
+        material = mix(material, markColor, mark * mix(.32, .48, uFiredPreview));
+        reliefShade = max(reliefShade, mark * .08);
+      } else if (layerA.z < 2.5) {
+        material = mix(material, markColor, mark * mix(.68, .88, uFiredPreview));
+      } else {
+        material = mix(material, markColor, mark * mix(.78, .92, uFiredPreview));
+      }
+    }
+
+    if (uInscriptionParams.z > .5) {
+      vec2 inscriptionUv = vec2(.5);
+      float inscriptionSurface = 0.0;
+      if (uInscriptionParams.x < .5) {
+        inscriptionUv = vec2(-vObjectPos.x, vObjectPos.z) / max(.08, uMaxRadius * .9) + .5;
+        inscriptionSurface = (1.0 - step(-.62, normalize(vNormal).y)) * (1.0 - step(.35, vCavity));
+      } else if (uInscriptionParams.x < 1.5) {
+        inscriptionUv = vec2(vObjectPos.x, vObjectPos.z) / max(.08, uMaxRadius * 1.1) + .5;
+        inscriptionSurface = step(.52, vCavity);
+      } else {
+        float inscriptionU = fract(surfaceU - .5 + .5);
+        inscriptionUv = vec2((inscriptionU - .5) * 3.2 + .5, (vY - .08) / .24);
+        inscriptionSurface = (1.0 - step(.48, vCavity));
+      }
+      float inscription = texture2D(uInscription, inscriptionUv).a * inscriptionSurface;
+      if (uInscriptionParams.y > 1.5) {
+        material *= 1.0 - inscription * .18;
+        reliefShade = max(reliefShade, inscription * .15);
+      } else {
+        material = mix(material, uInscriptionColor, inscription * .94);
+      }
+    }
 
     // Wheel rings, cloudy slip and sparse mineral grains make raw clay read as
     // damp material. Their amplitude stays below the point where it looks like
@@ -328,6 +496,7 @@ uniform float uExposure;
     float baseOcclusion = mix(0.8, 1.0, smoothstep(0.0, 0.18, vY));
     float cavityOcclusion = mix(1.0, 0.52, vCavity);
     vec3 linearColor = linearMaterial * diffuseLight * baseOcclusion * cavityOcclusion;
+    linearColor *= 1.0 - reliefShade;
     linearColor += (
       uKeyColor * (specular + broadWetHighlight) +
       uFillColor * (fillSpecular + fresnel)
@@ -372,6 +541,11 @@ export class PotteryEngine {
   private positionByteLength = 0;
   private normalByteLength = 0;
   private lighting = "workshop";
+  private geometrySignature = "";
+  private inscriptionTexture: any;
+  private inscriptionKey = "";
+  private inscriptionTextureReady = false;
+  private firedPreview = false;
 
   constructor(canvas: any, work: PotteryWork) {
     this.canvas = canvas;
@@ -389,6 +563,9 @@ export class PotteryEngine {
     this.nbo = gl.createBuffer();
     this.cbo = gl.createBuffer();
     this.ibo = gl.createBuffer();
+    this.inscriptionTexture = gl.createTexture();
+    this.initializeInscriptionTexture();
+    this.updateInscriptionTexture();
     this.rebuild();
     this.targetRpm = calculatePotteryTargetRpm(this.meshRadius, "idle");
     this.currentRpm = this.targetRpm;
@@ -439,8 +616,12 @@ export class PotteryEngine {
 
   update(work: PotteryWork, renderNow = true) {
     this.work = work;
-    this.rebuild();
-    this.ensureCameraFit();
+    const signature = this.workGeometrySignature(work);
+    if (signature !== this.geometrySignature) {
+      this.rebuild();
+      this.ensureCameraFit();
+    }
+    this.updateInscriptionTexture();
     if (renderNow) this.render();
   }
 
@@ -473,6 +654,106 @@ export class PotteryEngine {
   setLighting(value: string) {
     this.lighting = LIGHTING[value] ? value : "workshop";
     this.render();
+  }
+
+  setFiredPreview(value: boolean) {
+    this.firedPreview = value;
+    this.render();
+  }
+
+  private initializeInscriptionTexture() {
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this.inscriptionTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      1,
+      1,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      new Uint8Array([0, 0, 0, 0])
+    );
+  }
+
+  private updateInscriptionTexture() {
+    const inscription = this.work.decorationComposition.inscription;
+    const nextKey = inscription
+      ? `${inscription.text}|${inscription.layoutId}|${inscription.typefaceId}`
+      : "";
+    if (nextKey === this.inscriptionKey) return;
+    this.inscriptionKey = nextKey;
+    this.inscriptionTextureReady = false;
+    this.initializeInscriptionTexture();
+    if (!inscription || !wx.createOffscreenCanvas) return;
+    try {
+      const canvas = wx.createOffscreenCanvas({ type:"2d", width:512, height:512 });
+      const context = canvas.getContext("2d");
+      context.clearRect(0, 0, 512, 512);
+      context.fillStyle = "#ffffff";
+      context.strokeStyle = "#ffffff";
+      context.lineWidth = 13;
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      const family = inscription.typefaceId === "seal"
+        ? '"STKaiti", "KaiTi", serif'
+        : '"Songti SC", "STSong", serif';
+      const cleanText = inscription.text.replace(/\n/g, "");
+      const characters = Array.from(cleanText);
+      const drawCharacter = (character: string, x: number, y: number, size: number) => {
+        context.font = `${inscription.typefaceId === "seal" ? "bold " : ""}${size}px ${family}`;
+        context.fillText(character, x, y);
+      };
+
+      if (inscription.layoutId === "round") {
+        context.beginPath();
+        context.arc(256, 256, 190, 0, Math.PI * 2);
+        context.stroke();
+        characters.slice(0, 8).forEach((character, index) => {
+          const angle = -Math.PI / 2 + (index / Math.max(1, characters.length)) * Math.PI * 2;
+          drawCharacter(character, 256 + Math.cos(angle) * 118, 256 + Math.sin(angle) * 118, 58);
+        });
+      } else if (inscription.layoutId === "horizontal") {
+        const lines = inscription.text.split("\n").slice(0, 2);
+        lines.forEach((line: string, index: number) => {
+          context.font = `${index ? "48" : "64"}px ${family}`;
+          context.fillText(line, 256, lines.length === 1 ? 256 : 205 + index * 112);
+        });
+      } else if (inscription.layoutId === "vertical") {
+        characters.slice(0, 8).forEach((character, index) => {
+          const column = index >= 4 ? 0 : 1;
+          const row = index % 4;
+          drawCharacter(character, 210 + column * 92, 118 + row * 92, 64);
+        });
+      } else {
+        const columns = 2;
+        const rows = inscription.layoutId === "square_2x3" ? 3 : 2;
+        const visible = characters.slice(0, columns * rows);
+        context.strokeRect(82, 82, 348, 348);
+        visible.forEach((character, index) => {
+          const column = index % columns;
+          const row = Math.floor(index / columns);
+          drawCharacter(character, 169 + column * 174, 169 + row * (348 / rows), rows === 3 ? 72 : 88);
+        });
+      }
+
+      const gl = this.gl;
+      gl.bindTexture(gl.TEXTURE_2D, this.inscriptionTexture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+      this.inscriptionTextureReady = true;
+    } catch (_error) {
+      this.inscriptionTextureReady = false;
+    }
+  }
+
+  private workGeometrySignature(work: PotteryWork): string {
+    return `${work.height}|${work.outerRadius.join(",")}|${work.innerRadius.join(",")}`;
   }
 
   orbit(dx: number, dy: number) {
@@ -572,6 +853,7 @@ export class PotteryEngine {
     gl.deleteBuffer(this.nbo);
     gl.deleteBuffer(this.cbo);
     gl.deleteBuffer(this.ibo);
+    gl.deleteTexture(this.inscriptionTexture);
     gl.deleteProgram(this.program);
   }
 
@@ -586,6 +868,7 @@ export class PotteryEngine {
     );
     this.meshRadius = mesh.radius;
     this.meshHeight = mesh.height;
+    this.geometrySignature = this.workGeometrySignature(this.work);
 
     const gl = this.gl;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
@@ -712,7 +995,6 @@ export class PotteryEngine {
       gl.uniform3fv(gl.getUniformLocation(program, name), new Float32Array(value));
     set3("uBase", hexRgb(clayColor(this.work)));
     set3("uGlaze", hexRgb(glazeColor(this.work)));
-    set3("uAccent", hexRgb(this.work.paintColor));
     set3("uCamera", eye);
     const lighting = LIGHTING[this.lighting];
     set3("uKeyDirection", lighting.keyDirection);
@@ -737,22 +1019,98 @@ export class PotteryEngine {
 
     const glazeMix = this.work.stageIndex >= 2 ? (this.work.stageIndex >= 3 ? 1 : 0.72) : 0;
     gl.uniform1f(gl.getUniformLocation(program, "uGlazeMix"), glazeMix);
+    const techniqueCode: Record<string, number> = {
+      incise:0,
+      stamp:1,
+      underglaze:2,
+      overglaze:3
+    };
+    const repeatCode: Record<string, number> = {
+      single:0,
+      pair:1,
+      four:2,
+      band:3,
+      radial:4
+    };
+    const anchorCode: Record<string, number> = {
+      rim:0,
+      neck:1,
+      shoulder:2,
+      belly:3,
+      foot:4,
+      well:5,
+      base:6
+    };
+    const layerA = new Float32Array(13 * 4);
+    const layerB = new Float32Array(13 * 4);
+    const layerC = new Float32Array(13 * 4);
+    const layers = [
+      ...this.work.decorationComposition.layers,
+      ...this.work.decorationComposition.stamps
+    ].slice(0, 13);
+    layers.forEach((layer, index) => {
+      const offset = index * 4;
+      const color = hexRgb(decorationColorHex(layer.colorId));
+      layerA.set([
+        layer.visible ? 1 : 0,
+        motifShaderCode(layer.motifId),
+        techniqueCode[layer.technique] ?? 0,
+        repeatCode[layer.repeatMode] ?? 0
+      ], offset);
+      layerB.set([
+        layer.u,
+        layer.v,
+        layer.scale,
+        (layer.rotation * Math.PI) / 180
+      ], offset);
+      layerC.set([
+        (anchorCode[layer.anchor] ?? 3) * 32 +
+          (layer.repeatMode === "band" ? borderRepeatCount(layer.density) : layer.density),
+        color[0],
+        color[1],
+        color[2]
+      ], offset);
+    });
+    gl.uniform4fv(gl.getUniformLocation(program, "uLayerA[0]"), layerA);
+    gl.uniform4fv(gl.getUniformLocation(program, "uLayerB[0]"), layerB);
+    gl.uniform4fv(gl.getUniformLocation(program, "uLayerC[0]"), layerC);
     gl.uniform1f(
-      gl.getUniformLocation(program, "uPattern"),
-      this.work.paintPattern || this.decorationPattern()
+      gl.getUniformLocation(program, "uFiredPreview"),
+      this.firedPreview || this.work.stageIndex >= 3 ? 1 : 0
     );
+    gl.uniform1f(
+      gl.getUniformLocation(program, "uKilnSeed"),
+      this.work.decorationComposition.kilnSeed % 100000
+    );
+    gl.uniform1f(gl.getUniformLocation(program, "uMaxRadius"), this.meshRadius);
+
+    const inscription = this.work.decorationComposition.inscription;
+    const inscriptionAnchor: Record<string, number> = { base:0, well:1, lower_belly:2 };
+    const inscriptionStyle: Record<string, number> = { blue:0, seal_red:1, incised:2 };
+    const inscriptionColor = inscription?.styleId === "seal_red"
+      ? "#a84f43"
+      : inscription?.styleId === "incised"
+        ? "#6f675b"
+        : "#315e73";
+    set3("uInscriptionColor", hexRgb(inscriptionColor));
+    gl.uniform4fv(
+      gl.getUniformLocation(program, "uInscriptionParams"),
+      new Float32Array([
+        inscription ? (inscriptionAnchor[inscription.anchor] ?? 0) : 0,
+        inscription ? (inscriptionStyle[inscription.styleId] ?? 0) : 0,
+        inscription && this.inscriptionTextureReady ? 1 : 0,
+        1
+      ])
+    );
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.inscriptionTexture);
+    gl.uniform1i(gl.getUniformLocation(program, "uInscription"), 0);
     const methods: Record<string, number> = { full: 0, half: 1, brush: 2, splash: 3 };
     gl.uniform1f(
       gl.getUniformLocation(program, "uMethod"),
       methods[this.work.glazeMethod] ?? 0
     );
     gl.drawElements(gl.TRIANGLES, this.count, gl.UNSIGNED_SHORT, 0);
-  }
-
-  private decorationPattern(): number {
-    if (!this.work.decorations.length) return 0;
-    const type = this.work.decorations[this.work.decorations.length - 1].type;
-    return type === "carve" ? 1 : type === "impress" ? 2 : type === "stamp" ? 3 : 4;
   }
 
   private loop(timestamp?: number) {

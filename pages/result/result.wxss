@@ -273,3 +273,67 @@
   border-radius: 38%;
   box-shadow: 20rpx 30rpx 38rpx rgba(0, 0, 0, 0.38);
 }
+.result-fallback-pattern {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  transform: translate(-50%, -50%);
+  color: #214f69;
+  font-family: "Songti SC", serif;
+  font-size: 82rpx;
+  text-shadow: 0 2rpx 0 rgba(255,255,255,.18);
+}
+.result-fallback-mark {
+  position: absolute;
+  right: 34rpx;
+  bottom: 38rpx;
+  max-width: 80rpx;
+  padding: 5rpx;
+  border: 3rpx solid #a84f43;
+  color: #a84f43;
+  font-family: "Songti SC", serif;
+  font-size: 15rpx;
+  line-height: 1.15;
+  white-space: pre-line;
+}
+.decor-info {
+  max-height: 76vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.decor-info .info-row text:last-child {
+  max-width: 70%;
+  text-align: right;
+  white-space: pre-line;
+}
+.meaning-card {
+  margin: 18rpx 0 4rpx;
+  padding: 18rpx;
+  border-radius: 18rpx;
+  color: #3f5148;
+  background: #e3ebe5;
+}
+.meaning-card text {
+  display: block;
+  margin-bottom: 7rpx;
+  color: #52796a;
+  font-size: 18rpx;
+  font-weight: 700;
+}
+.meaning-card view {
+  font-size: 20rpx;
+  line-height: 1.5;
+}
+.continue-pattern {
+  width: 100%;
+  height: 88rpx;
+  margin-top: 22rpx;
+  border-radius: 20rpx;
+  color: #fff;
+  background: #496f5f;
+  font-size: 22rpx;
+  line-height: 88rpx;
+  font-weight: 700;
+}
+.continue-pattern:after { border: 0; }
+.decor-info .info-buttons button { height: 88rpx; line-height: 88rpx; }

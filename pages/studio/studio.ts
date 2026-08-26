@@ -142,6 +142,64 @@ function wallThicknessLabel(thickness: number): string {
   return "加厚";
 }
 
+type DecorCatalogTabId = "pattern" | "ornament" | "inscription" | "carving";
+
+const DECOR_CATALOG_TABS: { id: DecorCatalogTabId; name: string; seal: string }[] = [
+  { id:"pattern", name:"图案", seal:"绘" },
+  { id:"ornament", name:"纹样", seal:"纹" },
+  { id:"inscription", name:"写款", seal:"款" },
+  { id:"carving", name:"刻花", seal:"刻" }
+];
+
+const DECOR_SIDE_MENUS = Array.from({ length:4 }, (_, index) => ({
+  id:`menu_${index + 1}`,
+  name:`菜单 ${index + 1}`,
+  index
+}));
+
+function rotateOptions<T>(values: T[], offset: number, count = 6): T[] {
+  if (!values.length) return [];
+  return Array.from({ length:Math.min(count, values.length) }, (_, index) =>
+    values[(offset + index) % values.length]
+  );
+}
+
+function decorCatalogPool(tab: DecorCatalogTabId, menuIndex: number) {
+  if (tab === "pattern") {
+    const families = ["flora", "animal", "cloud_water", "symbol"];
+    const family = families[menuIndex] || "geometry";
+    const familyItems = MOTIFS.filter((motif) =>
+      motif.family === family || (menuIndex === 3 && motif.family === "geometry")
+    );
+    return familyItems.length >= 3 ? familyItems : rotateOptions(MOTIFS, menuIndex * 4);
+  }
+  if (tab === "ornament") return rotateOptions(BORDERS, menuIndex * 2, 6);
+  if (tab === "inscription") {
+    return rotateOptions(MOTIFS.filter((motif) => motif.roles.includes("stamp")), menuIndex * 3, 6);
+  }
+  return rotateOptions(MOTIFS.filter((motif) => motif.techniques.includes("incise")), menuIndex * 3, 6);
+}
+
+function decorCatalogRole(tab: DecorCatalogTabId): "main" | "border" | "stamp" {
+  if (tab === "ornament") return "border";
+  if (tab === "inscription") return "stamp";
+  return "main";
+}
+
+function decorCatalogTechnique(tab: DecorCatalogTabId, motifId: string): DecorationTechnique {
+  const motif = motifById(motifId);
+  if (tab === "carving") return "incise";
+  if (tab === "inscription" && motif.techniques.includes("stamp")) return "stamp";
+  if (motif.techniques.includes("underglaze")) return "underglaze";
+  return motif.techniques[0];
+}
+
+function decorCatalogColor(tab: DecorCatalogTabId, technique: DecorationTechnique): string {
+  if (technique === "incise") return "clay_shadow";
+  if (tab === "inscription") return "jade_shadow";
+  return tab === "ornament" ? "cobalt_light" : "cobalt";
+}
+
 Page({
   data: {
     ready: false,
@@ -174,6 +232,15 @@ Page({
     ],
     decorMode: "template",
     decorSection: "main",
+    decorTabs: DECOR_CATALOG_TABS,
+    decorTab: "pattern" as DecorCatalogTabId,
+    decorSideMenus: DECOR_SIDE_MENUS,
+    decorMenuId: DECOR_SIDE_MENUS[0].id,
+    decorCatalogItems: [] as any[],
+    decorTrayOpen: true,
+    decorFullscreen: false,
+    decorToolsCollapsed: false,
+    decorToolStyle: "",
     stylePacks: STYLE_PACKS,
     stylePackId: "yuan_blue",
     templates: DECORATION_TEMPLATES.map((item) => ({ ...item, glyph:item.name.slice(0, 1), recommended:true })),
@@ -257,6 +324,14 @@ Page({
   decorateStartedAt: 0,
   inscriptionReminderShown: false,
   previewStartedAt: 0,
+  decorPanelDrag: null as null | {
+    startX: number;
+    startY: number;
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  },
 
   onLoad(query: any) {
     const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
@@ -424,6 +499,27 @@ Page({
       motif.anchors.some((anchor) => anchors.includes(anchor)) &&
       (this.work!.mode === "free" || motif.stylePackIds.includes(composition.stylePackId))
     );
+    const menuIndex = DECOR_SIDE_MENUS.find((menu) => menu.id === this.data.decorMenuId)?.index || 0;
+    const catalogItems = decorCatalogPool(this.data.decorTab as DecorCatalogTabId, menuIndex).map((motif) => {
+      const role = decorCatalogRole(this.data.decorTab as DecorCatalogTabId);
+      const technique = decorCatalogTechnique(this.data.decorTab as DecorCatalogTabId, motif.id);
+      const key = `${this.data.decorTab}:${motif.id}`;
+      const match = all.find((layer) =>
+        layer.catalogKey === key ||
+        (!layer.catalogKey && layer.motifId === motif.id && layer.role === role && layer.technique === technique)
+      );
+      return {
+        id:motif.id,
+        key,
+        name:motif.name,
+        glyph:motif.glyph,
+        role,
+        technique,
+        checked:!!match,
+        layerId:match?.layerId || "",
+        patternClass:`motif-ink-${(motif.shaderCode % 6) + 1}`
+      };
+    });
     return {
       stylePackId:composition.stylePackId,
       motifs:this.work.mode === "relaxed" ? compatibleMotifs.slice(0, 4) : compatibleMotifs,
@@ -442,8 +538,10 @@ Page({
         glyph:motifById(layer.motifId).glyph,
         roleName:roleNames[layer.role],
         selected:layer.layerId === this.data.selectedDecorationId,
-        visible:layer.visible
+        visible:layer.visible,
+        patternClass:`motif-ink-${(motifById(layer.motifId).shaderCode % 6) + 1}`
       })),
+      decorCatalogItems:catalogItems,
       selectedDecoration:selected,
       selectedDecorationName:selected ? motifById(selected.motifId).name : "",
       selectedDecorationRole:selected ? roleNames[selected.role] : "",
@@ -693,6 +791,129 @@ Page({
     this.setData({ decorSection:section, pendingStampMotifId:"" });
   },
 
+  selectDecorTab(event: WechatMiniprogramTouchEvent) {
+    const tab = event.currentTarget.dataset.id as DecorCatalogTabId;
+    if (!DECOR_CATALOG_TABS.some((item) => item.id === tab)) return;
+    this.setData({
+      decorTab:tab,
+      decorMenuId:DECOR_SIDE_MENUS[0].id,
+      pendingStampMotifId:""
+    }, () => this.setData(this.decorationData()));
+    this.vibrate();
+  },
+
+  selectDecorMenu(event: WechatMiniprogramTouchEvent) {
+    const id = event.currentTarget.dataset.id;
+    if (!DECOR_SIDE_MENUS.some((item) => item.id === id)) return;
+    this.setData({ decorMenuId:id }, () => this.setData(this.decorationData()));
+  },
+
+  toggleDecorCatalogItem(event: WechatMiniprogramTouchEvent) {
+    if (!this.work) return;
+    const key = event.currentTarget.dataset.key;
+    const motifId = event.currentTarget.dataset.id;
+    const tab = String(key || "").split(":")[0] as DecorCatalogTabId;
+    const motif = ALL_DECORATION_MOTIFS.find((item) => item.id === motifId);
+    if (!key || !motif || !DECOR_CATALOG_TABS.some((item) => item.id === tab)) return;
+    const composition = this.work.decorationComposition;
+    const all = [...composition.layers, ...composition.stamps];
+    const role = decorCatalogRole(tab);
+    const technique = decorCatalogTechnique(tab, motifId);
+    const existing = all.find((layer) =>
+      layer.catalogKey === key ||
+      (!layer.catalogKey && layer.motifId === motifId && layer.role === role && layer.technique === technique)
+    );
+    this.pushHistory();
+    if (existing) {
+      composition.layers = composition.layers.filter((layer) => layer.layerId !== existing.layerId);
+      composition.stamps = composition.stamps.filter((layer) => layer.layerId !== existing.layerId);
+      const remaining = [...composition.layers, ...composition.stamps];
+      this.setData({
+        selectedDecorationId:this.data.selectedDecorationId === existing.layerId
+          ? remaining[0]?.layerId || ""
+          : this.data.selectedDecorationId
+      });
+    } else if (role === "stamp") {
+      if (composition.stamps.length >= MAX_DECORATION_STAMPS) {
+        this.history.pop();
+        wx.showToast({ title:"写款与落印最多八枚", icon:"none" });
+        return;
+      }
+      const stamp = createDecorationStamp(motifId, this.work.shapeId, composition.stylePackId);
+      stamp.catalogKey = key;
+      stamp.technique = technique;
+      stamp.colorId = decorCatalogColor(tab, technique);
+      composition.stamps.push(stamp);
+      this.setData({ selectedDecorationId:stamp.layerId });
+    } else {
+      if (composition.layers.length >= MAX_DECORATION_LAYERS) {
+        this.history.pop();
+        wx.showToast({ title:"器身图层最多五层，可先移除一枚", icon:"none" });
+        return;
+      }
+      const layer = createDecorationLayer(motifId, role, this.work.shapeId, composition.stylePackId, {
+        catalogKey:key,
+        technique,
+        colorId:decorCatalogColor(tab, technique),
+        scale:role === "border" ? .72 : 1
+      });
+      composition.layers.push(layer);
+      this.setData({ selectedDecorationId:layer.layerId });
+    }
+    delete composition.templateId;
+    this.changed();
+    this.syncData();
+    track("decor_layer_add", { role, motif_id:motifId, technique_id:technique });
+    this.vibrate();
+  },
+
+  toggleDecorTray() {
+    this.setData({ decorTrayOpen:!this.data.decorTrayOpen }, () => {
+      setTimeout(() => this.refreshCanvasLayout(), 20);
+    });
+  },
+
+  toggleDecorFullscreen() {
+    if (this.work?.currentStage !== "decorate") return;
+    this.setData({ decorFullscreen:!this.data.decorFullscreen }, () => {
+      setTimeout(() => this.refreshCanvasLayout(), 20);
+    });
+  },
+
+  toggleDecorTools() {
+    this.setData({ decorToolsCollapsed:!this.data.decorToolsCollapsed });
+  },
+
+  startDecorToolDrag(event: any) {
+    const touch = event.touches?.[0];
+    if (!touch) return;
+    wx.createSelectorQuery().in(this).select("#decorToolPanel").boundingClientRect((rect: any) => {
+      if (!rect) return;
+      this.decorPanelDrag = {
+        startX:touch.clientX,
+        startY:touch.clientY,
+        left:rect.left,
+        top:rect.top,
+        width:rect.width,
+        height:rect.height
+      };
+    }).exec();
+  },
+
+  moveDecorToolPanel(event: any) {
+    const touch = event.touches?.[0];
+    const drag = this.decorPanelDrag;
+    if (!touch || !drag) return;
+    const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+    const left = clamp(drag.left + touch.clientX - drag.startX, 6, system.windowWidth - drag.width - 6);
+    const top = clamp(drag.top + touch.clientY - drag.startY, this.data.statusBarHeight + 6, system.windowHeight - drag.height - 8);
+    this.setData({ decorToolStyle:`left:${left}px; top:${top}px; right:auto;` });
+  },
+
+  endDecorToolDrag() {
+    this.decorPanelDrag = null;
+  },
+
   chooseStylePack(event: WechatMiniprogramTouchEvent) {
     if (!this.work) return;
     const id = event.currentTarget.dataset.id as StylePackId;
@@ -823,6 +1044,8 @@ Page({
     else if (action === "down") selected.v -= .045;
     else if (action === "size") {
       selected.scale = selected.scale < .86 ? 1 : selected.scale < 1.16 ? 1.32 : .72;
+      selected.scaleX = selected.scale;
+      selected.scaleY = selected.scale;
     } else if (action === "rotate") {
       selected.rotation = selected.rotation >= 165 ? -180 : selected.rotation + 15;
     } else if (action === "density") {
@@ -862,6 +1085,36 @@ Page({
     this.vibrate();
   },
 
+  adjustDecorAxis(event: WechatMiniprogramTouchEvent) {
+    if (!this.work) return;
+    const selected = this.selectedDecoration();
+    if (!selected) return;
+    const axis = event.currentTarget.dataset.axis;
+    const direction = Number(event.currentTarget.dataset.direction) < 0 ? -1 : 1;
+    if (axis !== "x" && axis !== "y") return;
+    this.pushHistory();
+    if (axis === "x") selected.scaleX = clamp((selected.scaleX ?? selected.scale) + direction * .1, .42, 1.65);
+    else selected.scaleY = clamp((selected.scaleY ?? selected.scale) + direction * .1, .42, 1.65);
+    selected.scale = ((selected.scaleX ?? selected.scale) + (selected.scaleY ?? selected.scale)) / 2;
+    Object.assign(selected, clampDecorationLayer(selected, this.work.shapeId));
+    this.changed();
+    this.syncData();
+    track("decor_layer_adjust", { adjust_type:axis === "x" ? "scale_x" : "scale_y" });
+    this.vibrate();
+  },
+
+  flipSelectedDecoration() {
+    if (!this.work) return;
+    const selected = this.selectedDecoration();
+    if (!selected) return;
+    this.pushHistory();
+    selected.flipY = !selected.flipY;
+    this.changed();
+    this.syncData();
+    track("decor_layer_adjust", { adjust_type:"flip_y" });
+    this.vibrate();
+  },
+
   anchorRangeForSelected(anchor: DecorationAnchor): [number, number] {
     if (!this.work) return [0, 1];
     // Reuse the clamping result rather than exposing screen coordinates as
@@ -889,7 +1142,8 @@ Page({
     this.pushHistory();
     composition.layers = composition.layers.filter((layer) => layer.layerId !== id);
     composition.stamps = composition.stamps.filter((layer) => layer.layerId !== id);
-    this.setData({ selectedDecorationId:"" });
+    const remaining = [...composition.layers, ...composition.stamps];
+    this.setData({ selectedDecorationId:remaining[0]?.layerId || "" });
     this.changed();
     this.syncData();
     this.vibrate();
@@ -1120,7 +1374,7 @@ Page({
     if (!touch) return;
     const local = this.local(touch);
     const hit = this.hitPot(local.x, local.y);
-    if (hit && this.work.currentStage === "decorate") {
+    if (hit && this.work.currentStage === "decorate" && !this.data.decorFullscreen) {
       const snapshot = cloneWork(this.work);
       let selected = this.selectedDecoration();
       if (this.data.pendingStampMotifId) {

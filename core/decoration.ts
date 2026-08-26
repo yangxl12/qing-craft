@@ -18,6 +18,7 @@ export type InscriptionAnchor = "base" | "well" | "lower_belly";
 
 export interface DecorationLayer {
   layerId: string;
+  catalogKey?: string;
   motifId: string;
   role: DecorationRole;
   anchor: DecorationAnchor;
@@ -27,6 +28,9 @@ export interface DecorationLayer {
   u: number;
   v: number;
   scale: number;
+  scaleX: number;
+  scaleY: number;
+  flipY: boolean;
   rotation: number;
   density: number;
   visible: boolean;
@@ -332,6 +336,9 @@ export function createDecorationLayer(
   const technique = overrides.technique || defaultTechnique(stylePackId, motif);
   return clampDecorationLayer({
     layerId:overrides.layerId || layerId(),
+    catalogKey:typeof overrides.catalogKey === "string"
+      ? overrides.catalogKey.slice(0, 64)
+      : undefined,
     motifId:motif.id,
     role,
     anchor,
@@ -341,6 +348,9 @@ export function createDecorationLayer(
     u:overrides.u ?? .5,
     v:overrides.v ?? (range[0] + range[1]) / 2,
     scale:overrides.scale ?? 1,
+    scaleX:overrides.scaleX ?? overrides.scale ?? 1,
+    scaleY:overrides.scaleY ?? overrides.scale ?? 1,
+    flipY:overrides.flipY === true,
     rotation:overrides.rotation ?? 0,
     density:overrides.density ?? 1,
     visible:overrides.visible !== false
@@ -381,6 +391,9 @@ export function clampDecorationLayer<T extends DecorationLayer | DecorationStamp
     u:((finite(layer.u, .5) % 1) + 1) % 1,
     v:Math.max(range[0], Math.min(range[1], finite(layer.v, (range[0] + range[1]) / 2))),
     scale:Math.max(.42, Math.min(1.65, finite(layer.scale, 1))),
+    scaleX:Math.max(.42, Math.min(1.65, finite(layer.scaleX, finite(layer.scale, 1)))),
+    scaleY:Math.max(.42, Math.min(1.65, finite(layer.scaleY, finite(layer.scale, 1)))),
+    flipY:layer.flipY === true,
     rotation:Math.max(-180, Math.min(180, finite(layer.rotation, 0))),
     density:Math.max(.65, Math.min(1.8, finite(layer.density, 1))),
     visible:layer.visible !== false

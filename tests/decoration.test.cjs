@@ -128,6 +128,30 @@ assert.ok(
   "装饰大小必须在渲染安全范围",
 );
 
+const legacyTransform = createDecorationStamp("plum", "vase", "yuan_blue");
+legacyTransform.scale = 1.24;
+delete legacyTransform.scaleX;
+delete legacyTransform.scaleY;
+delete legacyTransform.flipY;
+const upgradedTransform = clampDecorationLayer(legacyTransform, "vase");
+assert.equal(upgradedTransform.scaleX, 1.24, "旧作品横向大小应从统一大小恢复");
+assert.equal(upgradedTransform.scaleY, 1.24, "旧作品纵向大小应从统一大小恢复");
+assert.equal(upgradedTransform.flipY, false, "旧作品默认不翻转纹样");
+
+const transformedWork = createWork("vase", "porcelain", "free");
+const transformedStamp = createDecorationStamp("plum", "vase", "yuan_blue");
+transformedStamp.catalogKey = "inscription:plum";
+transformedStamp.scaleX = 0.72;
+transformedStamp.scaleY = 1.42;
+transformedStamp.flipY = true;
+transformedWork.decorationComposition.stamps.push(transformedStamp);
+const restoredTransform = validateWork(JSON.parse(JSON.stringify(transformedWork)))
+  .decorationComposition.stamps[0];
+assert.equal(restoredTransform.catalogKey, "inscription:plum", "菜单勾选来源必须随作品恢复");
+assert.equal(restoredTransform.scaleX, 0.72, "横向伸缩必须随作品恢复");
+assert.equal(restoredTransform.scaleY, 1.42, "纵向伸缩必须随作品恢复");
+assert.equal(restoredTransform.flipY, true, "上下翻转必须随作品恢复");
+
 assert.equal(
   validateInscriptionText("掌心作\n2026.8.25"),
   "",

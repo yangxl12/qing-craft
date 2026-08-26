@@ -343,20 +343,31 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
   float surfaceU = atan(vObjectPos.z, vObjectPos.x) / 6.2831853 + .5;
   float density = mod(layerC.x, 32.0);
   float anchor = floor(layerC.x / 32.0);
+  float rotation = (fract(layerA.z) * 1000.0 - 180.0) * .0174532925;
+  float verticalDirection = sign(layerB.w);
+  float verticalScale = max(.42, abs(layerB.w));
   float surfaceMask = 1.0 - step(.48, vCavity);
   vec2 point;
   if (anchor > 4.5) {
     float wantedCavity = anchor < 5.5 ? step(.52, vCavity) : (1.0 - step(-.62, normalize(vNormal).y));
     if (anchor > 5.5) wantedCavity *= 1.0 - step(.35, vCavity);
-    point = vec2(-vObjectPos.x, vObjectPos.z) / max(.08, uMaxRadius * layerB.z * .72);
-    point = rotatePoint(point, layerB.w);
+    point = vec2(
+      -vObjectPos.x / max(.08, uMaxRadius * layerB.z * .72),
+      vObjectPos.z / max(.08, uMaxRadius * verticalScale * .72)
+    );
+    point.y *= verticalDirection;
+    point = rotatePoint(point, rotation);
     return motifMask(layerA.y, point) * wantedCavity;
   }
   float copies = layerA.w < .5 ? 1.0 : layerA.w < 1.5 ? 2.0 : layerA.w < 2.5 ? 4.0 : max(6.0, density);
   float localU = fract((surfaceU - layerB.x) * copies + .5) - .5;
   float horizontalScale = layerA.w > 2.5 ? .82 : .17 * layerB.z * copies;
-  point = vec2(localU / max(.035, horizontalScale), (vY - layerB.y) / max(.035, .16 * layerB.z));
-  point = rotatePoint(point, layerB.w);
+  point = vec2(
+    localU / max(.035, horizontalScale),
+    (vY - layerB.y) / max(.035, .16 * verticalScale)
+  );
+  point.y *= verticalDirection;
+  point = rotatePoint(point, rotation);
   float verticalMask = 1.0 - smoothstep(.72, 1.05, abs(point.y));
   return motifMask(layerA.y, point) * surfaceMask * verticalMask;
 }
@@ -1051,17 +1062,19 @@ export class PotteryEngine {
     layers.forEach((layer, index) => {
       const offset = index * 4;
       const color = hexRgb(decorationColorHex(layer.colorId));
+      const techniqueAndRotation = (techniqueCode[layer.technique] ?? 0) +
+        (clamp(layer.rotation, -180, 180) + 180) / 1000;
       layerA.set([
         layer.visible ? 1 : 0,
         motifShaderCode(layer.motifId),
-        techniqueCode[layer.technique] ?? 0,
+        techniqueAndRotation,
         repeatCode[layer.repeatMode] ?? 0
       ], offset);
       layerB.set([
         layer.u,
         layer.v,
-        layer.scale,
-        (layer.rotation * Math.PI) / 180
+        layer.scaleX ?? layer.scale,
+        (layer.flipY ? -1 : 1) * (layer.scaleY ?? layer.scale)
       ], offset);
       layerC.set([
         (anchorCode[layer.anchor] ?? 3) * 32 +

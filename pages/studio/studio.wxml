@@ -1,4 +1,4 @@
-<view class="studio {{reduceMotion?'reduce-motion':''}}">
+<view class="studio {{reduceMotion?'reduce-motion':''}} {{stageIndex===1?'decor-stage':''}} {{decorTrayOpen?'decor-menu-open':'decor-menu-closed'}} {{decorFullscreen?'decor-fullscreen':''}}">
   <view wx:if="{{stageIndex===0}}" class="shaping-workshop-bg" aria-hidden="true">
     <image
       class="shaping-workshop-image"
@@ -6,6 +6,10 @@
       mode="aspectFill"
     ></image>
     <view class="shaping-workshop-grade"></view>
+  </view>
+  <view wx:elif="{{stageIndex===1}}" class="decor-workshop-bg" aria-hidden="true">
+    <image class="decor-workshop-image" src="/assets/studio-decoration-workshop.jpg" mode="aspectFill"></image>
+    <view class="decor-workshop-grade"></view>
   </view>
   <view wx:else class="workshop-bg">
     <view class="wall-plaster"></view>
@@ -40,6 +44,13 @@
 
   <view class="safe-top" style="height:{{statusBarHeight}}px"></view>
   <view class="topbar">
+    <view
+      wx:if="{{stageIndex===1}}"
+      class="decor-fullscreen-trigger"
+      role="button"
+      aria-label="{{decorFullscreen?'退出全屏视图':'进入瓷器全屏视图'}}"
+      bindtap="toggleDecorFullscreen"
+    ><text>{{decorFullscreen?'退出':'全屏'}}</text><view>{{decorFullscreen?'↙':'⛶'}}</view></view>
     <view class="work-title">
       <view>{{stageName}} · {{stageIndex+1}} / 7</view>
       <text class="{{saveState==='已保存'?'saved':''}}">{{saveState}}</text>
@@ -101,6 +112,39 @@
           <view class="slip-mark"></view>
           <view class="wheel-glint"></view>
         </view>
+      </view>
+    </view>
+
+    <view
+      wx:if="{{stageIndex===1&&selectedDecoration&&!fallback&&!decorFullscreen}}"
+      id="decorToolPanel"
+      class="decor-tool-panel {{decorToolsCollapsed?'collapsed':''}}"
+      style="{{decorToolStyle}}"
+    >
+      <view
+        class="decor-tool-head"
+        catchtouchstart="startDecorToolDrag"
+        catchtouchmove="moveDecorToolPanel"
+        catchtouchend="endDecorToolDrag"
+        catchtouchcancel="endDecorToolDrag"
+      >
+        <view class="decor-tool-title"><text>纹样调校</text><small>按住拖动</small></view>
+        <view class="decor-tool-fold" role="button" aria-label="{{decorToolsCollapsed?'展开操作按钮':'收起操作按钮'}}" catchtap="toggleDecorTools">{{decorToolsCollapsed?'＋':'−'}}</view>
+      </view>
+      <view wx:if="{{!decorToolsCollapsed}}" class="decor-tool-actions">
+        <view class="decor-tool-command danger" role="button" aria-label="删除当前图案" bindtap="deleteSelectedDecoration"><text>删</text><small>删除</small></view>
+        <view class="decor-tool-command {{!canUndo?'disabled':''}}" role="button" aria-label="撤回上一步" bindtap="undo"><text>↶</text><small>撤回</small></view>
+        <view class="decor-axis-command">
+          <view role="button" aria-label="减小当前图案横向尺寸" data-axis="x" data-direction="-1" bindtap="adjustDecorAxis">−</view>
+          <text>横向伸缩</text>
+          <view role="button" aria-label="增大当前图案横向尺寸" data-axis="x" data-direction="1" bindtap="adjustDecorAxis">＋</view>
+        </view>
+        <view class="decor-axis-command">
+          <view role="button" aria-label="减小当前图案纵向尺寸" data-axis="y" data-direction="-1" bindtap="adjustDecorAxis">−</view>
+          <text>纵向伸缩</text>
+          <view role="button" aria-label="增大当前图案纵向尺寸" data-axis="y" data-direction="1" bindtap="adjustDecorAxis">＋</view>
+        </view>
+        <view class="decor-tool-command flip" role="button" aria-label="上下翻转当前图案" bindtap="flipSelectedDecoration"><text>↕</text><small>上下翻转</small></view>
       </view>
     </view>
 
@@ -215,111 +259,88 @@
     </button>
   </view>
 
-  <view wx:elif="{{stageIndex===1}}" class="decor-tray">
-    <view class="decor-head">
-      <view class="decor-mode-tabs">
-        <view class="{{decorMode==='template'?'active':''}}" role="button" aria-label="选择一套完整纹样" data-id="template" bindtap="setDecorMode">选一套</view>
-        <view class="{{decorMode==='custom'?'active':''}}" role="button" aria-label="自己搭配纹样" data-id="custom" bindtap="setDecorMode">自己搭</view>
-      </view>
-      <view
-        class="fired-peek {{firedPreview?'active':''}}"
-        role="button"
-        aria-label="按住查看烧后效果"
-        bindtouchstart="previewFiredStart"
-        bindtouchend="previewFiredEnd"
-        bindtouchcancel="previewFiredEnd"
-      >{{firedPreview?'烧后显色':'按住看烧后'}}</view>
-    </view>
+  <view wx:elif="{{stageIndex===1}}" class="decor-tray {{decorTrayOpen?'expanded':'collapsed'}}">
+    <view
+      class="decor-tray-toggle"
+      role="button"
+      aria-label="{{decorTrayOpen?'收起全部装饰菜单':'展开全部装饰菜单'}}"
+      bindtap="toggleDecorTray"
+    ><view>{{decorTrayOpen?'⌄':'⌃'}}</view><text>{{decorTrayOpen?'收起':'展开'}}</text></view>
 
-    <scroll-view class="style-scroll" scroll-x show-scrollbar="false">
-      <view class="style-row">
-        <view
-          wx:for="{{stylePacks}}"
-          wx:key="id"
-          class="style-chip {{stylePackId===item.id?'active':''}}"
-          role="button"
-          aria-label="切换到{{item.name}}"
-          data-id="{{item.id}}"
-          bindtap="chooseStylePack"
-        ><text>{{item.name}}</text><small>{{item.note}}</small></view>
-      </view>
-    </scroll-view>
-
-    <scroll-view wx:if="{{decorMode==='template'}}" class="template-scroll" scroll-x show-scrollbar="false">
-      <view class="template-row">
-        <view
-          wx:for="{{templates}}"
-          wx:key="id"
-          class="template-card {{item.active?'active':''}} {{item.recommended?'':'unusual'}}"
-          role="button"
-          aria-label="用{{item.name}}套版"
-          data-id="{{item.id}}"
-          bindtap="applyDecorTemplate"
-        >
-          <view class="template-visual">
-            <view class="template-pot-mini shape-{{work.shapeId}}"><view></view><view></view><view></view></view>
-            <view class="template-seal">{{item.glyph}}</view>
-          </view>
-          <view class="template-copy"><text>{{item.name}}</text><small>{{item.note}}</small></view>
-          <view class="template-status">{{item.active?'已用这套':(item.recommended?'适合当前器形':'已自动适配')}}</view>
-        </view>
-      </view>
-    </scroll-view>
-
-    <view wx:else class="custom-builder">
-      <view class="decor-section-tabs">
-        <view class="{{decorSection==='main'?'active':''}}" data-id="main" bindtap="setDecorSection">主纹 <small>最多 2</small></view>
-        <view class="{{decorSection==='border'?'active':''}}" data-id="border" bindtap="setDecorSection">边饰 <small>最多 2</small></view>
-        <view wx:if="{{!fallback}}" class="{{decorSection==='stamp'?'active':''}}" data-id="stamp" bindtap="setDecorSection">落印 <small>{{stampCount}} / 8</small></view>
-      </view>
-      <scroll-view class="motif-scroll" scroll-x show-scrollbar="false">
-        <view class="motif-row">
+    <view wx:if="{{decorTrayOpen}}" class="decor-panel-grid">
+      <view class="decor-library-panel">
+        <view class="decor-catalog-tabs">
           <view
-            wx:for="{{decorSection==='border'?borders:(decorSection==='stamp'?stampMotifs:motifs)}}"
+            wx:for="{{decorTabs}}"
             wx:key="id"
-            class="motif-card {{pendingStampMotifId===item.id?'armed':''}}"
+            class="{{decorTab===item.id?'active':''}}"
             role="button"
-            aria-label="选择{{item.name}}"
+            aria-label="切换到{{item.name}}"
             data-id="{{item.id}}"
-            bindtap="chooseDecorMotif"
-          ><view>{{item.glyph}}</view><text>{{item.name}}</text></view>
+            bindtap="selectDecorTab"
+          ><small>{{item.seal}}</small><text>{{item.name}}</text></view>
         </view>
-      </scroll-view>
-    </view>
-
-    <scroll-view wx:if="{{decorationLayers.length}}" class="layer-scroll" scroll-x show-scrollbar="false">
-      <view class="layer-row">
-        <view
-          wx:for="{{decorationLayers}}"
-          wx:key="id"
-          class="layer-chip {{item.selected?'active':''}} {{item.visible?'':'hidden'}}"
-          data-id="{{item.id}}"
-          bindtap="selectDecoration"
-          aria-label="编辑{{item.roleName}}{{item.name}}"
-        ><text class="layer-glyph">{{item.glyph}}</text><text>{{item.roleName}}·{{item.name}}</text></view>
+        <view class="decor-library-body">
+          <scroll-view class="decor-side-menu" scroll-y enhanced show-scrollbar="false">
+            <view
+              wx:for="{{decorSideMenus}}"
+              wx:key="id"
+              class="{{decorMenuId===item.id?'active':''}}"
+              role="button"
+              aria-label="选择{{item.name}}"
+              data-id="{{item.id}}"
+              bindtap="selectDecorMenu"
+            ><text>{{item.name}}</text><small>{{decorMenuId===item.id?'◆':'·'}}</small></view>
+          </scroll-view>
+          <scroll-view class="decor-grid-scroll" scroll-y enhanced show-scrollbar="false">
+            <view class="decor-grid">
+              <view
+                wx:for="{{decorCatalogItems}}"
+                wx:key="key"
+                class="decor-grid-card {{item.checked?'checked':''}}"
+                role="checkbox"
+                aria-checked="{{item.checked}}"
+                aria-label="{{item.checked?'取消':'选择'}}{{item.name}}"
+                data-id="{{item.id}}"
+                data-key="{{item.key}}"
+                bindtap="toggleDecorCatalogItem"
+              >
+                <view class="motif-art {{item.patternClass}}"><view></view><text>{{item.glyph}}</text><view></view></view>
+                <view wx:if="{{item.checked}}" class="decor-check">✓</view>
+                <text class="decor-grid-name">{{item.name}}</text>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
       </view>
-    </scroll-view>
 
-    <view wx:if="{{selectedDecoration&&!fallback}}" class="decor-controls">
-      <view class="control-context">
-        <text>{{selectedDecorationRole}} · {{selectedDecorationName}}</text>
-        <small>{{selectedTechniqueName}} / {{selectedAnchorName}} / {{selectedRepeatName}}</small>
-      </view>
-      <view class="control-actions">
-        <button data-action="anchor" bindtap="adjustDecoration">换位置</button>
-        <button data-action="size" bindtap="adjustDecoration">大小 {{selectedDecoration.scale}}</button>
-        <button data-action="rotate" bindtap="adjustDecoration">转 15°</button>
-        <button wx:if="{{selectedDecorationRole==='边饰'}}" data-action="density" bindtap="adjustDecoration">疏密</button>
-        <button wx:else data-action="repeat" bindtap="adjustDecoration">{{selectedRepeatName}}</button>
-        <button data-action="technique" bindtap="adjustDecoration">{{selectedTechniqueName}}</button>
-        <button class="danger" bindtap="deleteSelectedDecoration">移除</button>
+      <view class="decor-selected-panel">
+        <view class="decor-selected-head"><view><small>已入画</small><text>被选图菜单</text></view><text>{{decorationCount+stampCount}}</text></view>
+        <scroll-view class="decor-selected-scroll" scroll-y enhanced show-scrollbar="false">
+          <view wx:if="{{decorationLayers.length}}" class="decor-selected-grid">
+            <view
+              wx:for="{{decorationLayers}}"
+              wx:key="id"
+              class="decor-selected-card {{item.selected?'active':''}} {{item.visible?'':'hidden'}}"
+              role="radio"
+              aria-checked="{{item.selected}}"
+              aria-label="选中{{item.roleName}}{{item.name}}进行调整"
+              data-id="{{item.id}}"
+              bindtap="selectDecoration"
+            >
+              <view class="motif-art {{item.patternClass}}"><view></view><text>{{item.glyph}}</text><view></view></view>
+              <view wx:if="{{item.selected}}" class="decor-check">✓</view>
+              <text>{{item.name}}</text>
+            </view>
+          </view>
+          <view wx:else class="decor-selected-empty"><text>尚未入画</text><small>从左侧轻点图案</small></view>
+        </scroll-view>
       </view>
     </view>
 
     <view class="decor-bottom">
-      <button class="quiet" bindtap="clearDecoration">保持素面</button>
       <text>{{decorationCount}} 层 · {{stampCount}} 枚落印</text>
-      <button class="decor-complete" bindtap="completeStage">完成装饰 →</button>
+      <button class="decor-complete" bindtap="completeStage">完成装饰 <view>→</view></button>
     </view>
   </view>
 

@@ -308,7 +308,7 @@ Page({
         context.fillRect(0, 0, 1080, 1440);
         context.fillStyle = "#202822";
         context.font = "bold 42px serif";
-        context.fillText("掌 心 窑", 72, 86);
+        context.fillText("泥火青花", 72, 86);
         context.font = "26px sans-serif";
         context.fillStyle = "#52796a";
         context.fillText(`${info.style} · ${info.techniques}`, 72, 130);

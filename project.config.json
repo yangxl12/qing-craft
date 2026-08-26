@@ -1,13 +1,11 @@
 {
-  "description": "掌心窑 · 微信陶艺创作小程序 v1",
+  "description": "泥火青花 · 微信陶艺创作小程序 v1",
   "packOptions": {
     "ignore": [],
     "include": []
   },
   "setting": {
-    "useCompilerPlugins": [
-      "typescript"
-    ],
+    "useCompilerPlugins": ["typescript"],
     "es6": true,
     "enhance": true,
     "postcss": true,

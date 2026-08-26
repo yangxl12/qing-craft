@@ -355,7 +355,7 @@ Page({
 
   onShareAppMessage() {
     return {
-      title:`我在掌心窑做了「${this.work?.title || "一件陶器"}」`,
+      title:`我在泥火青花做了「${this.work?.title || "一件陶器"}」`,
       path:`/pages/result/result?id=${this.work?.workId || ""}`
     };
   }

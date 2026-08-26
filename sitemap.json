@@ -1,4 +1,4 @@
 {
-  "desc": "掌心窑页面索引",
+  "desc": "泥火青花页面索引",
   "rules": [{ "action": "allow", "page": "*" }]
 }

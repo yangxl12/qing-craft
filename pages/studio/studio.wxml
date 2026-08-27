@@ -290,7 +290,7 @@
             <view
               wx:for="{{decorSideMenus}}"
               wx:key="id"
-              class="{{decorMenuId===item.id?'active':''}}"
+              class="decor-side-menu-item {{decorMenuId===item.id?'active':''}}"
               role="button"
               aria-label="选择{{item.name}}"
               data-id="{{item.id}}"

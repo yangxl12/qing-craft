@@ -331,10 +331,10 @@ Page({
   inscriptionReminderShown: false,
   previewStartedAt: 0,
   decorPanelDrag: null as null | {
-    startX: number;
-    startY: number;
-    left: number;
-    top: number;
+    grabX: number;
+    grabY: number;
+    areaLeft: number;
+    areaTop: number;
     width: number;
     height: number;
   },
@@ -932,17 +932,22 @@ Page({
   startDecorToolDrag(event: any) {
     const touch = event.touches?.[0];
     if (!touch) return;
-    wx.createSelectorQuery().in(this).select("#decorToolPanel").boundingClientRect((rect: any) => {
-      if (!rect) return;
+    const query = wx.createSelectorQuery().in(this);
+    query.select("#decorToolPanel").boundingClientRect();
+    query.select(".stage-area").boundingClientRect();
+    query.exec((results: any[]) => {
+      const panelRect = results[0];
+      const areaRect = results[1];
+      if (!panelRect || !areaRect) return;
       this.decorPanelDrag = {
-        startX:touch.clientX,
-        startY:touch.clientY,
-        left:rect.left,
-        top:rect.top,
-        width:rect.width,
-        height:rect.height
+        grabX: touch.clientX - panelRect.left,
+        grabY: touch.clientY - panelRect.top,
+        areaLeft: areaRect.left,
+        areaTop: areaRect.top,
+        width: panelRect.width,
+        height: panelRect.height
       };
-    }).exec();
+    });
   },
 
   moveDecorToolPanel(event: any) {
@@ -950,9 +955,11 @@ Page({
     const drag = this.decorPanelDrag;
     if (!touch || !drag) return;
     const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
-    const left = clamp(drag.left + touch.clientX - drag.startX, 6, system.windowWidth - drag.width - 6);
-    const top = clamp(drag.top + touch.clientY - drag.startY, this.data.statusBarHeight + 6, system.windowHeight - drag.height - 8);
-    this.setData({ decorToolStyle:`left:${left}px; top:${top}px; right:auto;` });
+    // 以按下时手指在面板内的位置为锚点，面板始终贴在手指下方。
+    const viewLeft = clamp(touch.clientX - drag.grabX, 6, system.windowWidth - drag.width - 6);
+    const viewTop = clamp(touch.clientY - drag.grabY, this.data.statusBarHeight + 6, system.windowHeight - drag.height - 8);
+    // boundingClientRect 是视口坐标，style 的 left/top 相对 .stage-area，需换算后再写入。
+    this.setData({ decorToolStyle:`left:${viewLeft - drag.areaLeft}px; top:${viewTop - drag.areaTop}px; right:auto;` });
   },
 
   endDecorToolDrag() {

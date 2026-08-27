@@ -10,6 +10,7 @@ import {
   calculatePotteryOrbitDelta,
   calculatePotteryCameraDistance,
   calculatePotteryFocusY,
+  calculatePreservedPotteryCameraDistance,
   calculatePotteryTargetRpm,
   calculatePotteryZoomFactor,
   defaultPotteryPitch,
@@ -73,6 +74,20 @@ const CLAY_GRAIN: Record<string, number> = {
   stoneware: 0.76,
   red: 1
 };
+
+export const DECORATION_PORCELAIN_COLOR = "#c6d8ce";
+
+export interface PotterySurfaceState {
+  clayWetness: number;
+  porcelainFinish: number;
+}
+
+export function potterySurfaceState(stageIndex: number): PotterySurfaceState {
+  if (stageIndex === 0) return { clayWetness: 0.94, porcelainFinish: 0 };
+  if (stageIndex === 1) return { clayWetness: 0.12, porcelainFinish: 1 };
+  if (stageIndex === 2) return { clayWetness: 0.28, porcelainFinish: 0 };
+  return { clayWetness: 0.06, porcelainFinish: 0 };
+}
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -236,6 +251,7 @@ uniform float uExposure;
   uniform float uMethod;
 uniform float uClayWetness;
 uniform float uClayGrain;
+uniform float uPorcelainFinish;
 uniform vec4 uLayerA[13];
 uniform vec4 uLayerB[13];
 uniform vec4 uLayerC[13];
@@ -406,7 +422,9 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     else if (uMethod == 3.0) glazeMask = smoothstep(-0.1, 0.22, sin(angle * 3.0 + vY * 13.0));
     float surfaceGlaze = clamp(uGlazeMix * glazeMask, 0.0, 1.0);
     float rawClay = 1.0 - smoothstep(0.08, 0.78, surfaceGlaze);
-    float wetClay = rawClay * uClayWetness;
+    float porcelainFinish = uPorcelainFinish * rawClay;
+    float coarseClay = rawClay * (1.0 - porcelainFinish);
+    float wetClay = coarseClay * uClayWetness;
 
     float clayCloud = noise3(vObjectPos * vec3(5.2, 8.4, 5.2) + vec3(3.1, 7.7, 1.4));
     float clayGrain = noise3(vObjectPos * vec3(38.0, 52.0, 38.0) + vec3(9.2, 2.4, 5.7));
@@ -415,7 +433,8 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     vec3 geometricNormal = normalize(vNormal);
     vec3 tangent = normalize(vTangent - geometricNormal * dot(vTangent, geometricNormal));
     vec3 bitangent = normalize(cross(geometricNormal, tangent));
-    float microRelief = mix(0.032 * uClayGrain, 0.006, surfaceGlaze);
+    float smoothSurface = max(surfaceGlaze, porcelainFinish * 0.94);
+    float microRelief = mix(0.032 * uClayGrain, 0.0042, smoothSurface);
     vec3 normal = normalize(
       geometricNormal +
       tangent * (clayGrain - 0.5) * microRelief +
@@ -428,6 +447,15 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     float fill = max(dot(normal, fillDirection), 0.0);
 
     vec3 material = mix(uBase, uGlaze, surfaceGlaze);
+    // The decoration stage presents a refined jade-white porcelain blank. A
+    // restrained cloudy variation keeps the surface from reading as plastic,
+    // while the chosen clay no longer exposes its damp, granular appearance.
+    float porcelainCloud =
+      (clayCloud - 0.5) * 0.022 +
+      (secondGrain - 0.5) * 0.006;
+    vec3 porcelainBody = uBase * (1.0 + porcelainCloud);
+    porcelainBody *= mix(vec3(0.965, 1.018, 0.988), vec3(1.022, 0.986, 1.008), vY);
+    material = mix(material, porcelainBody, porcelainFinish);
     float reliefShade = 0.0;
     for (int layerIndex = 0; layerIndex < 13; layerIndex++) {
       vec4 layerA = uLayerA[layerIndex];
@@ -481,7 +509,7 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     float mineral = smoothstep(0.78, 0.96, clayGrain) * uClayGrain;
     float clayTone =
       1.0 +
-      rawClay * (
+      coarseClay * (
         throwingRing * 0.014 +
         (clayCloud - 0.5) * 0.075 * uClayGrain +
         slipBand * 0.012 * wetClay -
@@ -492,18 +520,39 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     vec3 halfVector = normalize(keyDirection + viewDirection);
     vec3 fillHalfVector = normalize(fillDirection + viewDirection);
     float specularPower = mix(mix(20.0, 30.0, uClayWetness), 72.0, surfaceGlaze);
+    specularPower = mix(specularPower, 58.0, porcelainFinish);
     float specular = pow(max(dot(normal, halfVector), 0.0), specularPower);
     specular *= mix(0.055 + uClayWetness * 0.095, 0.3, surfaceGlaze);
+    specular = mix(
+      specular,
+      specular * 0.35 + pow(max(dot(normal, halfVector), 0.0), 92.0) * 0.2,
+      porcelainFinish
+    );
     specular *= mix(0.72, 1.16, clayGrain);
-    float broadWetHighlight = pow(max(dot(normal, halfVector), 0.0), 7.0) * wetClay * 0.052;
+    float broadWetHighlight =
+      pow(max(dot(normal, halfVector), 0.0), 7.0) * wetClay * 0.052 +
+      pow(max(dot(normal, halfVector), 0.0), 11.0) * porcelainFinish * 0.082;
     float fillSpecular =
       pow(max(dot(normal, fillHalfVector), 0.0), mix(14.0, 52.0, surfaceGlaze)) *
       mix(0.025, 0.11, surfaceGlaze);
+    fillSpecular = mix(
+      fillSpecular,
+      pow(max(dot(normal, fillHalfVector), 0.0), 28.0) * 0.085,
+      porcelainFinish
+    );
     float facing = max(dot(normal, viewDirection), 0.0);
     float fresnel = pow(1.0 - facing, 3.0) * mix(0.026 + wetClay * 0.024, 0.07, surfaceGlaze);
+    fresnel = mix(fresnel, pow(1.0 - facing, 3.5) * 0.082, porcelainFinish);
 
     vec3 linearMaterial = pow(max(material, vec3(0.0)), vec3(2.2));
-    vec3 diffuseLight = uAmbient + uKeyColor * key * uKeyIntensity + uFillColor * fill * uFillIntensity;
+    float porcelainKey = clamp((dot(normal, keyDirection) + 0.28) / 1.28, 0.0, 1.0);
+    float porcelainFill = clamp((dot(normal, fillDirection) + 0.18) / 1.18, 0.0, 1.0);
+    float diffuseKey = mix(key, porcelainKey, porcelainFinish * 0.55);
+    float diffuseFill = mix(fill, porcelainFill, porcelainFinish * 0.32);
+    vec3 diffuseLight =
+      uAmbient +
+      uKeyColor * diffuseKey * uKeyIntensity +
+      uFillColor * diffuseFill * uFillIntensity;
     float baseOcclusion = mix(0.8, 1.0, smoothstep(0.0, 0.18, vY));
     float cavityOcclusion = mix(1.0, 0.52, vCavity);
     vec3 linearColor = linearMaterial * diffuseLight * baseOcclusion * cavityOcclusion;
@@ -512,6 +561,12 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
       uKeyColor * (specular + broadWetHighlight) +
       uFillColor * (fillSpecular + fresnel)
     ) * mix(1.0, 0.48, vCavity);
+    linearColor +=
+      pow(max(uBase, vec3(0.0)), vec3(2.2)) *
+      pow(1.0 - facing, 2.4) *
+      porcelainFinish *
+      0.018 *
+      (1.0 - vCavity * 0.7);
     linearColor += uKeyColor * smoothstep(0.9, 1.0, vY) * wetClay * 0.018;
     vec3 exposed = max(linearColor * uExposure, vec3(0.0));
   vec3 mapped = exposed / (vec3(1.0) + exposed);
@@ -547,6 +602,7 @@ export class PotteryEngine {
   private currentRpm = 0;
   private targetRpm = 38;
   private baseScreenY = POTTERY_BASE_SCREEN_Y;
+  private potteryCentered = false;
   private frameProcessor: (() => boolean) | null = null;
   private topologyKey = "";
   private positionByteLength = 0;
@@ -612,7 +668,9 @@ export class PotteryEngine {
     return program;
   }
 
-  resize(width: number, height: number, dpr: number) {
+  resize(width: number, height: number, dpr: number, preserveVisualScale = false) {
+    const previousViewportHeight = this.viewportHeight;
+    const previousFitDistance = this.fitDistance;
     const safeWidth = Math.max(1, width);
     const safeHeight = Math.max(1, height);
     this.canvas.width = Math.max(1, Math.floor(safeWidth * dpr));
@@ -620,7 +678,15 @@ export class PotteryEngine {
     this.viewportWidth = safeWidth;
     this.viewportHeight = safeHeight;
     this.aspect = safeWidth / safeHeight;
-    this.resetCameraFit();
+    if (preserveVisualScale && previousViewportHeight > 1 && previousFitDistance > 0) {
+      this.fitDistance = calculatePreservedPotteryCameraDistance(
+        previousFitDistance,
+        previousViewportHeight,
+        safeHeight
+      );
+    } else {
+      this.resetCameraFit();
+    }
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     this.render();
   }
@@ -654,7 +720,11 @@ export class PotteryEngine {
 
   setBaseScreenY(value: number) {
     this.baseScreenY = clamp(value, 0.6, 0.93);
-    this.resetCameraFit();
+    this.render();
+  }
+
+  setPotteryCentered(value: boolean) {
+    this.potteryCentered = value;
     this.render();
   }
 
@@ -944,6 +1014,7 @@ export class PotteryEngine {
   }
 
   private calculateFocusY(distance: number): number {
+    if (this.potteryCentered) return 0;
     return calculatePotteryFocusY(
       this.meshHeight,
       distance,
@@ -1004,7 +1075,11 @@ export class PotteryEngine {
 
     const set3 = (name: string, value: number[]) =>
       gl.uniform3fv(gl.getUniformLocation(program, name), new Float32Array(value));
-    set3("uBase", hexRgb(clayColor(this.work)));
+    const surface = potterySurfaceState(this.work.stageIndex);
+    set3(
+      "uBase",
+      hexRgb(surface.porcelainFinish ? DECORATION_PORCELAIN_COLOR : clayColor(this.work))
+    );
     set3("uGlaze", hexRgb(glazeColor(this.work)));
     set3("uCamera", eye);
     const lighting = LIGHTING[this.lighting];
@@ -1017,16 +1092,9 @@ export class PotteryEngine {
     gl.uniform1f(gl.getUniformLocation(program, "uFillIntensity"), lighting.fillIntensity);
     gl.uniform1f(gl.getUniformLocation(program, "uExposure"), lighting.exposure);
 
-    const clayWetness =
-      this.work.stageIndex === 0
-        ? 0.94
-        : this.work.stageIndex === 1
-          ? 0.72
-          : this.work.stageIndex === 2
-            ? 0.28
-            : 0.06;
     gl.uniform1f(gl.getUniformLocation(program, "uClayGrain"), CLAY_GRAIN[this.work.clayId] ?? 0.62);
-    gl.uniform1f(gl.getUniformLocation(program, "uClayWetness"), clayWetness);
+    gl.uniform1f(gl.getUniformLocation(program, "uClayWetness"), surface.clayWetness);
+    gl.uniform1f(gl.getUniformLocation(program, "uPorcelainFinish"), surface.porcelainFinish);
 
     const glazeMix = this.work.stageIndex >= 2 ? (this.work.stageIndex >= 3 ? 1 : 0.72) : 0;
     gl.uniform1f(gl.getUniformLocation(program, "uGlazeMix"), glazeMix);

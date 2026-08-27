@@ -19,6 +19,8 @@ export type InscriptionAnchor = "base" | "well" | "lower_belly";
 export interface DecorationLayer {
   layerId: string;
   catalogKey?: string;
+  copySourceId?: string;
+  copyNumber?: number;
   motifId: string;
   role: DecorationRole;
   anchor: DecorationAnchor;
@@ -339,6 +341,12 @@ export function createDecorationLayer(
     catalogKey:typeof overrides.catalogKey === "string"
       ? overrides.catalogKey.slice(0, 64)
       : undefined,
+    copySourceId:typeof overrides.copySourceId === "string"
+      ? overrides.copySourceId.slice(0, 64)
+      : undefined,
+    copyNumber:Number.isInteger(overrides.copyNumber) && Number(overrides.copyNumber) > 0
+      ? Math.min(99, Number(overrides.copyNumber))
+      : undefined,
     motifId:motif.id,
     role,
     anchor,
@@ -398,6 +406,27 @@ export function clampDecorationLayer<T extends DecorationLayer | DecorationStamp
     density:Math.max(.65, Math.min(1.8, finite(layer.density, 1))),
     visible:layer.visible !== false
   } as T;
+}
+
+export function duplicateDecorationLayer<T extends DecorationLayer | DecorationStamp>(
+  source: T,
+  existing: (DecorationLayer | DecorationStamp)[],
+  shapeId: ShapeId
+): T {
+  const copySourceId = source.copySourceId || source.layerId;
+  const copyNumber = existing.reduce((highest, layer) => {
+    if (layer.copySourceId !== copySourceId) return highest;
+    return Math.max(highest, layer.copyNumber || 0);
+  }, 0) + 1;
+  return clampDecorationLayer({
+    ...source,
+    layerId:layerId(source.role === "stamp" ? "stamp" : "layer"),
+    catalogKey:undefined,
+    copySourceId,
+    copyNumber,
+    u:source.u + .04,
+    v:source.v + .025
+  } as T, shapeId);
 }
 
 export function applyDecorationTemplate(

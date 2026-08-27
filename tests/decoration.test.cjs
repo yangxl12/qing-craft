@@ -21,6 +21,7 @@ const {
   clampDecorationLayer,
   createDecorationComposition,
   createDecorationStamp,
+  duplicateDecorationLayer,
   DECORATION_TEMPLATES,
   MAX_DECORATION_LAYERS,
   MAX_DECORATION_STAMPS,
@@ -36,6 +37,22 @@ assert.equal(STYLE_PACKS.length, 3, "MVP 必须提供三个风格包");
 assert.equal(MOTIFS.length, 15, "MVP 必须提供十五个母纹样");
 assert.equal(BORDERS.length, 6, "MVP 必须提供六条连续边饰");
 assert.equal(DECORATION_TEMPLATES.length, 6, "MVP 必须提供六套一键构图");
+
+const studioMarkup = fs.readFileSync("pages/studio/studio.wxml", "utf8");
+assert.doesNotMatch(
+  studioMarkup,
+  /bindlongpress="deleteSelectedDecoration"/,
+  "双指观察时不能再由画布长按事件误删纹样",
+);
+assert.match(studioMarkup, /class="decor-previous" bindtap="returnToShaping"/, "装饰页底部必须保留上一步入口");
+assert.match(studioMarkup, /catchtap="toggleDecorTools"/, "纹样调校标题必须提供独立收展按钮");
+assert.doesNotMatch(studioMarkup, /<text>{{item.name}}<\/text><small>/, "装饰侧栏不应显示临时菜单文案");
+assert.doesNotMatch(
+  studioMarkup,
+  /横向伸缩|纵向伸缩|<small>按住拖动<\/small>|<small>(?:撤回|删除|上下翻转)<\/small>/,
+  "纹样调校操作不应继续显示冗余文案",
+);
+assert.match(studioMarkup, /bindtap="copySelectedDecoration"/, "纹样调校必须提供复制操作");
 
 for (const shapeId of ["cup", "bowl", "vase", "jar", "plate"]) {
   const anchors = availableAnchors(shapeId);
@@ -151,6 +168,19 @@ assert.equal(restoredTransform.catalogKey, "inscription:plum", "菜单勾选来�
 assert.equal(restoredTransform.scaleX, 0.72, "横向伸缩必须随作品恢复");
 assert.equal(restoredTransform.scaleY, 1.42, "纵向伸缩必须随作品恢复");
 assert.equal(restoredTransform.flipY, true, "上下翻转必须随作品恢复");
+
+const copySource = createDecorationStamp("plum", "vase", "yuan_blue");
+const firstCopy = duplicateDecorationLayer(copySource, [copySource], "vase");
+const secondCopy = duplicateDecorationLayer(firstCopy, [copySource, firstCopy], "vase");
+assert.notEqual(firstCopy.layerId, copySource.layerId, "复制纹样必须生成独立图层");
+assert.equal(firstCopy.copyNumber, 1, "第一次复制的角标应为 1");
+assert.equal(secondCopy.copyNumber, 2, "再次复制的角标应递增为 2");
+const restoredCopy = validateDecorationComposition({
+  ...createDecorationComposition("copy-work"),
+  stamps:[firstCopy]
+}, "vase", "copy-work").stamps[0];
+assert.equal(restoredCopy.copySourceId, copySource.layerId, "复制来源必须随作品恢复");
+assert.equal(restoredCopy.copyNumber, 1, "复制角标必须随作品恢复");
 
 assert.equal(
   validateInscriptionText("掌心作\n2026.8.25"),

@@ -8,8 +8,10 @@ import {
   BLESSINGS,
   BORDERS,
   clampDecorationLayer,
+  createDecorationComposition,
   createDecorationLayer,
   createDecorationStamp,
+  duplicateDecorationLayer,
   DecorationAnchor,
   DecorationLayer,
   DecorationStamp,
@@ -151,9 +153,11 @@ const DECOR_CATALOG_TABS: { id: DecorCatalogTabId; name: string; seal: string }[
   { id:"carving", name:"刻花", seal:"刻" }
 ];
 
+const DECOR_SIDE_ICONS = ["✦", "◫", "❋", "⌁"];
 const DECOR_SIDE_MENUS = Array.from({ length:4 }, (_, index) => ({
   id:`menu_${index + 1}`,
   name:`菜单 ${index + 1}`,
+  icon:DECOR_SIDE_ICONS[index],
   index
 }));
 
@@ -539,6 +543,7 @@ Page({
         roleName:roleNames[layer.role],
         selected:layer.layerId === this.data.selectedDecorationId,
         visible:layer.visible,
+        copyNumber:layer.copyNumber || 0,
         patternClass:`motif-ink-${(motifById(layer.motifId).shaderCode % 6) + 1}`
       })),
       decorCatalogItems:catalogItems,
@@ -658,7 +663,7 @@ Page({
     this.syncWallThicknessData(true);
   },
 
-  refreshCanvasLayout() {
+  refreshCanvasLayout(preserveVisualScale = false, centerPottery = false) {
     if (!this.engine || !this.canvas) return;
     const query = wx.createSelectorQuery().in(this);
     query.select("#potteryCanvas").fields({ size: true, rect: true });
@@ -680,8 +685,9 @@ Page({
         info.height,
         wheelInfo.top
       );
-      this.engine?.resize(info.width, info.height, dpr);
+      this.engine?.resize(info.width, info.height, dpr, preserveVisualScale);
       this.engine?.setBaseScreenY(baseScreenY);
+      this.engine?.setPotteryCentered(centerPottery);
       this.setData({
         baseScreenY,
         baseScreenPercent: Math.round(baseScreenY * 1000) / 10
@@ -868,20 +874,59 @@ Page({
   },
 
   toggleDecorTray() {
-    this.setData({ decorTrayOpen:!this.data.decorTrayOpen }, () => {
-      setTimeout(() => this.refreshCanvasLayout(), 20);
+    const decorTrayOpen = !this.data.decorTrayOpen;
+    this.setData({ decorTrayOpen }, () => {
+      setTimeout(() => this.refreshCanvasLayout(true, !decorTrayOpen), 0);
     });
   },
 
   toggleDecorFullscreen() {
     if (this.work?.currentStage !== "decorate") return;
-    this.setData({ decorFullscreen:!this.data.decorFullscreen }, () => {
-      setTimeout(() => this.refreshCanvasLayout(), 20);
+    const decorFullscreen = !this.data.decorFullscreen;
+    this.setData({ decorFullscreen }, () => {
+      setTimeout(
+        () => this.refreshCanvasLayout(true, decorFullscreen || !this.data.decorTrayOpen),
+        0
+      );
     });
   },
 
   toggleDecorTools() {
     this.setData({ decorToolsCollapsed:!this.data.decorToolsCollapsed });
+  },
+
+  returnToShaping() {
+    if (!this.work || this.work.currentStage !== "decorate") return;
+    wx.showModal({
+      title:"返回上一步？",
+      content:"返回制坯后，当前所有装饰效果都会丢失。是否确认返回？",
+      confirmText:"确认返回",
+      cancelText:"继续装饰",
+      confirmColor:"#9b4f42",
+      success:(result: any) => {
+        if (!result.confirm || !this.work || this.work.currentStage !== "decorate") return;
+        this.commitGestureChange();
+        this.gesture = null;
+        this.pushHistory();
+        this.work.decorationComposition = createDecorationComposition(this.work.workId);
+        this.work.stageIndex = 0;
+        this.work.currentStage = STAGES[0].id;
+        this.engine?.setPotteryCentered(false);
+        this.setData({
+          selectedDecorationId:"",
+          pendingStampMotifId:"",
+          decorTrayOpen:true,
+          decorFullscreen:false,
+          decorToolsCollapsed:false,
+          decorToolStyle:""
+        });
+        this.changed();
+        this.syncData();
+        this.persist();
+        this.setWheelState("idle");
+        this.vibrate("medium");
+      }
+    });
   },
 
   startDecorToolDrag(event: any) {
@@ -1112,6 +1157,40 @@ Page({
     this.changed();
     this.syncData();
     track("decor_layer_adjust", { adjust_type:"flip_y" });
+    this.vibrate();
+  },
+
+  copySelectedDecoration() {
+    if (!this.work || this.work.currentStage !== "decorate") return;
+    const selected = this.selectedDecoration();
+    if (!selected) return;
+    const composition = this.work.decorationComposition;
+    if (selected.role === "stamp") {
+      if (composition.stamps.length >= MAX_DECORATION_STAMPS) {
+        wx.showToast({ title:"落印已经有八枚了", icon:"none" });
+        return;
+      }
+    } else if (composition.layers.length >= MAX_DECORATION_LAYERS) {
+      wx.showToast({ title:"器身图层最多五层，可先移除一枚", icon:"none" });
+      return;
+    }
+    this.pushHistory();
+    const duplicate = duplicateDecorationLayer(
+      selected,
+      [...composition.layers, ...composition.stamps],
+      this.work.shapeId
+    );
+    if (duplicate.role === "stamp") composition.stamps.push(duplicate as DecorationStamp);
+    else composition.layers.push(duplicate as DecorationLayer);
+    delete composition.templateId;
+    this.setData({ selectedDecorationId:duplicate.layerId });
+    this.changed();
+    this.syncData();
+    track("decor_layer_copy", {
+      role:duplicate.role,
+      motif_id:duplicate.motifId,
+      copy_number:duplicate.copyNumber || 1
+    });
     this.vibrate();
   },
 
@@ -1814,9 +1893,10 @@ Page({
       this.setData({ inscriptionDraft, inscriptionError:"" });
     }
     this.setWheelState("idle");
+    const showStageHint = this.work.currentStage !== "decorate";
     this.setData({
-      hint: `现在开始${STAGES[this.work.stageIndex].name}`,
-      showHint: true
+      hint: showStageHint ? `现在开始${STAGES[this.work.stageIndex].name}` : "",
+      showHint: showStageHint
     });
     this.vibrate("medium");
   },

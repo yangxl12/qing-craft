@@ -16,6 +16,10 @@ const { buildPotteryMesh } = require("../core/pottery-mesh.ts");
 const { createWork, validateWork } = require("../core/model.ts");
 const { profileDeltaFromDrag } = require("../core/profile.ts");
 const {
+  DECORATION_PORCELAIN_COLOR,
+  potterySurfaceState
+} = require("../core/pottery-engine.ts");
+const {
   DEFAULT_POTTERY_WALL,
   MAX_POTTERY_HEIGHT,
   MAX_POTTERY_RADIUS,
@@ -35,12 +39,28 @@ const {
   calculatePotteryOrbitDelta,
   calculatePotteryCameraDistance,
   calculatePotteryFocusY,
+  calculatePreservedPotteryCameraDistance,
   calculatePotteryTargetRpm,
   calculatePotteryZoomFactor,
   defaultPotteryPitch,
   normalizePotteryYaw,
   potteryRpmToPeriodMs
 } = require("../core/pottery-scene.ts");
+
+assert.equal(
+  calculatePreservedPotteryCameraDistance(3.2, 320, 640),
+  6.4,
+  "装饰抽屉收起后应按画布高度同比调整相机距离，保持瓷器视觉尺寸"
+);
+
+assert.equal(DECORATION_PORCELAIN_COLOR, "#c6d8ce", "装饰素坯应固定为青白玉色");
+assert.deepEqual(
+  potterySurfaceState(1),
+  { clayWetness: 0.12, porcelainFinish: 1 },
+  "进入装饰后应完全切换到细腻素瓷材质"
+);
+assert.equal(potterySurfaceState(0).porcelainFinish, 0, "制坯阶段仍应保留湿泥质感");
+assert.equal(potterySurfaceState(2).porcelainFinish, 0, "上釉阶段应交回釉色材质控制");
 
 const freshCup = createWork("cup");
 for (let index = 3; index < freshCup.outerRadius.length; index++) {

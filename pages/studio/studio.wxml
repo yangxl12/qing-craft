@@ -76,7 +76,6 @@
       bindtouchmove="touchMove"
       bindtouchend="touchEnd"
       bindtouchcancel="touchEnd"
-      bindlongpress="deleteSelectedDecoration"
     ></canvas>
     <view
       wx:else
@@ -86,9 +85,8 @@
       catchtouchmove="touchMove"
       catchtouchend="touchEnd"
       catchtouchcancel="touchEnd"
-      bindlongpress="deleteSelectedDecoration"
     >
-      <view class="fallback-pot shape-{{work.shapeId}}" style="background:{{stageIndex>=3 ? '#84a99a' : '#c7c2b6'}}"></view>
+      <view class="fallback-pot shape-{{work.shapeId}} stage-{{stageIndex}}"></view>
       <view wx:if="{{decorationCount||stampCount}}" class="fallback-decor fired-{{firedPreview}}">
         <text>{{selectedDecorationName||'纹'}}</text>
         <small>{{decorationCount}} 层 · {{stampCount}} 印</small>
@@ -121,30 +119,42 @@
       class="decor-tool-panel {{decorToolsCollapsed?'collapsed':''}}"
       style="{{decorToolStyle}}"
     >
-      <view
-        class="decor-tool-head"
-        catchtouchstart="startDecorToolDrag"
-        catchtouchmove="moveDecorToolPanel"
-        catchtouchend="endDecorToolDrag"
-        catchtouchcancel="endDecorToolDrag"
-      >
-        <view class="decor-tool-title"><text>纹样调校</text><small>按住拖动</small></view>
-        <view class="decor-tool-fold" role="button" aria-label="{{decorToolsCollapsed?'展开操作按钮':'收起操作按钮'}}" catchtap="toggleDecorTools">{{decorToolsCollapsed?'＋':'−'}}</view>
+      <view class="decor-tool-head">
+        <view
+          class="decor-tool-drag"
+          catchtouchstart="startDecorToolDrag"
+          catchtouchmove="moveDecorToolPanel"
+          catchtouchend="endDecorToolDrag"
+          catchtouchcancel="endDecorToolDrag"
+        >
+          <view class="decor-drag-icon" aria-hidden="true"><view></view><view></view><view></view><view></view><view></view><view></view></view>
+          <view class="decor-tool-title"><text>纹样调校</text></view>
+        </view>
+        <view
+          class="decor-tool-fold"
+          role="button"
+          aria-label="{{decorToolsCollapsed?'展开操作按钮':'收起操作按钮'}}"
+          catchtap="toggleDecorTools"
+        ><view class="decor-tool-chevron {{decorToolsCollapsed?'down':'up'}}"></view></view>
       </view>
-      <view wx:if="{{!decorToolsCollapsed}}" class="decor-tool-actions">
-        <view class="decor-tool-command danger" role="button" aria-label="删除当前图案" bindtap="deleteSelectedDecoration"><text>删</text><small>删除</small></view>
-        <view class="decor-tool-command {{!canUndo?'disabled':''}}" role="button" aria-label="撤回上一步" bindtap="undo"><text>↶</text><small>撤回</small></view>
+      <view
+        class="decor-tool-actions {{decorToolsCollapsed?'is-collapsed':''}}"
+        aria-hidden="{{decorToolsCollapsed}}"
+      >
+        <view class="decor-tool-command danger" role="button" aria-label="删除当前图案" bindtap="deleteSelectedDecoration"><view class="decor-delete-icon" aria-hidden="true"><view></view></view></view>
+        <view class="decor-tool-command {{!canUndo?'disabled':''}}" role="button" aria-label="撤回上一步" bindtap="undo"><text aria-hidden="true">↶</text></view>
+        <view class="decor-tool-command" role="button" aria-label="复制当前图案" bindtap="copySelectedDecoration"><view class="decor-copy-icon" aria-hidden="true"><view></view><view></view></view></view>
         <view class="decor-axis-command">
           <view role="button" aria-label="减小当前图案横向尺寸" data-axis="x" data-direction="-1" bindtap="adjustDecorAxis">−</view>
-          <text>横向伸缩</text>
+          <text aria-hidden="true">↔</text>
           <view role="button" aria-label="增大当前图案横向尺寸" data-axis="x" data-direction="1" bindtap="adjustDecorAxis">＋</view>
         </view>
         <view class="decor-axis-command">
           <view role="button" aria-label="减小当前图案纵向尺寸" data-axis="y" data-direction="-1" bindtap="adjustDecorAxis">−</view>
-          <text>纵向伸缩</text>
+          <text aria-hidden="true">↕</text>
           <view role="button" aria-label="增大当前图案纵向尺寸" data-axis="y" data-direction="1" bindtap="adjustDecorAxis">＋</view>
         </view>
-        <view class="decor-tool-command flip" role="button" aria-label="上下翻转当前图案" bindtap="flipSelectedDecoration"><text>↕</text><small>上下翻转</small></view>
+        <view class="decor-tool-command flip" role="button" aria-label="上下翻转当前图案" bindtap="flipSelectedDecoration"><text aria-hidden="true">⇅</text></view>
       </view>
     </view>
 
@@ -290,7 +300,7 @@
               aria-label="选择{{item.name}}"
               data-id="{{item.id}}"
               bindtap="selectDecorMenu"
-            ><text>{{item.name}}</text><small>{{decorMenuId===item.id?'◆':'·'}}</small></view>
+            ><view class="decor-side-menu-icon" aria-hidden="true">{{item.icon}}</view></view>
           </scroll-view>
           <scroll-view class="decor-grid-scroll" scroll-y enhanced show-scrollbar="false">
             <view class="decor-grid">
@@ -330,6 +340,7 @@
             >
               <view class="motif-art {{item.patternClass}}"><view></view><text>{{item.glyph}}</text><view></view></view>
               <view wx:if="{{item.selected}}" class="decor-check">✓</view>
+              <view wx:if="{{item.copyNumber}}" class="decor-copy-badge">{{item.copyNumber}}</view>
               <text>{{item.name}}</text>
             </view>
           </view>
@@ -339,6 +350,7 @@
     </view>
 
     <view class="decor-bottom">
+      <button class="decor-previous" bindtap="returnToShaping"><view>←</view><text>上一步</text></button>
       <text>{{decorationCount}} 层 · {{stampCount}} 枚落印</text>
       <button class="decor-complete" bindtap="completeStage">完成装饰 <view>→</view></button>
     </view>

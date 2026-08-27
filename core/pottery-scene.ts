@@ -162,6 +162,25 @@ export function calculatePotteryCameraDistance(
 }
 
 /**
+ * Keeps the piece at the same CSS-pixel scale when an editor drawer changes
+ * the canvas height. Perspective projection is measured against viewport
+ * height, so the camera distance must change by the same ratio.
+ */
+export function calculatePreservedPotteryCameraDistance(
+  previousDistance: number,
+  previousViewportHeight: number,
+  nextViewportHeight: number
+): number {
+  const safeDistance = Math.max(0.01, Number.isFinite(previousDistance) ? previousDistance : 0.01);
+  const previousHeight = Math.max(
+    1,
+    Number.isFinite(previousViewportHeight) ? previousViewportHeight : 1
+  );
+  const nextHeight = Math.max(1, Number.isFinite(nextViewportHeight) ? nextViewportHeight : 1);
+  return safeDistance * (nextHeight / previousHeight);
+}
+
+/**
  * Places the center of the foot on the same visual contact line as the wheel.
  * This prevents wide, low plates from floating near the middle of the canvas
  * while taller cups happen to reach the wheel by accident.

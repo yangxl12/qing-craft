@@ -250,11 +250,6 @@
       <text>{{showHelp?cameraHelp:hint}}</text>
       <small>轻触收起</small>
     </view>
-
-    <view wx:if="{{(stageIndex===1||stageIndex===4)&&selectedDecoration}}" class="decor-selection-label">
-      <text>{{selectedDecorationName}}</text>
-      <small>{{selectedDecorationRole}} · {{selectedAnchorName}}</small>
-    </view>
   </view>
 
   <view wx:if="{{stageIndex===0}}" class="stage-footer">

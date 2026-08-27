@@ -2,7 +2,6 @@ import { CLAYS, GLAZES, SHAPES, ClayId, ShapeId, STAGES, TOOLS } from "../../cor
 import { cloneWork, createWork, PotteryWork } from "../../core/model";
 import {
   ALL_DECORATION_MOTIFS,
-  ANCHOR_LABELS,
   applyDecorationTemplate,
   availableAnchors,
   BLESSINGS,
@@ -261,9 +260,7 @@ Page({
     selectedDecorationId: "",
     selectedDecoration: null as any,
     selectedDecorationName: "",
-    selectedDecorationRole: "",
     selectedTechniqueName: "",
-    selectedAnchorName: "",
     selectedRepeatName: "",
     decorationCount: 0,
     stampCount: 0,
@@ -554,9 +551,7 @@ Page({
       decorCatalogItems:catalogItems,
       selectedDecoration:selected,
       selectedDecorationName:selected ? motifById(selected.motifId).name : "",
-      selectedDecorationRole:selected ? roleNames[selected.role] : "",
       selectedTechniqueName:selected ? TECHNIQUE_LABELS[selected.technique] : "",
-      selectedAnchorName:selected ? ANCHOR_LABELS[selected.anchor] : "",
       selectedRepeatName:selected ? REPEAT_LABELS[selected.repeatMode] : "",
       decorationCount:composition.layers.length,
       stampCount:composition.stamps.length,

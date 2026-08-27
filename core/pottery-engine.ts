@@ -992,20 +992,38 @@ export class PotteryEngine {
    * Converts a finger drag into surface (u, v) movement for the pattern at
    * (u, v), following the current on-screen projection of the clay so the
    * pattern tracks the finger at any viewpoint, zoom or turntable angle.
+   * A single tangent solve drifts off the finger over a long drag on the
+   * curved silhouette, so the solution is refined by re-projecting the moved
+   * point and correcting the residual until the anchor lands on the finger.
    */
   surfaceDragDelta(u: number, v: number, dx: number, dy: number): { du: number; dv: number } {
     const base = this.projectSurfacePoint(u, v);
     if (!base) return { du: 0, dv: 0 };
+    const targetX = base.x + dx;
+    const targetY = base.y + dy;
     const step = 0.02;
-    const uNeighbor = this.projectSurfacePoint(u + step, v);
-    const vNeighbor = this.projectSurfacePoint(u, v + step);
-    if (!uNeighbor || !vNeighbor) return { du: 0, dv: 0 };
-    return solvePotterySurfaceDrag(
-      dx,
-      dy,
-      { x: (uNeighbor.x - base.x) / step, y: (uNeighbor.y - base.y) / step },
-      { x: (vNeighbor.x - base.x) / step, y: (vNeighbor.y - base.y) / step }
-    );
+    let currentU = u;
+    let currentV = v;
+    for (let iteration = 0; iteration < 4; iteration++) {
+      const current = this.projectSurfacePoint(currentU, currentV);
+      if (!current) break;
+      const residualX = targetX - current.x;
+      const residualY = targetY - current.y;
+      if (Math.abs(residualX) + Math.abs(residualY) < 0.2) break;
+      const uNeighbor = this.projectSurfacePoint(currentU + step, currentV);
+      const vNeighbor = this.projectSurfacePoint(currentU, currentV + step);
+      if (!uNeighbor || !vNeighbor) break;
+      const correction = solvePotterySurfaceDrag(
+        residualX,
+        residualY,
+        { x: (uNeighbor.x - current.x) / step, y: (uNeighbor.y - current.y) / step },
+        { x: (vNeighbor.x - current.x) / step, y: (vNeighbor.y - current.y) / step }
+      );
+      if (!correction.du && !correction.dv) break;
+      currentU += correction.du;
+      currentV = clamp(currentV + correction.dv, 0, 1);
+    }
+    return { du: currentU - u, dv: currentV - v };
   }
 
   /**

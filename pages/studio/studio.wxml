@@ -1,4 +1,4 @@
-<view class="studio {{reduceMotion?'reduce-motion':''}} {{stageIndex===1?'decor-stage':''}} {{decorTrayOpen?'decor-menu-open':'decor-menu-closed'}} {{decorFullscreen?'decor-fullscreen':''}}">
+<view class="studio {{reduceMotion?'reduce-motion':''}} {{stageIndex===1||stageIndex===4?'decor-stage':''}} {{stageIndex===4?'paint-stage':''}} {{stageIndex===2?'glaze-stage':''}} {{decorTrayOpen?'decor-menu-open':'decor-menu-closed'}} {{decorFullscreen?'decor-fullscreen':''}}">
   <view wx:if="{{stageIndex===0}}" class="shaping-workshop-bg" aria-hidden="true">
     <image
       class="shaping-workshop-image"
@@ -7,7 +7,7 @@
     ></image>
     <view class="shaping-workshop-grade"></view>
   </view>
-  <view wx:elif="{{stageIndex===1}}" class="decor-workshop-bg" aria-hidden="true">
+  <view wx:elif="{{stageIndex===1||stageIndex===2||stageIndex===4}}" class="decor-workshop-bg" aria-hidden="true">
     <image class="decor-workshop-image" src="/assets/studio-decoration-workshop.jpg" mode="aspectFill"></image>
     <view class="decor-workshop-grade"></view>
   </view>
@@ -45,7 +45,7 @@
   <view class="safe-top" style="height:{{statusBarHeight}}px"></view>
   <view class="topbar">
     <view
-      wx:if="{{stageIndex===1}}"
+      wx:if="{{stageIndex===1||stageIndex===4}}"
       class="decor-fullscreen-trigger"
       role="button"
       aria-label="{{decorFullscreen?'退出全屏视图':'进入瓷器全屏视图'}}"
@@ -86,7 +86,7 @@
       catchtouchend="touchEnd"
       catchtouchcancel="touchEnd"
     >
-      <view class="fallback-pot shape-{{work.shapeId}} stage-{{stageIndex}}"></view>
+      <view class="fallback-pot shape-{{work.shapeId}} stage-{{stageIndex}} {{stageIndex>=2?'glazed':''}} glaze-{{glazeId}}"></view>
       <view wx:if="{{decorationCount||stampCount||sealApplied}}" class="fallback-decor fired-{{firedPreview}}">
         <text>{{selectedDecorationName||'纹'}}</text>
         <small>{{decorationCount}} 层 · {{stampCount}} 印{{sealApplied?' · 题款':''}}</small>
@@ -114,7 +114,7 @@
     </view>
 
     <view
-      wx:if="{{stageIndex===1&&hasSelectedDecorItem&&!fallback&&!decorFullscreen}}"
+      wx:if="{{((stageIndex===1&&hasSelectedDecorItem)||(stageIndex===4&&hasSelectedPaintItem))&&!fallback&&!decorFullscreen}}"
       id="decorToolPanel"
       class="decor-tool-panel {{decorToolsCollapsed?'collapsed':''}}"
       style="{{decorToolStyle}}"
@@ -128,7 +128,7 @@
           catchtouchcancel="endDecorToolDrag"
         >
           <view class="decor-drag-icon" aria-hidden="true"><view></view><view></view><view></view><view></view><view></view><view></view></view>
-          <view class="decor-tool-title"><text>{{selectedDecorationIsSeal?'题款调校':'纹样调校'}}</text></view>
+           <view class="decor-tool-title"><text>{{stageIndex===4?'彩绘调校':(selectedDecorationIsSeal?'题款调校':'纹样调校')}}</text></view>
         </view>
         <view
           class="decor-tool-fold"
@@ -397,86 +397,123 @@
     </view>
   </view>
 
-  <view wx:elif="{{stageIndex===4}}" class="paint-tray">
-    <view class="decor-head paint-head">
-      <view class="decor-mode-tabs">
-        <view class="{{paintPanel==='accent'?'active':''}}" data-id="accent" bindtap="setPaintPanel">点彩</view>
-        <view class="{{paintPanel==='inscription'?'active':''}}" data-id="inscription" bindtap="setPaintPanel">写款</view>
-      </view>
-      <view
-        class="fired-peek {{firedPreview?'active':''}}"
-        bindtouchstart="previewFiredStart"
-        bindtouchend="previewFiredEnd"
-        bindtouchcancel="previewFiredEnd"
-      >{{firedPreview?'烤后定色':'按住看烤后'}}</view>
-    </view>
-
-    <view wx:if="{{paintPanel==='accent'}}" class="accent-panel">
-      <view class="panel-copy"><text>给主纹点一处颜色</text><small>釉上彩会叠在前序纹样之上，不会覆盖刻花或青花。</small></view>
-      <view class="paint-row">
+  <view wx:elif="{{stageIndex===2}}" class="glaze-tray">
+    <view class="glaze-panel">
+      <view class="glaze-title"><text>彩釉</text></view>
+      <view class="glaze-grid" role="radiogroup" aria-label="选择彩釉">
         <view
-          wx:for="{{paintColors}}"
+          wx:for="{{glazes}}"
           wx:key="id"
-          class="paint-color {{accentColorId===item.id?'active':''}}"
-          data-id="{{item.id}}"
-          bindtap="choosePaint"
+          class="glaze-choice {{glazeId===item.id?'active':''}}"
+          role="radio"
+          aria-checked="{{glazeId===item.id}}"
           aria-label="选择{{item.name}}"
-        ><view class="paint-color-dot" style="background:{{item.color}}"></view><text>{{item.name}}</text></view>
-      </view>
-      <view wx:if="{{selectedDecoration}}" class="accent-controls">
-        <button data-action="size" bindtap="adjustDecoration">大小</button>
-        <button data-action="rotate" bindtap="adjustDecoration">旋转</button>
-        <button data-action="repeat" bindtap="adjustDecoration">{{selectedRepeatName}}</button>
-        <button class="danger" bindtap="deleteSelectedDecoration">移除点彩</button>
-      </view>
-    </view>
-
-    <scroll-view wx:else class="inscription-scroll" scroll-y show-scrollbar="false">
-      <view class="inscription-kicker">写款收尾</view>
-      <view class="inscription-types">
-        <view wx:for="{{inscriptionContentTypes}}" wx:key="id" class="{{inscriptionDraft.contentType===item.id?'active':''}}" data-id="{{item.id}}" bindtap="chooseInscriptionContent">{{item.name}}</view>
-      </view>
-      <textarea
-        class="inscription-input {{inscriptionError?'invalid':''}}"
-        value="{{inscriptionDraft.text}}"
-        maxlength="20"
-        auto-height="true"
-        placeholder="写下名字、日期或祝语"
-        aria-label="写款内容，最多十二个字"
-        bindinput="inputInscription"
-      ></textarea>
-      <view wx:if="{{inscriptionError}}" class="inscription-error">{{inscriptionError}}</view>
-      <scroll-view wx:if="{{inscriptionDraft.contentType==='blessing'}}" class="blessing-scroll" scroll-x show-scrollbar="false">
-        <view class="blessing-row"><view wx:for="{{blessings}}" wx:key="*this" data-text="{{item}}" bindtap="chooseBlessing">{{item}}</view></view>
-      </scroll-view>
-
-      <view class="inscription-options">
-        <view class="option-line"><text>版式</text><scroll-view scroll-x><view><button wx:for="{{inscriptionLayouts}}" wx:key="id" class="{{inscriptionDraft.layoutId===item.id?'active':''}}" data-kind="layout" data-id="{{item.id}}" bindtap="chooseInscriptionOption">{{item.name}}</button></view></scroll-view></view>
-        <view class="option-line"><text>表现</text><scroll-view scroll-x><view><button wx:for="{{inscriptionStyles}}" wx:key="id" class="{{inscriptionDraft.styleId===item.id?'active':''}}" data-kind="style" data-id="{{item.id}}" bindtap="chooseInscriptionOption">{{item.name}}</button></view></scroll-view></view>
-        <view class="option-line"><text>字形</text><scroll-view scroll-x><view><button wx:for="{{inscriptionTypefaces}}" wx:key="id" class="{{inscriptionDraft.typefaceId===item.id?'active':''}}" data-kind="typeface" data-id="{{item.id}}" bindtap="chooseInscriptionOption">{{item.name}}</button></view></scroll-view></view>
-        <view class="option-line"><text>落点</text><scroll-view scroll-x><view><button wx:for="{{inscriptionAnchors}}" wx:key="id" class="{{inscriptionDraft.anchor===item.id?'active':''}}" data-kind="anchor" data-id="{{item.id}}" bindtap="chooseInscriptionOption">{{item.name}}</button></view></scroll-view></view>
-      </view>
-
-      <view wx:if="{{privateMarks.length}}" class="private-marks">
-        <text>本机私款</text>
-        <view class="private-row">
-          <view wx:for="{{privateMarks}}" wx:key="id" data-index="{{index}}" bindtap="applyPrivateMark">
-            <text class="private-mark-text">{{item.inscription.text}}</text>
-            <small data-index="{{index}}" catchtap="replacePrivateMark">用当前替换</small>
+          data-id="{{item.id}}"
+          bindtap="chooseGlaze"
+        >
+          <view class="glaze-sample" style="background:{{item.swatch}}">
+            <view class="glaze-sample-sheen"></view>
+            <view class="glaze-sample-pool"></view>
           </view>
+          <text>{{item.name}}</text>
+          <view wx:if="{{glazeId===item.id}}" class="glaze-check" aria-hidden="true">✓</view>
         </view>
       </view>
-      <view class="inscription-actions">
-        <button class="quiet" bindtap="saveCurrentPrivateMark">存为私款</button>
-        <button wx:if="{{work.decorationComposition.inscription}}" class="danger" bindtap="removeInscription">移除现款</button>
-        <button class="apply-mark" bindtap="applyInscription">落款</button>
+    </view>
+    <view class="glaze-bottom">
+      <button class="glaze-complete" aria-label="完成上釉，进入高温烧制" bindtap="completeStage">
+        <text>完成上釉</text><view>→</view>
+      </button>
+    </view>
+  </view>
+
+  <view wx:elif="{{stageIndex===4}}" class="decor-tray paint-tray {{decorTrayOpen?'expanded':'collapsed'}}">
+    <view
+      class="decor-tray-toggle"
+      role="button"
+      aria-label="{{decorTrayOpen?'收起全部彩绘菜单':'展开全部彩绘菜单'}}"
+      bindtap="toggleDecorTray"
+    ><view>{{decorTrayOpen?'⌄':'⌃'}}</view><text>{{decorTrayOpen?'收起':'展开'}}</text></view>
+
+    <view
+      class="paint-fired-peek {{firedPreview?'active':''}}"
+      role="button"
+      aria-label="按住查看低温烤花后的定色效果"
+      bindtouchstart="previewFiredStart"
+      bindtouchend="previewFiredEnd"
+      bindtouchcancel="previewFiredEnd"
+    ><view aria-hidden="true">焰</view><text>{{firedPreview?'烤后定色':'按住看烤后'}}</text></view>
+
+    <view wx:if="{{decorTrayOpen}}" class="decor-panel-grid paint-panel-grid">
+      <view class="decor-library-panel paint-library-panel">
+        <view class="decor-catalog-tabs paint-catalog-tabs">
+          <view
+            wx:for="{{paintTabs}}"
+            wx:key="id"
+            class="{{paintTab===item.id?'active':''}}"
+            role="button"
+            aria-label="切换到{{item.name}}"
+            data-id="{{item.id}}"
+            bindtap="selectPaintTab"
+          ><small>{{item.seal}}</small><text>{{item.name}}</text></view>
+        </view>
+
+        <view class="decor-library-body paint-library-body">
+          <scroll-view class="decor-grid-scroll paint-grid-scroll" scroll-y enhanced show-scrollbar="false">
+            <view class="decor-grid paint-grid">
+              <view
+                wx:for="{{paintCatalogItems}}"
+                wx:key="key"
+                class="decor-grid-card paint-grid-card {{item.kind==='color'?'pigment-card':''}} {{item.checked?'checked':''}}"
+                role="button"
+                aria-pressed="{{item.checked}}"
+                aria-label="{{item.ariaLabel}}"
+                data-id="{{item.id}}"
+                data-key="{{item.key}}"
+                bindtap="togglePaintCatalogItem"
+              >
+                <view wx:if="{{item.kind==='color'}}" class="paint-pigment-art">
+                  <view class="paint-pigment-dish"><view style="background:{{item.color}}"></view></view>
+                  <text>{{item.glyph}}</text>
+                </view>
+                <view wx:else class="motif-art paint-motif-art {{item.patternClass}}" style="color:{{item.color}}"><view></view><text>{{item.glyph}}</text><view></view></view>
+                <view wx:if="{{item.checked}}" class="decor-check">✓</view>
+                <text class="decor-grid-name">{{item.name}}</text>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
       </view>
-      <view class="privacy-note">款识只保存在本机，不会写入埋点或日志。</view>
-    </scroll-view>
+
+      <view class="decor-selected-panel paint-selected-panel">
+        <view class="decor-selected-head"><view><small>釉上设色</small><text>彩绘图层</text></view><text>{{paintLayerCount}}</text></view>
+        <scroll-view class="decor-selected-scroll" scroll-y enhanced show-scrollbar="false">
+          <view wx:if="{{paintLayers.length}}" class="decor-selected-grid">
+            <view
+              wx:for="{{paintLayers}}"
+              wx:key="id"
+              class="decor-selected-card paint-selected-card {{item.selected?'active':''}} {{item.visible?'':'hidden'}}"
+              role="radio"
+              aria-checked="{{item.selected}}"
+              aria-label="{{item.ariaLabel}}"
+              data-id="{{item.id}}"
+              bindtap="selectDecoration"
+            >
+              <view class="motif-art paint-motif-art {{item.patternClass}}" style="color:{{item.color}}"><view></view><text>{{item.glyph}}</text><view></view></view>
+              <view class="paint-layer-swatch" style="background:{{item.color}}"></view>
+              <view wx:if="{{item.selected}}" class="decor-check">✓</view>
+              <view wx:if="{{item.copyNumber}}" class="decor-copy-badge">{{item.copyNumber}}</view>
+              <text>{{item.name}}</text>
+            </view>
+          </view>
+          <view wx:else class="decor-selected-empty paint-selected-empty"><text>尚未上彩</text><small>从左侧挑一枚图案，或直接涂色</small></view>
+        </scroll-view>
+      </view>
+    </view>
 
     <view class="decor-bottom paint-bottom">
-      <text>{{work.decorationComposition.inscription?'已写款':'写款可跳过'}}</text>
-      <button class="decor-complete" bindtap="completeStage">完成彩绘 →</button>
+      <text>{{paintLayerCount?paintLayerCount+' 层釉上彩':'可保留烧后素面'}}</text>
+      <button class="decor-complete" bindtap="completeStage">完成彩绘 <view>→</view></button>
     </view>
   </view>
 
@@ -485,13 +522,6 @@
       <view class="tool-row">
         <view wx:for="{{tools}}" wx:key="id" data-id="{{item.id}}" bindtap="chooseTool" class="tool {{tool===item.id?'active':''}}">
           <view>{{item.name}}</view><text>{{item.name}}</text>
-        </view>
-      </view>
-    </scroll-view>
-    <scroll-view wx:if="{{stageIndex===2}}" class="swatch-scroll" scroll-x show-scrollbar="false">
-      <view class="swatch-row">
-        <view wx:for="{{glazes}}" wx:key="id" class="swatch-item {{glazeId===item.id?'active':''}}" data-id="{{item.id}}" bindtap="chooseGlaze">
-          <view style="background:{{item.fired}}"></view><text>{{item.name}}</text>
         </view>
       </view>
     </scroll-view>

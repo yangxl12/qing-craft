@@ -1133,12 +1133,10 @@
 .shape-mode.active .shape-copy small {
   color: rgba(239, 246, 242, 0.72);
 }
-.tool-scroll,
-.swatch-scroll {
+.tool-scroll {
   width: 100%;
 }
-.tool-row,
-.swatch-row {
+.tool-row {
   display: flex;
   gap: 18rpx;
   padding: 3rpx 4rpx 20rpx;
@@ -1175,30 +1173,6 @@
 .tool.active text {
   color: #202822;
   font-weight: 700;
-}
-.swatch-row {
-  gap: 24rpx;
-}
-.swatch-item {
-  width: 82rpx;
-  flex: none;
-  text-align: center;
-}
-.swatch-item view {
-  width: 68rpx;
-  height: 68rpx;
-  border-radius: 50%;
-  margin: auto;
-  border: 7rpx solid #f5f7f2;
-  box-shadow: 0 0 0 2rpx rgba(32, 40, 34, 0.14);
-}
-.swatch-item.active view {
-  box-shadow: 0 0 0 5rpx #52796a;
-}
-.swatch-item text {
-  font-size: 18rpx;
-  display: block;
-  margin-top: 7rpx;
 }
 .paint-row {
   height: 80rpx;
@@ -3806,4 +3780,485 @@
   .decor-tool-panel {
     top: 70rpx;
   }
+}
+
+/* 上釉阶段 · 与装饰工序同处墨青工坊，六枚釉样像薄瓷试片悬在台前。 */
+.glaze-stage .stage-area {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.glaze-stage .pottery-spotlight {
+  top: 1%;
+  width: 500rpx;
+  height: 610rpx;
+  background: radial-gradient(
+    ellipse at 46% 40%,
+    rgba(247, 241, 218, 0.27),
+    rgba(183, 205, 193, 0.08) 46%,
+    transparent 72%
+  );
+}
+.glaze-stage .wheel-root {
+  bottom: 8rpx;
+  transform: translateX(-50%) scale(0.88);
+}
+
+.glaze-tray {
+  position: relative;
+  z-index: 12;
+  flex: 0 0 calc(446rpx + env(safe-area-inset-bottom));
+  width: calc(100% - 24rpx);
+  height: calc(446rpx + env(safe-area-inset-bottom));
+  min-height: calc(446rpx + env(safe-area-inset-bottom));
+  margin: 0 12rpx;
+  padding: 10rpx 12rpx calc(92rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  color: #263b37;
+  background: transparent;
+  animation: glaze-tray-rise 0.34s cubic-bezier(0.2, 0.75, 0.2, 1) both;
+}
+.glaze-panel {
+  height: 100%;
+  padding: 10rpx 12rpx 13rpx;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1rpx solid rgba(58, 88, 80, 0.34);
+  border-radius: 23rpx;
+  background: linear-gradient(
+    165deg,
+    rgba(250, 251, 243, 0.5),
+    rgba(230, 239, 233, 0.34)
+  );
+  box-shadow:
+    inset 0 1rpx rgba(255, 255, 255, 0.48),
+    0 12rpx 30rpx rgba(4, 16, 13, 0.16);
+  backdrop-filter: blur(18rpx);
+}
+.glaze-title {
+  height: 50rpx;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 18rpx;
+  color: #284d46;
+}
+.glaze-title::before,
+.glaze-title::after {
+  content: "";
+  height: 1rpx;
+  background: linear-gradient(90deg, transparent, rgba(57, 91, 82, 0.32));
+}
+.glaze-title::after {
+  transform: scaleX(-1);
+}
+.glaze-title text {
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 25rpx;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+}
+.glaze-grid {
+  height: calc(100% - 50rpx);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 10rpx 11rpx;
+}
+.glaze-choice {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  padding: 9rpx 5rpx 7rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid rgba(60, 92, 83, 0.13);
+  border-radius: 18rpx;
+  color: #435c55;
+  background: rgba(247, 248, 240, 0.42);
+  box-shadow: inset 0 1rpx rgba(255, 255, 255, 0.38);
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.glaze-choice:active {
+  transform: scale(0.97);
+}
+.glaze-choice.active {
+  border-color: rgba(47, 89, 78, 0.58);
+  color: #203f38;
+  background: rgba(248, 250, 243, 0.82);
+  box-shadow:
+    inset 0 1rpx rgba(255, 255, 255, 0.65),
+    0 6rpx 18rpx rgba(25, 66, 56, 0.12);
+}
+.glaze-sample {
+  position: relative;
+  width: 92rpx;
+  height: 50rpx;
+  overflow: hidden;
+  border: 2rpx solid rgba(255, 255, 255, 0.7);
+  border-radius: 50% 50% 46% 46%;
+  box-shadow:
+    inset 0 -8rpx 12rpx rgba(6, 18, 15, 0.2),
+    0 0 0 1rpx rgba(32, 61, 54, 0.2),
+    0 7rpx 12rpx rgba(6, 24, 19, 0.16);
+}
+.glaze-sample-sheen {
+  position: absolute;
+  left: 16rpx;
+  top: 5rpx;
+  width: 43rpx;
+  height: 15rpx;
+  border-radius: 50%;
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.05));
+  transform: rotate(-8deg);
+  filter: blur(1rpx);
+}
+.glaze-sample-pool {
+  position: absolute;
+  left: 9rpx;
+  right: 9rpx;
+  bottom: 3rpx;
+  height: 11rpx;
+  border-radius: 50%;
+  background: rgba(7, 19, 16, 0.14);
+  filter: blur(4rpx);
+}
+.glaze-choice > text {
+  display: block;
+  max-width: 100%;
+  margin-top: 7rpx;
+  overflow: hidden;
+  font-size: 18rpx;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.glaze-check {
+  position: absolute;
+  top: 6rpx;
+  right: 7rpx;
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  color: #f6f7ed;
+  background: linear-gradient(145deg, #4d7a6d, #31574d);
+  box-shadow: 0 4rpx 10rpx rgba(24, 61, 52, 0.2);
+  font-size: 17rpx;
+  font-weight: 700;
+  line-height: 28rpx;
+  text-align: center;
+}
+
+.glaze-bottom {
+  position: absolute;
+  z-index: 5;
+  left: 12rpx;
+  right: 12rpx;
+  bottom: env(safe-area-inset-bottom);
+  height: 84rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.glaze-complete {
+  width: 218rpx;
+  height: 66rpx;
+  margin: 0;
+  padding: 0 10rpx 0 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 999rpx;
+  color: #f8f6e9;
+  background: linear-gradient(145deg, #315d54, #1d403b);
+  box-shadow:
+    0 9rpx 24rpx rgba(14, 48, 41, 0.22),
+    inset 0 1rpx rgba(255, 255, 255, 0.12);
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 19rpx;
+  line-height: 66rpx;
+  letter-spacing: 0.1em;
+  transition: transform 0.15s ease;
+}
+.glaze-complete::after {
+  border: 0;
+}
+.glaze-complete:active {
+  transform: scale(0.97);
+}
+.glaze-complete view {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 23rpx;
+  line-height: 48rpx;
+  text-align: center;
+}
+
+/* WebGL 不可用时仍按当前单选釉色实时改变器身，而不是退回统一占位色。 */
+.fallback-pot.glazed {
+  box-shadow:
+    inset 38rpx 0 34rpx rgba(255, 255, 255, 0.26),
+    inset -28rpx 0 34rpx rgba(8, 20, 16, 0.24),
+    inset 0 -24rpx 26rpx rgba(10, 24, 19, 0.18),
+    15rpx 28rpx 30rpx rgba(0, 0, 0, 0.28);
+}
+.fallback-pot.glazed.glaze-celadon {
+  background: linear-gradient(104deg, #5d8178 0%, #9abbb1 28%, #c6d8cf 46%, #87aca1 68%, #496f66 100%);
+}
+.fallback-pot.glazed.glaze-plum {
+  background: linear-gradient(104deg, #294d41 0%, #6e9980 26%, #acc5ad 45%, #5f8a72 67%, #203e35 100%);
+}
+.fallback-pot.glazed.glaze-black {
+  background:
+    repeating-linear-gradient(98deg, transparent 0 13rpx, rgba(172, 127, 61, 0.17) 15rpx 17rpx, transparent 20rpx 30rpx),
+    linear-gradient(104deg, #090b09 0%, #3a3123 28%, #6a5533 44%, #24231c 63%, #070908 100%);
+}
+.fallback-pot.glazed.glaze-moon {
+  background: linear-gradient(104deg, #c9c1b3 0%, #f2ede3 27%, #fffdf7 48%, #e9e2d6 70%, #bcb4a7 100%);
+}
+.fallback-pot.glazed.glaze-cobalt {
+  background: linear-gradient(104deg, #08274b 0%, #1f5b8f 27%, #5b8fb4 45%, #174f83 67%, #061e3d 100%);
+}
+.fallback-pot.glazed.glaze-cloud {
+  background: linear-gradient(104deg, #94aaa4 0%, #d4e4df 28%, #f4f7ef 48%, #c4d9d3 69%, #809a94 100%);
+}
+
+@keyframes glaze-tray-rise {
+  from {
+    opacity: 0.35;
+    transform: translateY(28rpx);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.reduce-motion .glaze-tray {
+  animation: none;
+}
+.reduce-motion .glaze-choice,
+.reduce-motion .glaze-complete {
+  transition: none;
+}
+
+@media (max-height: 700px) {
+  .glaze-tray {
+    flex-basis: calc(408rpx + env(safe-area-inset-bottom));
+    height: calc(408rpx + env(safe-area-inset-bottom));
+    min-height: calc(408rpx + env(safe-area-inset-bottom));
+    padding-bottom: calc(78rpx + env(safe-area-inset-bottom));
+  }
+  .glaze-title {
+    height: 42rpx;
+  }
+  .glaze-grid {
+    height: calc(100% - 42rpx);
+  }
+  .glaze-sample {
+    width: 80rpx;
+    height: 42rpx;
+  }
+  .glaze-bottom {
+    height: 72rpx;
+  }
+  .glaze-complete {
+    height: 58rpx;
+    line-height: 58rpx;
+  }
+}
+
+/* 釉上彩绘阶段 · 沿用装饰工坊的器物舞台，只把左侧材料库换成三类彩绘入口。 */
+.paint-stage .pottery-spotlight {
+  background:
+    radial-gradient(circle at 62% 38%, rgba(182, 91, 65, 0.09), transparent 24%),
+    radial-gradient(
+      ellipse at 48% 42%,
+      rgba(246, 240, 216, 0.24),
+      rgba(187, 207, 195, 0.07) 48%,
+      transparent 72%
+    );
+}
+.paint-stage .decor-tool-fold {
+  background: linear-gradient(145deg, #8d5042, #65382f);
+}
+.paint-stage .decor-tool-head {
+  border-color: rgba(239, 223, 207, 0.58);
+  background: rgba(234, 233, 218, 0.74);
+}
+.paint-catalog-tabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.paint-library-body,
+.paint-grid-scroll {
+  width: 100%;
+}
+.paint-panel-grid .decor-library-panel {
+  background: linear-gradient(
+    165deg,
+    rgba(251, 248, 237, 0.48),
+    rgba(235, 239, 229, 0.3)
+  );
+}
+.paint-fired-peek {
+  position: absolute;
+  z-index: 5;
+  right: 12rpx;
+  top: -40rpx;
+  min-width: 190rpx;
+  height: 50rpx;
+  padding: 0 14rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7rpx;
+  border: 1rpx solid rgba(224, 235, 227, 0.48);
+  border-bottom: 0;
+  border-radius: 24rpx 24rpx 8rpx 8rpx;
+  color: rgba(249, 248, 237, 0.9);
+  background: rgba(25, 55, 51, 0.76);
+  box-shadow: 0 -6rpx 18rpx rgba(2, 10, 9, 0.16);
+  backdrop-filter: blur(12rpx);
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    transform 0.15s ease;
+}
+.paint-fired-peek:active {
+  transform: scale(0.97);
+}
+.paint-fired-peek > view {
+  width: 28rpx;
+  height: 28rpx;
+  border: 1rpx solid currentColor;
+  border-radius: 8rpx 8rpx 11rpx 11rpx;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 14rpx;
+  line-height: 28rpx;
+  text-align: center;
+}
+.paint-fired-peek > text {
+  font-size: 13rpx;
+  letter-spacing: 0.08em;
+}
+.paint-fired-peek.active {
+  color: #fff4df;
+  background: rgba(143, 70, 52, 0.88);
+}
+.paint-tray.collapsed .paint-fired-peek {
+  top: -31rpx;
+  right: 4rpx;
+  opacity: 0.58;
+  box-shadow: none;
+}
+.paint-grid-card .paint-motif-art,
+.paint-selected-card .paint-motif-art {
+  background:
+    radial-gradient(circle at 50% 48%, currentColor 0 1rpx, transparent 2rpx),
+    radial-gradient(circle at 50% 48%, rgba(255, 250, 236, 0.7), transparent 62%),
+    linear-gradient(145deg, rgba(255, 253, 245, 0.6), rgba(218, 225, 211, 0.3));
+}
+.paint-grid-card.pigment-card {
+  border-color: rgba(122, 86, 64, 0.2);
+  background: linear-gradient(150deg, rgba(253, 248, 234, 0.66), rgba(226, 230, 216, 0.42));
+}
+.paint-grid-card.pigment-card.checked {
+  border-color: rgba(151, 85, 63, 0.66);
+  background: linear-gradient(145deg, rgba(249, 237, 218, 0.76), rgba(225, 210, 188, 0.5));
+  box-shadow:
+    0 7rpx 19rpx rgba(80, 45, 31, 0.16),
+    inset 0 0 0 2rpx rgba(255, 255, 255, 0.42);
+}
+.paint-pigment-art {
+  position: absolute;
+  inset: 4rpx 4rpx 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.paint-pigment-dish {
+  position: relative;
+  width: 62rpx;
+  height: 62rpx;
+  box-sizing: border-box;
+  border: 6rpx solid rgba(245, 241, 224, 0.92);
+  border-radius: 50%;
+  background: #d4d0c1;
+  box-shadow:
+    inset 0 -5rpx 9rpx rgba(36, 29, 24, 0.18),
+    0 7rpx 12rpx rgba(46, 36, 29, 0.16),
+    0 0 0 1rpx rgba(77, 64, 54, 0.17);
+}
+.paint-pigment-dish > view {
+  position: absolute;
+  inset: 5rpx;
+  border-radius: 50%;
+  box-shadow:
+    inset 5rpx 6rpx 9rpx rgba(255, 255, 255, 0.24),
+    inset -6rpx -8rpx 10rpx rgba(16, 12, 10, 0.22);
+}
+.paint-pigment-dish > view::after {
+  content: "";
+  position: absolute;
+  left: 17%;
+  top: 13%;
+  width: 34%;
+  height: 20%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+  transform: rotate(-24deg);
+}
+.paint-pigment-art > text {
+  position: absolute;
+  right: 8rpx;
+  bottom: 3rpx;
+  width: 25rpx;
+  height: 25rpx;
+  border: 1rpx solid rgba(132, 74, 55, 0.55);
+  color: #8f4e3e;
+  background: rgba(251, 244, 225, 0.84);
+  font-family: "STKaiti", "KaiTi", "Songti SC", serif;
+  font-size: 12rpx;
+  line-height: 25rpx;
+  text-align: center;
+}
+.paint-layer-swatch {
+  position: absolute;
+  z-index: 5;
+  right: 7rpx;
+  bottom: 27rpx;
+  width: 22rpx;
+  height: 22rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
+  box-shadow: 0 3rpx 8rpx rgba(31, 24, 20, 0.24);
+}
+.paint-selected-empty small {
+  max-width: 150rpx;
+  line-height: 1.45;
+}
+.paint-stage .paint-bottom > text {
+  color: rgba(225, 231, 220, 0.74);
+}
+.paint-stage .paint-bottom .decor-complete {
+  background: linear-gradient(145deg, #6f483f, #3f302c);
+  box-shadow:
+    0 9rpx 24rpx rgba(42, 20, 15, 0.25),
+    inset 0 1rpx rgba(255, 255, 255, 0.13);
+}
+.reduce-motion .paint-fired-peek,
+.reduce-motion .paint-grid-card,
+.reduce-motion .paint-stage .paint-bottom .decor-complete {
+  transition: none;
 }

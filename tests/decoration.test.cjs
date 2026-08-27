@@ -43,6 +43,7 @@ assert.equal(BORDERS.length, 6, "MVP 必须提供六条连续边饰");
 assert.equal(DECORATION_TEMPLATES.length, 6, "MVP 必须提供六套一键构图");
 
 const studioMarkup = fs.readFileSync("pages/studio/studio.wxml", "utf8");
+const studioSource = fs.readFileSync("pages/studio/studio.ts", "utf8");
 assert.doesNotMatch(
   studioMarkup,
   /bindlongpress="deleteSelectedDecoration"/,
@@ -63,6 +64,55 @@ assert.match(
   /wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command"[^>]+bindtap="copySelectedDecoration"/,
   "题款被选中时不能显示复制操作",
 );
+
+const paintTabsBlock = studioSource.match(
+  /const PAINT_CATALOG_TABS:[\s\S]*?= \[([\s\S]*?)\];/,
+);
+assert.ok(paintTabsBlock, "彩绘页必须有独立的一级菜单契约");
+assert.deepEqual(
+  [...paintTabsBlock[1].matchAll(/name:"([^"]+)"/g)].map((match) => match[1]),
+  ["图案", "纹样", "涂色"],
+  "彩绘页左侧必须且只能保留图案、纹样、涂色三个菜单项",
+);
+const paintStageMarkup = studioMarkup.match(
+  /<view wx:elif="{{stageIndex===4}}"[\s\S]*?(?=<view wx:else class="tray">)/,
+);
+assert.ok(paintStageMarkup, "彩绘阶段工作台必须存在");
+assert.match(paintStageMarkup[0], /wx:for="{{paintTabs}}"/, "彩绘左侧必须渲染三个一级菜单");
+assert.match(paintStageMarkup[0], /class="decor-panel-grid paint-panel-grid"/, "彩绘页必须复用装饰页 3:2 双栏工作台");
+assert.match(paintStageMarkup[0], /wx:for="{{paintLayers}}"/, "彩绘右侧必须只管理釉上彩图层");
+assert.doesNotMatch(
+  paintStageMarkup[0],
+  /paintPanel|setPaintPanel|写款收尾|bindtap="applyInscription"/,
+  "彩绘主菜单不能继续混入旧点彩/写款表单",
+);
+assert.match(
+  studioMarkup,
+  /stageIndex===1\|\|stageIndex===2\|\|stageIndex===4/,
+  "彩绘页必须复用装饰工坊背景",
+);
+assert.match(
+  studioMarkup,
+  /stageIndex===4&&hasSelectedPaintItem/,
+  "彩绘图层必须接入浮动调校工具",
+);
+assert.match(
+  studioSource,
+  /const surfaceEditing = this\.work\.currentStage === "decorate" \|\| this\.work\.currentStage === "paint"/,
+  "彩绘图层必须支持在器身上直接拖动",
+);
+
+const boundHandlers = new Set(
+  [...studioMarkup.matchAll(/\b(?:bind|catch)(?:tap|touchstart|touchmove|touchend|touchcancel|input|changing|change)="([A-Za-z0-9_]+)"/g)]
+    .map((match) => match[1]),
+);
+for (const handler of boundHandlers) {
+  assert.match(
+    studioSource,
+    new RegExp(`\\n\\s+${handler}\\(`),
+    `WXML 事件 ${handler} 必须在 studio.ts 中实现`,
+  );
+}
 
 for (const shapeId of ["cup", "bowl", "vase", "jar", "plate"]) {
   const anchors = availableAnchors(shapeId);

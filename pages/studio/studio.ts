@@ -1,4 +1,12 @@
-import { CLAYS, GLAZES, SHAPES, ClayId, ShapeId, STAGES, TOOLS } from "../../core/catalog";
+import {
+  CLASSIC_GLAZES,
+  CLAYS,
+  SHAPES,
+  ClayId,
+  ShapeId,
+  STAGES,
+  TOOLS
+} from "../../core/catalog";
 import { cloneWork, createWork, PotteryWork } from "../../core/model";
 import {
   ALL_DECORATION_MOTIFS,
@@ -164,6 +172,7 @@ function wallThicknessLabel(thickness: number): string {
 }
 
 type DecorCatalogTabId = "pattern" | "ornament" | "inscription" | "carving";
+type PaintCatalogTabId = "pattern" | "ornament" | "color";
 
 const DECOR_CATALOG_TABS: { id: DecorCatalogTabId; name: string; seal: string }[] = [
   { id:"pattern", name:"图案", seal:"绘" },
@@ -171,6 +180,34 @@ const DECOR_CATALOG_TABS: { id: DecorCatalogTabId; name: string; seal: string }[
   { id:"inscription", name:"写款", seal:"款" },
   { id:"carving", name:"刻花", seal:"刻" }
 ];
+
+const PAINT_CATALOG_TABS: { id: PaintCatalogTabId; name: string; seal: string }[] = [
+  { id:"pattern", name:"图案", seal:"彩" },
+  { id:"ornament", name:"纹样", seal:"纹" },
+  { id:"color", name:"涂色", seal:"色" }
+];
+
+const PAINT_PATTERN_MOTIF_IDS = [
+  "plum",
+  "peony",
+  "crane",
+  "butterfly",
+  "bat",
+  "lotus",
+  "cloud",
+  "longevity",
+  "bamboo"
+];
+
+function paintCatalogPool(tab: PaintCatalogTabId, shapeId: ShapeId) {
+  const available = availableAnchors(shapeId);
+  const source = tab === "ornament"
+    ? BORDERS
+    : PAINT_PATTERN_MOTIF_IDS
+        .map((id) => MOTIFS.find((motif) => motif.id === id))
+        .filter((motif): motif is (typeof MOTIFS)[number] => !!motif);
+  return source.filter((motif) => motif.anchors.some((anchor) => available.includes(anchor)));
+}
 
 const DECOR_SIDE_ICONS = ["✦", "◫", "❋", "⌁"];
 const DECOR_SIDE_MENUS = Array.from({ length:4 }, (_, index) => ({
@@ -243,7 +280,7 @@ Page({
     clayName: "白瓷泥",
     shapeMenuOpen: false,
     clayMenuOpen: false,
-    glazes: GLAZES,
+    glazes: CLASSIC_GLAZES,
     glazeId: "celadon",
     paintColors: [
       { id:"cobalt", name:"青花蓝", color:"#315e73" },
@@ -253,6 +290,12 @@ Page({
       { id:"porcelain", name:"瓷白", color:"#eee9dc" },
       { id:"moss", name:"苔绿", color:"#657858" }
     ],
+    paintTabs: PAINT_CATALOG_TABS,
+    paintTab: "pattern" as PaintCatalogTabId,
+    paintCatalogItems: [] as any[],
+    paintLayers: [] as any[],
+    paintLayerCount: 0,
+    hasSelectedPaintItem: false,
     decorMode: "template",
     decorSection: "main",
     decorTabs: DECOR_CATALOG_TABS,
@@ -291,7 +334,6 @@ Page({
     selectedItemCount: 0,
     pendingStampMotifId: "",
     firedPreview: false,
-    paintPanel: "accent",
     accentColorId: "",
     inscriptionDraft: defaultInscription() as Inscription,
     inscriptionError: "",
@@ -353,7 +395,6 @@ Page({
   lastWallUiUpdate: 0,
   decorEnterTracked: false,
   decorateStartedAt: 0,
-  inscriptionReminderShown: false,
   previewStartedAt: 0,
   decorPanelDrag: null as null | {
     grabX: number;
@@ -374,13 +415,25 @@ Page({
       return;
     }
     this.work = work;
+    // 旧版草稿可能停在半浸、刷涂或泼釉。新版上釉页只有完整施釉，
+    // 进入该阶段时统一归一化，保证当前器身与六枚釉样的预期一致。
+    if (work.currentStage === "glaze") {
+      work.glazeMethod = "full";
+      if (!CLASSIC_GLAZES.some((item) => item.id === work.glazeId)) {
+        work.glazeId = CLASSIC_GLAZES[0].id;
+      }
+    }
     const inscriptionDraft = work.decorationComposition.inscription
       ? JSON.parse(JSON.stringify(work.decorationComposition.inscription)) as Inscription
       : defaultInscription();
     const sealMark = work.decorationComposition.sealMark;
+    const firstPaintLayer = work.currentStage === "paint"
+      ? work.decorationComposition.layers.find((layer) => layer.technique === "overglaze")
+      : undefined;
     this.setData({
       inscriptionDraft,
       privateMarks:loadPrivateMarks(),
+      selectedDecorationId:firstPaintLayer?.layerId || "",
       ...(sealMark ? {
         sealText:sealMark.text,
         sealTextLength:Array.from(sealMark.text).length,
@@ -523,6 +576,60 @@ Page({
       ...composition.stamps
     ];
     const selected = all.find((layer) => layer.layerId === this.data.selectedDecorationId) || null;
+    const paintLayers = composition.layers.filter((layer) => layer.technique === "overglaze");
+    const selectedPaint = selected?.technique === "overglaze" ? selected as DecorationLayer : null;
+    const paintTarget = selectedPaint || paintLayers[0] || null;
+    const paintTab = this.data.paintTab as PaintCatalogTabId;
+    const activePaintColor = this.data.paintColors.find((item) => item.id === paintTarget?.colorId)
+      || this.data.paintColors[1];
+    const paintCatalogItems = paintTab === "color"
+      ? this.data.paintColors.map((item) => ({
+          id:item.id,
+          key:`paint:color:${item.id}`,
+          kind:"color",
+          name:item.name,
+          glyph:item.name.slice(0, 1),
+          color:item.color,
+          checked:paintTarget?.colorId === item.id,
+          ariaLabel:paintTarget ? `为${motifById(paintTarget.motifId).name}涂${item.name}` : `用${item.name}开始彩绘`
+        }))
+      : paintCatalogPool(paintTab, this.work.shapeId).map((motif) => {
+          const role = paintTab === "ornament" ? "border" : "accent";
+          const key = `paint:${paintTab}:${motif.id}`;
+          const match = paintLayers.find((layer) =>
+            layer.catalogKey === key ||
+            (!layer.catalogKey && layer.motifId === motif.id && layer.role === role)
+          );
+          return {
+            id:motif.id,
+            key,
+            kind:"motif",
+            name:motif.name,
+            glyph:motif.glyph,
+            color:activePaintColor?.color || "#a84f43",
+            checked:!!match,
+            ariaLabel:match ? `移除${motif.name}彩绘` : `添加${motif.name}彩绘`,
+            layerId:match?.layerId || "",
+            patternClass:`motif-ink-${(motif.shaderCode % 6) + 1}`
+          };
+        });
+    const paintLayerCards = paintLayers.map((layer) => {
+      const motif = motifById(layer.motifId);
+      const color = this.data.paintColors.find((item) => item.id === layer.colorId);
+      return {
+        id:layer.layerId,
+        name:motif.name,
+        glyph:motif.glyph,
+        roleName:layer.role === "border" ? "彩纹" : "彩图",
+        ariaLabel:`选中${motif.name}彩绘进行调整`,
+        selected:layer.layerId === this.data.selectedDecorationId,
+        visible:layer.visible,
+        copyNumber:layer.copyNumber || 0,
+        color:color?.color || "#a84f43",
+        colorName:color?.name || "釉上彩",
+        patternClass:`motif-ink-${(motif.shaderCode % 6) + 1}`
+      };
+    });
     const sealMark = composition.sealMark;
     const sealSelected = !!sealMark && this.data.selectedDecorationId === SEAL_MARK_SELECTION_ID;
     const roleNames: Record<string, string> = {
@@ -531,7 +638,6 @@ Page({
       accent:"点彩",
       stamp:"落印"
     };
-    const accent = composition.layers.find((layer) => layer.role === "accent");
     const anchors = availableAnchors(this.work.shapeId);
     const compatibleMotifs = MOTIFS.filter((motif) =>
       motif.anchors.some((anchor) => anchors.includes(anchor)) &&
@@ -602,17 +708,21 @@ Page({
       })),
       decorationLayers,
       decorCatalogItems:catalogItems,
+      paintCatalogItems,
+      paintLayers:paintLayerCards,
+      paintLayerCount:paintLayers.length,
       selectedDecoration:selected,
       hasSelectedDecorItem:!!selected || sealSelected,
+      hasSelectedPaintItem:!!selectedPaint,
       selectedDecorationIsSeal:sealSelected,
-      selectedDecorationLabel:sealSelected ? "题款" : "图案",
+      selectedDecorationLabel:sealSelected ? "题款" : selectedPaint ? "彩绘" : "图案",
       selectedDecorationName:sealSelected ? "题款" : selected ? motifById(selected.motifId).name : "",
       selectedTechniqueName:selected ? TECHNIQUE_LABELS[selected.technique] : "",
       selectedRepeatName:selected ? REPEAT_LABELS[selected.repeatMode] : "",
       decorationCount:composition.layers.length,
       stampCount:composition.stamps.length,
       selectedItemCount:all.length + (sealMark ? 1 : 0),
-      accentColorId:accent?.colorId || "",
+      accentColorId:paintTarget?.colorId || "",
       sealApplied:!!composition.sealMark,
       inscriptionAnchors:this.inscriptionAnchorOptions()
     };
@@ -855,6 +965,75 @@ Page({
     this.setData({ decorSection:section, pendingStampMotifId:"" });
   },
 
+  selectPaintTab(event: WechatMiniprogramTouchEvent) {
+    const tab = event.currentTarget.dataset.id as PaintCatalogTabId;
+    if (!PAINT_CATALOG_TABS.some((item) => item.id === tab)) return;
+    this.setData({ paintTab:tab }, () => this.setData(this.decorationData()));
+    this.vibrate();
+  },
+
+  togglePaintCatalogItem(event: WechatMiniprogramTouchEvent) {
+    if (!this.work || this.work.currentStage !== "paint") return;
+    const key = String(event.currentTarget.dataset.key || "");
+    const motifId = String(event.currentTarget.dataset.id || "");
+    const tab = key.split(":")[1] as PaintCatalogTabId;
+    if (tab === "color") {
+      this.choosePaint(event);
+      return;
+    }
+    if (tab !== "pattern" && tab !== "ornament") return;
+    const motif = ALL_DECORATION_MOTIFS.find((item) => item.id === motifId);
+    if (!motif) return;
+
+    const composition = this.work.decorationComposition;
+    const role = tab === "ornament" ? "border" : "accent";
+    const existing = composition.layers.find((layer) =>
+      layer.technique === "overglaze" &&
+      (layer.catalogKey === key || (!layer.catalogKey && layer.motifId === motifId && layer.role === role))
+    );
+
+    if (existing) {
+      this.pushHistory();
+      composition.layers = composition.layers.filter((layer) => layer.layerId !== existing.layerId);
+      const remainingPaint = composition.layers.filter((layer) => layer.technique === "overglaze");
+      this.setData({
+        selectedDecorationId:this.data.selectedDecorationId === existing.layerId
+          ? remainingPaint[0]?.layerId || ""
+          : this.data.selectedDecorationId
+      });
+      this.changed();
+      this.syncData();
+      track("paint_layer_toggle", { action:"remove", motif_id:motifId, role });
+      this.vibrate();
+      return;
+    }
+
+    if (composition.layers.length >= MAX_DECORATION_LAYERS) {
+      wx.showToast({ title:"器身已有五层图样，先移除一层再上彩", icon:"none" });
+      return;
+    }
+
+    const selected = this.selectedDecoration();
+    const paintTarget = selected?.technique === "overglaze"
+      ? selected
+      : composition.layers.find((layer) => layer.technique === "overglaze");
+    const colorId = paintTarget?.colorId || this.data.accentColorId || "seal_red";
+    const layer = createDecorationLayer(motifId, role, this.work.shapeId, "modern_studio", {
+      catalogKey:key,
+      technique:"overglaze",
+      colorId,
+      repeatMode:role === "border" ? "band" : motif.repeatMode,
+      scale:role === "border" ? .72 : .88
+    });
+    this.pushHistory();
+    composition.layers.push(layer);
+    this.setData({ selectedDecorationId:layer.layerId });
+    this.changed();
+    this.syncData();
+    track("paint_layer_toggle", { action:"add", motif_id:motifId, role, color_id:colorId });
+    this.vibrate();
+  },
+
   selectDecorTab(event: WechatMiniprogramTouchEvent) {
     const tab = event.currentTarget.dataset.id as DecorCatalogTabId;
     if (!DECOR_CATALOG_TABS.some((item) => item.id === tab)) return;
@@ -1002,7 +1181,7 @@ Page({
   },
 
   toggleDecorFullscreen() {
-    if (this.work?.currentStage !== "decorate") return;
+    if (!this.work || !["decorate", "paint"].includes(this.work.currentStage)) return;
     const decorFullscreen = !this.data.decorFullscreen;
     this.setData({ decorFullscreen }, () => {
       setTimeout(
@@ -1198,6 +1377,12 @@ Page({
 
   selectDecoration(event: WechatMiniprogramTouchEvent) {
     const id = event.currentTarget.dataset.id;
+    if (
+      this.work?.currentStage === "paint" &&
+      !this.work.decorationComposition.layers.some((layer) =>
+        layer.layerId === id && layer.technique === "overglaze"
+      )
+    ) return;
     this.setData({
       selectedDecorationId:id,
       pendingStampMotifId:"",
@@ -1224,6 +1409,7 @@ Page({
     if (!this.work) return;
     const selected = this.selectedDecoration();
     if (!selected) return;
+    if (this.work.currentStage === "paint" && selected.technique !== "overglaze") return;
     const action = event.currentTarget.dataset.action;
     const before = JSON.stringify(selected);
     this.pushHistory();
@@ -1277,6 +1463,7 @@ Page({
     const seal = this.isSealSelected() ? this.work.decorationComposition.sealMark : undefined;
     const selected = this.selectedDecoration();
     if (!selected && !seal) return;
+    if (this.work.currentStage === "paint" && (!selected || selected.technique !== "overglaze")) return;
     const axis = event.currentTarget.dataset.axis;
     const direction = Number(event.currentTarget.dataset.direction) < 0 ? -1 : 1;
     if (axis !== "x" && axis !== "y") return;
@@ -1308,6 +1495,7 @@ Page({
     if (!this.work) return;
     const selected = this.selectedDecoration();
     if (!selected) return;
+    if (this.work.currentStage === "paint" && selected.technique !== "overglaze") return;
     this.pushHistory();
     selected.flipY = !selected.flipY;
     this.changed();
@@ -1317,13 +1505,14 @@ Page({
   },
 
   copySelectedDecoration() {
-    if (!this.work || this.work.currentStage !== "decorate") return;
+    if (!this.work || !["decorate", "paint"].includes(this.work.currentStage)) return;
     if (this.isSealSelected()) {
       wx.showToast({ title:"题款只能保留一处，可直接修改后重刻", icon:"none" });
       return;
     }
     const selected = this.selectedDecoration();
     if (!selected) return;
+    if (this.work.currentStage === "paint" && selected.technique !== "overglaze") return;
     const composition = this.work.decorationComposition;
     if (selected.role === "stamp") {
       if (composition.stamps.length >= MAX_DECORATION_STAMPS) {
@@ -1331,7 +1520,12 @@ Page({
         return;
       }
     } else if (composition.layers.length >= MAX_DECORATION_LAYERS) {
-      wx.showToast({ title:"器身图层最多五层，可先移除一枚", icon:"none" });
+      wx.showToast({
+        title:this.work.currentStage === "paint"
+          ? "器身已有五层图样，先移除一层再复制"
+          : "器身图层最多五层，可先移除一枚",
+        icon:"none"
+      });
       return;
     }
     this.pushHistory();
@@ -1366,6 +1560,10 @@ Page({
     const id = this.data.selectedDecorationId;
     if (!id) return;
     const composition = this.work.decorationComposition;
+    if (
+      this.work.currentStage === "paint" &&
+      !composition.layers.some((layer) => layer.layerId === id && layer.technique === "overglaze")
+    ) return;
     if (id === SEAL_MARK_SELECTION_ID && composition.sealMark) {
       this.pushHistory();
       delete composition.sealMark;
@@ -1381,7 +1579,9 @@ Page({
     this.pushHistory();
     composition.layers = composition.layers.filter((layer) => layer.layerId !== id);
     composition.stamps = composition.stamps.filter((layer) => layer.layerId !== id);
-    const remaining = [...composition.layers, ...composition.stamps];
+    const remaining = this.work.currentStage === "paint"
+      ? composition.layers.filter((layer) => layer.technique === "overglaze")
+      : [...composition.layers, ...composition.stamps];
     this.setData({
       selectedDecorationId:remaining[0]?.layerId || (composition.sealMark ? SEAL_MARK_SELECTION_ID : "")
     });
@@ -1422,45 +1622,60 @@ Page({
     });
     this.vibrate();
 
-    if (this.work.currentStage === "glaze") {
-      this.pushHistory();
-      this.work.glazeMethod = id;
-      this.changed();
-    }
   },
 
   chooseGlaze(event: WechatMiniprogramTouchEvent) {
     if (!this.work) return;
+    const glazeId = String(event.currentTarget.dataset.id || "");
+    if (!CLASSIC_GLAZES.some((item) => item.id === glazeId)) return;
+    if (this.work.glazeId === glazeId && this.work.glazeMethod === "full") return;
     this.pushHistory();
-    this.work.glazeId = event.currentTarget.dataset.id;
+    this.work.glazeId = glazeId;
+    this.work.glazeMethod = "full";
     this.setData({ glazeId: this.work.glazeId });
     this.changed();
+    this.vibrate();
   },
 
   choosePaint(event: WechatMiniprogramTouchEvent) {
-    if (!this.work) return;
-    const colorId = event.currentTarget.dataset.id;
+    if (!this.work || this.work.currentStage !== "paint") return;
+    const colorId = String(event.currentTarget.dataset.id || "");
     if (!this.data.paintColors.some((item) => item.id === colorId)) return;
     const composition = this.work.decorationComposition;
-    let accent = composition.layers.find((layer) => layer.role === "accent");
+    const selected = this.selectedDecoration();
+    let accent = selected?.technique === "overglaze"
+      ? selected as DecorationLayer
+      : composition.layers.find((layer) => layer.technique === "overglaze");
+    if (accent?.colorId === colorId) {
+      this.setData({ selectedDecorationId:accent.layerId }, () => this.setData(this.decorationData()));
+      return;
+    }
     if (!accent && composition.layers.length >= MAX_DECORATION_LAYERS) {
-      wx.showToast({ title:"纹样已经够丰富了，先删去一项再点彩", icon:"none" });
+      wx.showToast({ title:"器身已有五层图样，先移除一层再涂色", icon:"none" });
       return;
     }
     this.pushHistory();
     if (!accent) {
-      const source = composition.layers.find((layer) => layer.role === "main");
+      const source = composition.layers.find((layer) =>
+        layer.technique !== "overglaze" && layer.role === "main"
+      );
       accent = createDecorationLayer(
         source?.motifId || "lotus",
         "accent",
         this.work.shapeId,
         "modern_studio",
         {
+          catalogKey:`paint:pattern:${source?.motifId || "lotus"}`,
           anchor:source?.anchor || "belly",
           repeatMode:source?.repeatMode || "four",
           u:source?.u ?? .5,
           v:source?.v,
           scale:(source?.scale || 1) * .88,
+          scaleX:(source?.scaleX || source?.scale || 1) * .88,
+          scaleY:(source?.scaleY || source?.scale || 1) * .88,
+          flipY:source?.flipY || false,
+          rotation:source?.rotation || 0,
+          density:source?.density || 1,
           technique:"overglaze"
         }
       );
@@ -1476,15 +1691,15 @@ Page({
     this.setData({ selectedDecorationId:accent.layerId });
     this.changed();
     this.syncData();
+    track("paint_color_apply", {
+      motif_id:accent.motifId,
+      color_id:colorId
+    });
+    this.vibrate();
   },
 
   cycleSymmetry() {
     this.adjustDecoration({ currentTarget:{ dataset:{ action:"repeat" } } } as any);
-  },
-
-  setPaintPanel(event: WechatMiniprogramTouchEvent) {
-    const panel = event.currentTarget.dataset.id === "inscription" ? "inscription" : "accent";
-    this.setData({ paintPanel:panel });
   },
 
   chooseInscriptionContent(event: WechatMiniprogramTouchEvent) {
@@ -1622,10 +1837,12 @@ Page({
     if (!this.work || !this.rect || !touch) return;
     const local = this.local(touch);
     const hit = this.hitPot(local.x, local.y);
-    if (hit && this.work.currentStage === "decorate" && !this.data.decorFullscreen) {
+    const surfaceEditing = this.work.currentStage === "decorate" || this.work.currentStage === "paint";
+    if (hit && surfaceEditing && !this.data.decorFullscreen) {
       const snapshot = cloneWork(this.work);
       let selected = this.selectedDecoration();
-      if (allowStamp && this.data.pendingStampMotifId) {
+      if (this.work.currentStage === "paint" && selected?.technique !== "overglaze") selected = null;
+      if (this.work.currentStage === "decorate" && allowStamp && this.data.pendingStampMotifId) {
         if (this.work.decorationComposition.stamps.length >= MAX_DECORATION_STAMPS) {
           wx.showToast({ title:"落印已经有八枚了", icon:"none" });
           return;
@@ -1651,7 +1868,7 @@ Page({
       // 题款和普通纹样共用“先在被选图菜单选中，再到器身拖动”的规则，
       // 避免写款页签抢走当前普通图案的手势。
       const sealMark = this.work.decorationComposition.sealMark;
-      if (sealMark && this.isSealSelected()) {
+      if (this.work.currentStage === "decorate" && sealMark && this.isSealSelected()) {
         this.gesture = {
           type:"seal",
           x:touch.clientX,
@@ -2153,15 +2370,6 @@ Page({
       });
       this.persist();
     }
-    if (stage === "paint" && !this.work.decorationComposition.inscription && !this.inscriptionReminderShown) {
-      this.inscriptionReminderShown = true;
-      this.setData({
-        paintPanel:"inscription",
-        hint:"留下一枚款识，让它真正成为你的作品。也可以再次点完成直接跳过。",
-        showHint:true
-      });
-      return;
-    }
     this.advance();
   },
 
@@ -2171,6 +2379,12 @@ Page({
     this.pushHistory();
     this.work.stageIndex = Math.min(STAGES.length - 1, this.work.stageIndex + 1);
     this.work.currentStage = STAGES[this.work.stageIndex].id;
+    if (this.work.currentStage === "glaze") {
+      this.work.glazeMethod = "full";
+      if (!CLASSIC_GLAZES.some((item) => item.id === this.work!.glazeId)) {
+        this.work.glazeId = CLASSIC_GLAZES[0].id;
+      }
+    }
     track("stage_complete", { stage: completed, next_stage: this.work.currentStage });
     this.changed();
     this.syncData();
@@ -2179,7 +2393,19 @@ Page({
       const inscriptionDraft = this.work.decorationComposition.inscription
         ? JSON.parse(JSON.stringify(this.work.decorationComposition.inscription)) as Inscription
         : defaultInscription();
-      this.setData({ inscriptionDraft, inscriptionError:"" });
+      const firstPaintLayer = this.work.decorationComposition.layers.find((layer) =>
+        layer.technique === "overglaze"
+      );
+      this.setData({
+        inscriptionDraft,
+        inscriptionError:"",
+        selectedDecorationId:firstPaintLayer?.layerId || "",
+        paintTab:"pattern",
+        decorTrayOpen:true,
+        decorFullscreen:false,
+        decorToolsCollapsed:false,
+        decorToolStyle:""
+      }, () => this.setData(this.decorationData()));
     }
     this.setWheelState("idle");
     const showStageHint = this.work.currentStage !== "decorate";

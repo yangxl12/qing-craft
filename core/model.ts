@@ -1,4 +1,13 @@
-import { CLAYS, GLAZES, SHAPES, STAGES, ClayId, ShapeId } from "./catalog";
+import {
+  CLAYS,
+  GLAZES,
+  SHAPES,
+  STAGES,
+  ClayId,
+  GlazeMaterial,
+  GlazeOption,
+  ShapeId
+} from "./catalog";
 import {
   createDecorationComposition,
   DecorationComposition,
@@ -91,7 +100,15 @@ export function clayColor(work: PotteryWork): string {
 }
 
 export function glazeColor(work: PotteryWork): string {
-  return (GLAZES.find((value) => value.id === work.glazeId) || GLAZES[0]).fired;
+  return glazeOption(work).fired;
+}
+
+export function glazeOption(work: PotteryWork): GlazeOption {
+  return GLAZES.find((value) => value.id === work.glazeId) || GLAZES[0];
+}
+
+export function glazeMaterial(work: PotteryWork): GlazeMaterial {
+  return glazeOption(work).material;
 }
 
 function finiteTime(value: any, fallback: number): number {

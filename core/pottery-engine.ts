@@ -1,4 +1,4 @@
-import { clayColor, glazeColor, PotteryWork } from "./model";
+import { clayColor, glazeColor, glazeMaterial, PotteryWork } from "./model";
 import {
   borderRepeatCount,
   decorationColorHex,
@@ -263,6 +263,7 @@ uniform float uKeyIntensity;
 uniform float uFillIntensity;
 uniform float uExposure;
   uniform float uGlazeMix;
+  uniform vec4 uGlazeMaterial;
   uniform float uPattern;
   uniform float uMethod;
 uniform float uClayWetness;
@@ -505,6 +506,10 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     else if (uMethod == 2.0) glazeMask = 0.78 + 0.14 * sin(vY * 31.0 + angle * 2.0);
     else if (uMethod == 3.0) glazeMask = smoothstep(-0.1, 0.22, sin(angle * 3.0 + vY * 13.0));
     float surfaceGlaze = clamp(uGlazeMix * glazeMask, 0.0, 1.0);
+    float glazeProfile = uGlazeMaterial.x;
+    float glazeRoughness = clamp(uGlazeMaterial.y, 0.0, 1.0);
+    float glazeVariation = clamp(uGlazeMaterial.z, 0.0, 1.0);
+    float glazeTranslucency = clamp(uGlazeMaterial.w, 0.0, 1.0);
     float rawClay = 1.0 - smoothstep(0.08, 0.78, surfaceGlaze);
     float porcelainFinish = uPorcelainFinish * rawClay;
     float coarseClay = rawClay * (1.0 - porcelainFinish);
@@ -530,7 +535,68 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     float key = max(dot(normal, keyDirection), 0.0);
     float fill = max(dot(normal, fillDirection), 0.0);
 
-    vec3 material = mix(uBase, uGlaze, surfaceGlaze);
+    // A glaze is a translucent glass layer, not a flat color. Object-space
+    // noise, gravity and cavity depth vary its optical thickness so the color
+    // pools near the foot and in recesses while highlights stay attached to
+    // the rotating vessel.
+    float glazeCloud = noise3(vObjectPos * vec3(7.4, 10.2, 7.4) + vec3(2.7, 5.1, 8.3));
+    float glazeFine = noise3(vObjectPos * vec3(31.0, 46.0, 31.0) + vec3(8.4, 1.9, 4.6));
+    float glazeRun = sin(vY * 19.0 + angle * 2.3 + glazeCloud * 3.4) * 0.5 + 0.5;
+    float glazeThickness = clamp(
+      0.56 +
+      (1.0 - vY) * 0.18 +
+      (glazeCloud - 0.5) * glazeVariation * 0.44 +
+      (glazeRun - 0.5) * glazeVariation * 0.11 +
+      vCavity * 0.12,
+      0.2,
+      1.0
+    );
+    float kilnReveal = mix(0.78, 1.0, uFiredPreview);
+    vec3 glazeTone = uGlaze;
+
+    if (glazeProfile < 0.5) {
+      // 天青釉：乳浊天青里有极轻的云气，厚处偏青、薄处泛暖白。
+      vec3 skyLight = min(vec3(1.0), uGlaze * vec3(1.18, 1.2, 1.15));
+      vec3 skyPool = uGlaze * vec3(0.74, 0.86, 0.82);
+      glazeTone = mix(skyLight, skyPool, smoothstep(0.42, 0.92, glazeThickness));
+      glazeTone *= 0.985 + (glazeCloud - 0.5) * 0.055 * glazeVariation;
+    } else if (glazeProfile < 1.5) {
+      // 龙泉青瓷：玻璃质玉色，积釉处形成更深的翠绿水线。
+      vec3 jadeLight = min(vec3(1.0), uGlaze * vec3(1.24, 1.18, 1.14));
+      vec3 jadePool = uGlaze * vec3(0.55, 0.76, 0.66);
+      float jadeDepth = smoothstep(0.48, 0.9, glazeThickness);
+      glazeTone = mix(jadeLight, jadePool, jadeDepth * 0.72 * kilnReveal);
+    } else if (glazeProfile < 2.5) {
+      // 建盏黑釉：铁系黑褐底上出现克制的兔毫结晶和口沿褐光。
+      float hareWave = sin(angle * 34.0 + vY * 8.0 + glazeCloud * 6.0);
+      float hareFur = pow(max(0.0, hareWave), 12.0) *
+        smoothstep(0.16, 0.42, vY) * (1.0 - smoothstep(0.84, 0.98, vY));
+      float ironRim = smoothstep(0.82, 0.99, vY) * (0.45 + glazeCloud * 0.55);
+      vec3 ironGold = vec3(0.42, 0.27, 0.105);
+      glazeTone = mix(uGlaze * (0.78 + glazeThickness * 0.24), ironGold, hareFur * 0.34 * glazeVariation * kilnReveal);
+      glazeTone = mix(glazeTone, vec3(0.29, 0.19, 0.09), ironRim * 0.23 * glazeVariation);
+    } else if (glazeProfile < 3.5) {
+      // 甜白釉：温润半透明，细微糖粒散射让高光柔而不塑料。
+      float sugar = (glazeFine - 0.5) * 0.035 * glazeVariation;
+      vec3 warmWhite = uGlaze * vec3(1.015, 0.998, 0.965);
+      glazeTone = min(vec3(1.0), warmWhite * (1.0 + sugar));
+    } else if (glazeProfile < 4.5) {
+      // 霁蓝釉：高钴蓝在厚薄交界处产生深海般的色阶。
+      vec3 cobaltLight = min(vec3(1.0), uGlaze * vec3(1.34, 1.28, 1.16));
+      vec3 cobaltPool = uGlaze * vec3(0.5, 0.68, 0.92);
+      glazeTone = mix(cobaltLight, cobaltPool, smoothstep(0.38, 0.88, glazeThickness));
+      glazeTone *= 0.96 + (glazeCloud - 0.5) * 0.08 * glazeVariation;
+    } else {
+      // 青白釉：薄处透出胎白，刻线和足部积釉呈淡青水色。
+      vec3 qingbaiLight = min(vec3(1.0), uGlaze * vec3(1.12, 1.11, 1.08));
+      vec3 qingbaiPool = uGlaze * vec3(0.78, 0.92, 0.9);
+      glazeTone = mix(qingbaiLight, qingbaiPool, smoothstep(0.5, 0.9, glazeThickness));
+    }
+
+    float pigmentOpacity = mix(0.96, 0.62, glazeTranslucency);
+    pigmentOpacity *= mix(0.78, 1.0, glazeThickness);
+    vec3 glazedBody = mix(uBase, glazeTone, pigmentOpacity);
+    vec3 material = mix(uBase, glazedBody, surfaceGlaze);
     // The decoration stage presents a refined jade-white porcelain blank. A
     // restrained cloudy variation keeps the surface from reading as plastic,
     // while the chosen clay no longer exposes its damp, granular appearance.
@@ -641,10 +707,12 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
 
     vec3 halfVector = normalize(keyDirection + viewDirection);
     vec3 fillHalfVector = normalize(fillDirection + viewDirection);
-    float specularPower = mix(mix(20.0, 30.0, uClayWetness), 72.0, surfaceGlaze);
+    float glazeSpecularPower = mix(132.0, 38.0, glazeRoughness);
+    float glazeSpecularStrength = mix(0.42, 0.22, glazeRoughness);
+    float specularPower = mix(mix(20.0, 30.0, uClayWetness), glazeSpecularPower, surfaceGlaze);
     specularPower = mix(specularPower, 58.0, porcelainFinish);
     float specular = pow(max(dot(normal, halfVector), 0.0), specularPower);
-    specular *= mix(0.055 + uClayWetness * 0.095, 0.3, surfaceGlaze);
+    specular *= mix(0.055 + uClayWetness * 0.095, glazeSpecularStrength, surfaceGlaze);
     specular = mix(
       specular,
       specular * 0.35 + pow(max(dot(normal, halfVector), 0.0), 92.0) * 0.2,
@@ -655,15 +723,16 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
       pow(max(dot(normal, halfVector), 0.0), 7.0) * wetClay * 0.052 +
       pow(max(dot(normal, halfVector), 0.0), 11.0) * porcelainFinish * 0.082;
     float fillSpecular =
-      pow(max(dot(normal, fillHalfVector), 0.0), mix(14.0, 52.0, surfaceGlaze)) *
-      mix(0.025, 0.11, surfaceGlaze);
+      pow(max(dot(normal, fillHalfVector), 0.0), mix(14.0, mix(82.0, 34.0, glazeRoughness), surfaceGlaze)) *
+      mix(0.025, mix(0.15, 0.09, glazeRoughness), surfaceGlaze);
     fillSpecular = mix(
       fillSpecular,
       pow(max(dot(normal, fillHalfVector), 0.0), 28.0) * 0.085,
       porcelainFinish
     );
     float facing = max(dot(normal, viewDirection), 0.0);
-    float fresnel = pow(1.0 - facing, 3.0) * mix(0.026 + wetClay * 0.024, 0.07, surfaceGlaze);
+    float fresnel = pow(1.0 - facing, 3.0) *
+      mix(0.026 + wetClay * 0.024, mix(0.11, 0.068, glazeRoughness), surfaceGlaze);
     fresnel = mix(fresnel, pow(1.0 - facing, 3.5) * 0.082, porcelainFinish);
 
     vec3 linearMaterial = pow(max(material, vec3(0.0)), vec3(2.2));
@@ -683,6 +752,11 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
       uKeyColor * (specular + broadWetHighlight) +
       uFillColor * (fillSpecular + fresnel)
     ) * mix(1.0, 0.48, vCavity);
+    float glazeBloom =
+      pow(max(dot(normal, halfVector), 0.0), mix(22.0, 8.0, glazeRoughness)) *
+      surfaceGlaze * mix(0.035, 0.07, glazeRoughness) *
+      mix(0.84, 1.12, glazeThickness);
+    linearColor += uKeyColor * glazeBloom * (1.0 - vCavity * 0.55);
     linearColor +=
       pow(max(uBase, vec3(0.0)), vec3(2.2)) *
       pow(1.0 - facing, 2.4) *
@@ -1538,8 +1612,16 @@ export class PotteryEngine {
     gl.uniform1f(gl.getUniformLocation(program, "uClayWetness"), surface.clayWetness);
     gl.uniform1f(gl.getUniformLocation(program, "uPorcelainFinish"), surface.porcelainFinish);
 
-    const glazeMix = this.work.stageIndex >= 2 ? (this.work.stageIndex >= 3 ? 1 : 0.72) : 0;
+    const glazeMix = this.work.stageIndex >= 2 ? 1 : 0;
     gl.uniform1f(gl.getUniformLocation(program, "uGlazeMix"), glazeMix);
+    const glaze = glazeMaterial(this.work);
+    gl.uniform4f(
+      gl.getUniformLocation(program, "uGlazeMaterial"),
+      glaze.profile,
+      glaze.roughness,
+      glaze.variation,
+      glaze.translucency
+    );
     const techniqueCode: Record<string, number> = {
       incise:0,
       stamp:1,

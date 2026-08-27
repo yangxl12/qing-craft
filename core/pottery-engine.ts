@@ -3,6 +3,7 @@ import {
   borderRepeatCount,
   decorationColorHex,
   MAX_SEAL_MARK_CHARACTERS,
+  MIN_DECORATION_SURFACE_V,
   motifShaderCode,
   SEAL_MARK_COLORS
 } from "./decoration";
@@ -213,15 +214,17 @@ const VS = `
 attribute vec3 aPosition;
 attribute vec3 aNormal;
 attribute float aCavity;
+attribute float aDecorationSurface;
 uniform mat4 uViewProjection;
 uniform mat4 uModel;
-uniform float uHeight;
+uniform mediump float uHeight;
   varying vec3 vNormal;
   varying vec3 vPos;
   varying vec3 vObjectPos;
   varying vec3 vTangent;
   varying float vY;
   varying float vCavity;
+  varying float vDecorationSurface;
   void main(){
     vec4 world = uModel * vec4(aPosition, 1.0);
     vPos = world.xyz;
@@ -232,6 +235,7 @@ uniform float uHeight;
     vTangent = normalize(mat3(uModel) * objectTangent);
     vY = clamp(aPosition.y / uHeight + 0.5, 0.0, 1.0);
   vCavity = aCavity;
+  vDecorationSurface = aDecorationSurface;
   gl_Position = uViewProjection * world;
 }
 `;
@@ -244,7 +248,9 @@ precision mediump float;
   varying vec3 vTangent;
   varying float vY;
   varying float vCavity;
+  varying float vDecorationSurface;
 uniform vec3 uBase;
+uniform mediump float uHeight;
 uniform vec3 uGlaze;
 uniform vec3 uAccent;
 uniform vec3 uCamera;
@@ -268,11 +274,13 @@ uniform vec4 uLayerC[13];
 uniform float uFiredPreview;
 uniform float uKilnSeed;
 uniform float uMaxRadius;
+uniform float uFootRadius;
 uniform sampler2D uInscription;
 uniform vec4 uInscriptionParams;
 uniform vec3 uInscriptionColor;
 uniform sampler2D uSeal;
 uniform vec4 uSealRegion;
+uniform vec2 uSealHalfSize;
 uniform vec3 uSealColor;
 
 float wrappedDistance(float value, float center){
@@ -289,9 +297,25 @@ float lineMask(float distanceValue, float width){
   return 1.0 - smoothstep(width, width + 0.055, distanceValue);
 }
 
+float stableAngle(vec2 point){
+  // atan(0, 0) is undefined in GLSL ES and differs across mobile GPUs. Give
+  // the exact center a deterministic positive-X direction without changing
+  // any non-central sample.
+  float atCenter = 1.0 - step(1e-8, dot(point, point));
+  return atan(point.y, point.x + atCenter * 1e-4);
+}
+
+float decorationSurfaceMask(float surfaceCode){
+  return 1.0 - step(.25, abs(vDecorationSurface - surfaceCode));
+}
+
+float decorationPointWindow(vec2 point){
+  return 1.0 - smoothstep(.82, 1.08, max(abs(point.x), abs(point.y)));
+}
+
 float motifMask(float code, vec2 point){
   float radius = length(point);
-  float angle = atan(point.y, point.x);
+  float angle = stableAngle(point);
   float mask = 0.0;
   if (code < 1.5) {
     float petals = abs(sin(angle * 4.0));
@@ -369,13 +393,12 @@ float motifMask(float code, vec2 point){
 
 float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
   if (layerA.x < .5) return 0.0;
-  float surfaceU = atan(vObjectPos.z, vObjectPos.x) / 6.2831853 + .5;
+  float surfaceU = stableAngle(vObjectPos.xz) / 6.2831853 + .5;
   float density = mod(layerC.x, 32.0);
   float anchor = floor(layerC.x / 32.0);
   float rotation = (fract(layerA.z) * 1000.0 - 180.0) * .0174532925;
   float verticalDirection = sign(layerB.w);
   float verticalScale = max(.42, abs(layerB.w));
-  float surfaceMask = 1.0 - step(.48, vCavity);
   vec2 point;
   if (anchor > 4.5) {
     float wantedCavity = anchor < 5.5 ? step(.52, vCavity) : (1.0 - step(-.62, normalize(vNormal).y));
@@ -388,17 +411,65 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     point = rotatePoint(point, rotation);
     return motifMask(layerA.y, point) * wantedCavity;
   }
+
+  float wallSurface = decorationSurfaceMask(1.0) * (1.0 - step(.48, vCavity));
+  float baseSurface = decorationSurfaceMask(2.0);
   float copies = layerA.w < .5 ? 1.0 : layerA.w < 1.5 ? 2.0 : layerA.w < 2.5 ? 4.0 : max(6.0, density);
   float localU = fract((surfaceU - layerB.x) * copies + .5) - .5;
   float horizontalScale = layerA.w > 2.5 ? .82 : .17 * layerB.z * copies;
-  point = vec2(
-    localU / max(.035, horizontalScale),
-    (vY - layerB.y) / max(.035, .16 * verticalScale)
+  // Express the existing cylindrical UV size in object-space units at the
+  // foot. The base uses exactly the same two units, so crossing v=0 cannot
+  // make a motif suddenly shrink, stretch or rotate.
+  float layerHorizontalUnit = layerA.w > 2.5
+    ? .82 * 6.2831853 * uFootRadius / copies
+    : .17 * 6.2831853 * uFootRadius * layerB.z;
+  float layerVerticalUnit = .16 * uHeight * verticalScale;
+  vec2 wallPoint;
+  if (layerB.y >= 0.0) {
+    wallPoint = vec2(
+      localU / max(.035, horizontalScale),
+      (vY - layerB.y) / max(.035, .16 * verticalScale)
+    );
+  } else {
+    float wallCopyCenterU = layerB.x + floor((surfaceU - layerB.x) * copies + .5) / copies;
+    float wallOffsetU = fract(surfaceU - wallCopyCenterU + .5) - .5;
+    float anchorS = layerB.y * uFootRadius;
+    wallPoint = vec2(
+      wallOffsetU * 6.2831853 * uFootRadius / max(.001, layerHorizontalUnit),
+      (vY * uHeight - anchorS) / max(.001, layerVerticalUnit)
+    );
+  }
+  wallPoint.y *= verticalDirection;
+  wallPoint = rotatePoint(wallPoint, rotation);
+  float wallWindow = layerB.y >= 0.0
+    ? 1.0 - smoothstep(.72, 1.05, abs(wallPoint.y))
+    : decorationPointWindow(wallPoint);
+  float wallMark = motifMask(layerA.y, wallPoint) * wallSurface * wallWindow;
+
+  // The base is a real Cartesian plane. Unwrap the wall downward along the
+  // selected longitude: v=0 is the foot edge and v=-1 is the base center.
+  // Using dot products in this local frame avoids atan's polar singularity,
+  // which was the source of the former radial explosion.
+  // Repetition belongs to a circumference and has no non-singular equivalent
+  // at the center of a disk. Keep one fixed-orientation instance on the base;
+  // using the fragment angle to choose a copy would recreate radial wedges.
+  float baseCopyCenterU = layerB.x;
+  float baseAngle = (baseCopyCenterU - .5) * 6.2831853;
+  vec2 baseOutward = vec2(cos(baseAngle), sin(baseAngle));
+  vec2 baseTangent = vec2(-baseOutward.y, baseOutward.x);
+  float baseAnchorS = layerB.y >= 0.0
+    ? layerB.y * uHeight
+    : layerB.y * uFootRadius;
+  vec2 basePoint = vec2(
+    dot(vObjectPos.xz, baseTangent) / max(.001, layerHorizontalUnit),
+    (dot(vObjectPos.xz, baseOutward) - uFootRadius - baseAnchorS) /
+      max(.001, layerVerticalUnit)
   );
-  point.y *= verticalDirection;
-  point = rotatePoint(point, rotation);
-  float verticalMask = 1.0 - smoothstep(.72, 1.05, abs(point.y));
-  return motifMask(layerA.y, point) * surfaceMask * verticalMask;
+  basePoint.y *= verticalDirection;
+  basePoint = rotatePoint(basePoint, rotation);
+  float baseMark = motifMask(layerA.y, basePoint) *
+    baseSurface * decorationPointWindow(basePoint);
+  return max(wallMark, baseMark);
 }
 
   float hash31(vec3 point){
@@ -427,7 +498,7 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
   void main(){
     // All marks are sampled in object space so their tiny irregularities rotate
     // with the clay instead of appearing painted onto the room.
-    float angle = atan(vObjectPos.z, vObjectPos.x);
+    float angle = stableAngle(vObjectPos.xz);
     float surfaceU = angle / 6.2831853 + .5;
     float glazeMask = 1.0;
     if (uMethod == 1.0) glazeMask = smoothstep(0.48, 0.52, vY);
@@ -503,7 +574,7 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
       } else {
         float inscriptionU = fract(surfaceU - .5 + .5);
         inscriptionUv = vec2((inscriptionU - .5) * 3.2 + .5, (vY - .08) / .24);
-        inscriptionSurface = (1.0 - step(.48, vCavity));
+        inscriptionSurface = decorationSurfaceMask(1.0) * (1.0 - step(.48, vCavity));
       }
       float inscription = texture2D(uInscription, inscriptionUv).a * inscriptionSurface;
       if (uInscriptionParams.y > 1.5) {
@@ -515,16 +586,40 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     }
 
     if (uSealRegion.w > 0.0) {
-      // Movable square seal on the outer wall. The u axis runs against
-      // surfaceU because on-screen rightward is decreasing surfaceU; without
-      // the inversion the engraved characters would read mirrored.
+      float sealWallSurface = decorationSurfaceMask(1.0) * (1.0 - step(.48, vCavity));
+      float sealBaseSurface = decorationSurfaceMask(2.0);
+      // On the wall the u axis runs against surfaceU so the engraved characters
+      // read correctly. A negative center v continues through the foot edge.
       float sealDu = fract(uSealRegion.x - surfaceU + 0.5) - 0.5;
       float sealDv = vY - uSealRegion.y;
-      vec2 sealUv = vec2(
-        sealDu / (uSealRegion.z * 2.0) + 0.5,
-        sealDv / (uSealRegion.w * 2.0) + 0.5
+      vec2 sealWallUv;
+      if (uSealRegion.y >= 0.0) {
+        sealWallUv = vec2(
+          sealDu / (uSealRegion.z * 2.0) + 0.5,
+          sealDv / (uSealRegion.w * 2.0) + 0.5
+        );
+      } else {
+        float sealAnchorS = uSealRegion.y * uFootRadius;
+        sealWallUv = vec2(
+          (sealDu * 6.2831853 * uFootRadius) / (uSealHalfSize.x * 2.0) + .5,
+          (vY * uHeight - sealAnchorS) / (uSealHalfSize.y * 2.0) + .5
+        );
+      }
+      float wallSeal = texture2D(uSeal, sealWallUv).a * sealWallSurface;
+
+      float sealAngle = (uSealRegion.x - .5) * 6.2831853;
+      vec2 sealOutward = vec2(cos(sealAngle), sin(sealAngle));
+      vec2 sealTangent = vec2(-sealOutward.y, sealOutward.x);
+      float sealBaseAnchorS = uSealRegion.y >= 0.0
+        ? uSealRegion.y * uHeight
+        : uSealRegion.y * uFootRadius;
+      vec2 sealBaseUv = vec2(
+        -dot(vObjectPos.xz, sealTangent) / (uSealHalfSize.x * 2.0) + .5,
+        (dot(vObjectPos.xz, sealOutward) - uFootRadius - sealBaseAnchorS) /
+          (uSealHalfSize.y * 2.0) + .5
       );
-      float seal = texture2D(uSeal, sealUv).a * (1.0 - step(0.48, vCavity));
+      float baseSeal = texture2D(uSeal, sealBaseUv).a * sealBaseSurface;
+      float seal = max(wallSeal, baseSeal);
       material = mix(material, uSealColor, seal * 0.92);
     }
 
@@ -608,6 +703,7 @@ export class PotteryEngine {
   private vbo: any;
   private nbo: any;
   private cbo: any;
+  private dbo: any;
   private ibo: any;
   private count = 0;
   private work: PotteryWork;
@@ -661,6 +757,7 @@ export class PotteryEngine {
     this.vbo = gl.createBuffer();
     this.nbo = gl.createBuffer();
     this.cbo = gl.createBuffer();
+    this.dbo = gl.createBuffer();
     this.ibo = gl.createBuffer();
     this.inscriptionTexture = gl.createTexture();
     this.initializeInscriptionTexture();
@@ -1050,23 +1147,32 @@ export class PotteryEngine {
   }
 
   /**
-   * Object-space position of the outer-wall point addressed by surface
-   * coordinates (u, v), matching how the decoration shader places patterns:
-   * u wraps the circumference and v is the normalized height.
+   * Object-space position addressed by decoration coordinates. v=0 is the
+   * foot edge; positive v climbs the wall and negative v travels radially
+   * across the underside until v=-1 reaches the base center.
    */
   private surfaceObjectPosition(u: number, v: number): number[] {
     const samples = this.work.outerRadius.length;
-    const profilePosition = clamp(v * (samples - 1), 0, samples - 1);
+    const safeV = clamp(v, MIN_DECORATION_SURFACE_V, 1);
+    const theta = (u - 0.5) * Math.PI * 2;
+    if (safeV < 0) {
+      const baseRadius = this.radiusAtHeight(0) * (1 + safeV);
+      return [
+        Math.cos(theta) * baseRadius,
+        -this.meshHeight / 2,
+        Math.sin(theta) * baseRadius
+      ];
+    }
+    const profilePosition = safeV * (samples - 1);
     const lower = Math.floor(profilePosition);
     const upper = Math.min(samples - 1, lower + 1);
     const blend = profilePosition - lower;
     const radius =
       (this.work.outerRadius[lower] || this.meshRadius) * (1 - blend) +
       (this.work.outerRadius[upper] || this.meshRadius) * blend;
-    const theta = (u - 0.5) * Math.PI * 2;
     return [
       Math.cos(theta) * radius,
-      (v - 0.5) * this.meshHeight,
+      (safeV - 0.5) * this.meshHeight,
       Math.sin(theta) * radius
     ];
   }
@@ -1120,6 +1226,7 @@ export class PotteryEngine {
     const step = 0.02;
     let currentU = u;
     let currentV = v;
+    const freezeLongitude = v < -.9;
     for (let iteration = 0; iteration < 4; iteration++) {
       const current = this.projectSurfacePoint(currentU, currentV);
       if (!current) break;
@@ -1127,17 +1234,67 @@ export class PotteryEngine {
       const residualY = targetY - current.y;
       if (Math.abs(residualX) + Math.abs(residualY) < 0.2) break;
       const uNeighbor = this.projectSurfacePoint(currentU + step, currentV);
-      const vNeighbor = this.projectSurfacePoint(currentU, currentV + step);
+      // Use a one-sided derivative at the top edge. Sampling beyond v=1
+      // produces a point that is not on the clay and can make the last strip
+      // unreachable when the user drags back down.
+      const vStep = currentV <= MIN_DECORATION_SURFACE_V + step
+        ? step
+        : currentV <= 0
+          ? -step
+          : currentV > 1 - step
+            ? -step
+            : step;
+      const vNeighbor = this.projectSurfacePoint(currentU, currentV + vStep);
       if (!uNeighbor || !vNeighbor) break;
-      const correction = solvePotterySurfaceDrag(
-        residualX,
-        residualY,
-        { x: (uNeighbor.x - current.x) / step, y: (uNeighbor.y - current.y) / step },
-        { x: (vNeighbor.x - current.x) / step, y: (vNeighbor.y - current.y) / step }
-      );
+      const uTangent = {
+        x:(uNeighbor.x - current.x) / step,
+        y:(uNeighbor.y - current.y) / step
+      };
+      const vTangent = {
+        x:(vNeighbor.x - current.x) / vStep,
+        y:(vNeighbor.y - current.y) / vStep
+      };
+      const radialLengthSquared =
+        vTangent.x * vTangent.x + vTangent.y * vTangent.y;
+      const radialCorrection = radialLengthSquared > 1e-6
+        ? {
+            du:0,
+            dv:clamp(
+              (residualX * vTangent.x + residualY * vTangent.y) /
+                radialLengthSquared,
+              -.4,
+              .4
+            )
+          }
+        : { du:0, dv:0 };
+      // Longitude becomes numerically meaningless as the base radius tends to
+      // zero. Freeze it in the central ten percent and solve only the radial
+      // axis so a tiny finger move cannot spin the mark through several turns.
+      let correction = freezeLongitude || currentV < -.9
+        ? radialCorrection
+        : solvePotterySurfaceDrag(residualX, residualY, uTangent, vTangent);
+      if (!correction.du && !correction.dv) {
+        // At the exact base center every longitude is the same point, so the U
+        // tangent vanishes. Preserve the incoming longitude and solve the
+        // remaining one-dimensional radial motion to let the mark move out
+        // again instead of becoming permanently stuck there.
+        correction = radialCorrection;
+      }
       if (!correction.du && !correction.dv) break;
-      currentU += correction.du;
-      currentV = clamp(currentV + correction.dv, 0, 1);
+      const requestedV = currentV + correction.dv;
+      const nextV = clamp(requestedV, MIN_DECORATION_SURFACE_V, 1);
+      const hitVerticalEdge = Math.abs(nextV - requestedV) > 1e-9;
+      let appliedDu = correction.du;
+      if (hitVerticalEdge && Math.abs(correction.dv) > 1e-9) {
+        // Stop on the exact edge along the solved surface path. Reusing the
+        // full U correction after V was clamped would turn the unreachable
+        // downward residual into a sudden trip around the circumference.
+        const edgeFraction = clamp((nextV - currentV) / correction.dv, 0, 1);
+        appliedDu *= edgeFraction;
+      }
+      currentU += appliedDu;
+      currentV = nextV;
+      if (hitVerticalEdge) break;
     }
     return { du: currentU - u, dv: currentV - v };
   }
@@ -1170,9 +1327,12 @@ export class PotteryEngine {
       );
       if (!correction.du && !correction.dv) break;
       u += correction.du;
-      v = clamp(v + correction.dv, 0, 1);
+      v = clamp(v + correction.dv, MIN_DECORATION_SURFACE_V, 1);
     }
-    return { u: ((u % 1) + 1) % 1, v: clamp(v, 0, 1) };
+    return {
+      u: ((u % 1) + 1) % 1,
+      v: clamp(v, MIN_DECORATION_SURFACE_V, 1)
+    };
   }
 
   destroy() {
@@ -1185,6 +1345,7 @@ export class PotteryEngine {
     gl.deleteBuffer(this.vbo);
     gl.deleteBuffer(this.nbo);
     gl.deleteBuffer(this.cbo);
+    gl.deleteBuffer(this.dbo);
     gl.deleteBuffer(this.ibo);
     gl.deleteTexture(this.inscriptionTexture);
     gl.deleteTexture(this.sealTexture);
@@ -1222,6 +1383,8 @@ export class PotteryEngine {
     if (mesh.topologyKey !== this.topologyKey) {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.cbo);
       gl.bufferData(gl.ARRAY_BUFFER, mesh.cavity, gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.dbo);
+      gl.bufferData(gl.ARRAY_BUFFER, mesh.decorationSurface, gl.STATIC_DRAW);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo);
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.indices, gl.STATIC_DRAW);
       this.topologyKey = mesh.topologyKey;
@@ -1345,6 +1508,7 @@ export class PotteryEngine {
     attribute("aPosition", this.vbo, 3);
     attribute("aNormal", this.nbo, 3);
     attribute("aCavity", this.cbo, 1);
+    attribute("aDecorationSurface", this.dbo, 1);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo);
 
     gl.uniformMatrix4fv(gl.getUniformLocation(program, "uViewProjection"), false, viewProjection);
@@ -1442,6 +1606,8 @@ export class PotteryEngine {
       this.work.decorationComposition.kilnSeed % 100000
     );
     gl.uniform1f(gl.getUniformLocation(program, "uMaxRadius"), this.meshRadius);
+    const footRadius = this.radiusAtHeight(0);
+    gl.uniform1f(gl.getUniformLocation(program, "uFootRadius"), footRadius);
 
     const inscription = this.work.decorationComposition.inscription;
     const inscriptionAnchor: Record<string, number> = { base:0, well:1, lower_belly:2 };
@@ -1467,9 +1633,8 @@ export class PotteryEngine {
 
     const seal = this.work.decorationComposition.sealMark;
     if (seal && this.sealTextureReady) {
-      // 正方形题款：竖向半高固定，横向按该高度处的周长换算成 u 半宽。
-      // u 全程 0-1 对应整圈弧长 2πr，印面弧宽 = 2*halfWidth*2πr，
-      // 令其等于竖向边长 SEAL_MARK_SIZE*meshHeight，印面才是正方形。
+      // 外壁继续用周长换算的 U 半宽；器底改用相同的物理半宽/半高，
+      // 因而题款跨过足边或移动到器底中心时仍保持方正。
       const halfHeight = (SEAL_MARK_SIZE * seal.scaleY) / 2;
       const radius = this.radiusAtHeight(seal.v);
       const halfWidth = clamp(
@@ -1485,9 +1650,15 @@ export class PotteryEngine {
         halfWidth,
         halfHeight
       );
+      gl.uniform2f(
+        gl.getUniformLocation(program, "uSealHalfSize"),
+        (SEAL_MARK_SIZE * seal.scaleX * this.meshHeight) / 2,
+        (SEAL_MARK_SIZE * seal.scaleY * this.meshHeight) / 2
+      );
       set3("uSealColor", hexRgb(SEAL_MARK_COLORS[seal.colorId] || SEAL_MARK_COLORS.seal_red));
     } else {
       gl.uniform4f(gl.getUniformLocation(program, "uSealRegion"), 0, 0, 0, 0);
+      gl.uniform2f(gl.getUniformLocation(program, "uSealHalfSize"), 1, 1);
     }
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, this.sealTexture);

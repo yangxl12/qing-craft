@@ -15,11 +15,17 @@ require.extensions[".ts"] = (module, filename) => {
   module._compile(output, filename);
 };
 
-const { buildPotteryMesh } = require("../core/pottery-mesh.ts");
+const {
+  buildPotteryMesh,
+  DECORATION_SURFACE_BASE,
+  DECORATION_SURFACE_NONE,
+  DECORATION_SURFACE_WALL,
+} = require("../core/pottery-mesh.ts");
 const { createWork, validateWork } = require("../core/model.ts");
 const { profileDeltaFromDrag } = require("../core/profile.ts");
 const {
   DECORATION_PORCELAIN_COLOR,
+  PotteryEngine,
   potterySurfaceState,
 } = require("../core/pottery-engine.ts");
 const {
@@ -162,6 +168,11 @@ assert.equal(
   reshapedMesh.cavity,
   "只改剖面时不应重新分配静态内腔属性",
 );
+assert.equal(
+  mesh.decorationSurface,
+  reshapedMesh.decorationSurface,
+  "只改剖面时不应重新分配静态装饰表面属性",
+);
 assert.notEqual(
   mesh.topologyKey,
   buildPotteryMesh(outer, inner, 1.2, 48).topologyKey,
@@ -178,11 +189,84 @@ assert.equal(
   mesh.cavity.length,
   "每个顶点都必须标记内外表面",
 );
+assert.equal(
+  mesh.positions.length / 3,
+  mesh.decorationSurface.length,
+  "每个顶点都必须标记所属装饰表面",
+);
 assert.ok(mesh.positions.every(Number.isFinite), "顶点不能包含 NaN/Infinity");
 assert.ok(mesh.normals.every(Number.isFinite), "法线不能包含 NaN/Infinity");
 assert.ok(
   mesh.cavity.every((value) => value >= 0 && value <= 1),
   "内腔遮蔽权重必须有效",
+);
+assert.ok(
+  mesh.decorationSurface.every((value) =>
+    [DECORATION_SURFACE_NONE, DECORATION_SURFACE_WALL, DECORATION_SURFACE_BASE]
+      .includes(value),
+  ),
+  "装饰表面标记必须明确区分非装饰面、外壁和器底",
+);
+for (const index of mesh.indices.slice(
+  mesh.ranges.outer.indexOffset,
+  mesh.ranges.outer.indexOffset + mesh.ranges.outer.indexCount,
+)) {
+  assert.equal(
+    mesh.decorationSurface[index],
+    DECORATION_SURFACE_WALL,
+    "外壁必须完整接受可拖动纹样",
+  );
+}
+for (const index of mesh.indices.slice(
+  mesh.ranges.bottom.indexOffset,
+  mesh.ranges.bottom.indexOffset + mesh.ranges.bottom.indexCount,
+)) {
+  assert.equal(
+    mesh.decorationSurface[index],
+    DECORATION_SURFACE_BASE,
+    "器底必须使用独立平面坐标接受可拖动纹样",
+  );
+}
+const engineSource = fs.readFileSync("core/pottery-engine.ts", "utf8");
+assert.match(
+  engineSource,
+  /baseSurface\s*=\s*decorationSurfaceMask\(2\.0\)/,
+  "器底渲染必须读取独立表面标记，不能再次关闭底部图案",
+);
+assert.match(
+  engineSource,
+  /dot\(vObjectPos\.xz, baseTangent\)/,
+  "器底纹样必须使用笛卡尔切线坐标，不能退回 atan 放射映射",
+);
+assert.match(
+  engineSource,
+  /float baseCopyCenterU = layerB\.x;/,
+  "器底纹样方向必须由图层固定，不能按每个三角形的极角分片",
+);
+assert.doesNotMatch(
+  engineSource,
+  /atan\(vObjectPos\.z, vObjectPos\.x\)/,
+  "器底中心不得再执行未定义的 atan(0, 0) 极坐标计算",
+);
+assert.match(
+  engineSource,
+  /float atCenter = 1\.0 - step\(1e-8, dot\(point, point\)\)/,
+  "角度计算必须为器底中心提供跨 GPU 一致的方向",
+);
+assert.match(
+  engineSource,
+  /dot\(vObjectPos\.xz, baseTangent\)\s*\/\s*max\(\.001, layerHorizontalUnit\)/,
+  "器身与器底必须共用同一横向物理尺寸，避免越过足边时突然缩放",
+);
+assert.match(
+  engineSource,
+  /max\(\.001, layerVerticalUnit\)/,
+  "器身与器底必须共用同一纵向物理尺寸，避免越过足边时突然拉伸",
+);
+assert.equal(
+  (engineSource.match(/uniform mediump float uHeight;/g) || []).length,
+  2,
+  "顶点与片元着色器共享的高度 uniform 必须使用相同精度才能成功链接",
 );
 assert.ok(
   mesh.indices.every((index) => index < mesh.positions.length / 3),
@@ -474,6 +558,87 @@ assert.deepEqual(
   { du: 0, dv: 0 },
   "投影退化时不能让纹样跳变",
 );
+// Exercise the production engine's iterative edge handling without creating a
+// WebGL context. This skewed projection makes a vertical drag contain both U
+// and V corrections, matching an oblique camera view near the foot.
+const boundaryDragEngine = Object.create(PotteryEngine.prototype);
+boundaryDragEngine.projectSurfacePoint = (u, v) => {
+  const safeV = Math.max(-1, Math.min(1, v));
+  const baseRadiusFactor = safeV < 0 ? 1 + safeV : 1;
+  return {
+    x: u * 100 * baseRadiusFactor + safeV * 20,
+    y: u * 10 * baseRadiusFactor - safeV * 100,
+  };
+};
+const bottomEdgeDrag = boundaryDragEngine.surfaceDragDelta(0.5, 0, 0, 20);
+assert.ok(
+  bottomEdgeDrag.dv < 0,
+  "越过 v=0 足边继续向下拖动必须进入器底平面",
+);
+assert.ok(
+  Math.abs(bottomEdgeDrag.du) < 0.2,
+  "进入器底时不得把向下位移主要误算成绕器身横移",
+);
+assert.deepEqual(
+  boundaryDragEngine.surfaceDragDelta(0.5, -1, -14, 19),
+  { du: 0, dv: 0 },
+  "已经位于器底中心时继续向内拖动必须稳定停住",
+);
+assert.ok(
+  boundaryDragEngine.surfaceDragDelta(0.5, -1, 1.4, -1.9).dv > 0,
+  "器底中心的 U 切线退化时仍必须能沿原路径拖回外缘",
+);
+assert.equal(
+  boundaryDragEngine.surfaceDragDelta(0.5, -0.95, 10, 0).du,
+  0,
+  "接近器底中心时必须冻结无意义的极角，避免图案突然旋转",
+);
+assert.ok(
+  boundaryDragEngine.surfaceDragDelta(0.5, 1, 0, 20).dv < 0,
+  "图案位于顶边时必须使用器身内侧导数并能重新向下移动",
+);
+
+const surfaceChartEngine = Object.create(PotteryEngine.prototype);
+surfaceChartEngine.work = { outerRadius:[0.6, 0.6] };
+surfaceChartEngine.meshHeight = 1.2;
+assert.deepEqual(
+  surfaceChartEngine.surfaceObjectPosition(0.5, -1),
+  [0, -0.6, 0],
+  "v=-1 必须精确表示器底中心",
+);
+assert.deepEqual(
+  surfaceChartEngine.surfaceObjectPosition(0.5, -0.5),
+  [0.3, -0.6, 0],
+  "器底纵坐标必须从中心到足边连续覆盖整个半径",
+);
+const projectedBaseEngine = Object.create(PotteryEngine.prototype);
+projectedBaseEngine.work = { outerRadius:[0.6, 0.6] };
+projectedBaseEngine.meshHeight = 1.2;
+projectedBaseEngine.viewportWidth = 512;
+projectedBaseEngine.viewportHeight = 512;
+projectedBaseEngine.modelMatrix = new Float32Array([
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1,
+]);
+// Project the underside face-on: object X maps to screen X and object Z maps
+// to screen Y. This exercises the real surface chart and iterative solver.
+projectedBaseEngine.viewProjectionMatrix = new Float32Array([
+  1.5, 0, 0, 0,
+  0, 0, 1, 0,
+  0, 1.5, 0, 0,
+  0, 0, 0, 1,
+]);
+const actualSeamDrag = projectedBaseEngine.surfaceDragDelta(0.5, 0, -36, 0);
+assert.ok(actualSeamDrag.dv < 0, "生产坐标投影中向器底中心拖动必须越过足边");
+assert.ok(
+  Math.abs(actualSeamDrag.du) < 1e-6,
+  "生产坐标投影中径向拖动不得变成无意义的绕圈旋转",
+);
+const actualCenterExit = projectedBaseEngine.surfaceDragDelta(0.5, -1, 24, 0);
+assert.ok(actualCenterExit.dv > 0, "生产坐标投影中题款到达器底中心后仍能拖回足边");
+assert.equal(actualCenterExit.du, 0, "器底中心离开时必须保留原来的图案方向");
 assert.ok(
   calculatePotteryOrbitDelta(0, 600, 375, 600).pitch > 2.7,
   "一次纵向整屏拖动应覆盖从底部到顶部的完整视角",

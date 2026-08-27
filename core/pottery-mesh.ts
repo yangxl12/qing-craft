@@ -2,6 +2,10 @@ import { DEFAULT_POTTERY_WALL, MIN_POTTERY_WALL } from "./pottery-dimensions";
 
 export type PotteryMeshPart = "outer" | "inner" | "rim" | "bottom" | "floor";
 
+export const DECORATION_SURFACE_NONE = 0;
+export const DECORATION_SURFACE_WALL = 1;
+export const DECORATION_SURFACE_BASE = 2;
+
 export interface PotteryMeshRange {
   indexOffset: number;
   indexCount: number;
@@ -11,6 +15,7 @@ export interface PotteryMesh {
   positions: Float32Array;
   normals: Float32Array;
   cavity: Float32Array;
+  decorationSurface: Float32Array;
   indices: Uint16Array;
   radius: number;
   height: number;
@@ -23,6 +28,7 @@ const MIN_CAVITY_RADIUS = 0.035;
 
 interface CachedPotteryTopology {
   cavity: Float32Array;
+  decorationSurface: Float32Array;
   indices: Uint16Array;
   ranges: Record<PotteryMeshPart, PotteryMeshRange>;
 }
@@ -97,6 +103,7 @@ export function buildPotteryMesh(
   const positions: number[] = [];
   const normals: number[] = [];
   const cavity: number[] = [];
+  const decorationSurface: number[] = [];
   const indices: number[] = [];
   const ranges = cachedTopology
     ? cachedTopology.ranges
@@ -121,12 +128,16 @@ export function buildPotteryMesh(
     nx: number,
     ny: number,
     nz: number,
-    cavityAmount: number
+    cavityAmount: number,
+    acceptsWallDecoration: number
   ): number => {
     const index = positions.length / 3;
     positions.push(x, y, z);
     normals.push(nx, ny, nz);
-    if (!cachedTopology) cavity.push(cavityAmount);
+    if (!cachedTopology) {
+      cavity.push(cavityAmount);
+      decorationSurface.push(acceptsWallDecoration);
+    }
     return index;
   };
 
@@ -134,7 +145,8 @@ export function buildPotteryMesh(
     radius: number,
     y: number,
     normalAt: (cosine: number, sine: number) => [number, number, number],
-    cavityAmount = 0
+    cavityAmount = 0,
+    acceptsWallDecoration = 0
   ): number => {
     const base = positions.length / 3;
     for (let segment = 0; segment <= segments; segment++) {
@@ -149,7 +161,8 @@ export function buildPotteryMesh(
         normal[0],
         normal[1],
         normal[2],
-        cavityAmount
+        cavityAmount,
+        acceptsWallDecoration
       );
     }
     return base;
@@ -174,8 +187,12 @@ export function buildPotteryMesh(
   for (let ring = 0; ring < ringCount; ring++) {
     const slope = profileSlope(outer, ring, 0, ringCount - 1);
     outerBases.push(
-      appendRing(outer[ring], yAt(ring), (cosine, sine) =>
-        normalize(cosine, -slope, sine)
+      appendRing(
+        outer[ring],
+        yAt(ring),
+        (cosine, sine) => normalize(cosine, -slope, sine),
+        0,
+        DECORATION_SURFACE_WALL
       )
     );
   }
@@ -274,8 +291,23 @@ export function buildPotteryMesh(
 
   start = startPart();
   const bottomY = yAt(0);
-  const bottomCenter = appendVertex(0, bottomY, 0, 0, -1, 0, 0);
-  const bottomRing = appendRing(outer[0], bottomY, () => [0, -1, 0]);
+  const bottomCenter = appendVertex(
+    0,
+    bottomY,
+    0,
+    0,
+    -1,
+    0,
+    0,
+    DECORATION_SURFACE_BASE
+  );
+  const bottomRing = appendRing(
+    outer[0],
+    bottomY,
+    () => [0, -1, 0],
+    0,
+    DECORATION_SURFACE_BASE
+  );
   if (!cachedTopology) {
     for (let segment = 0; segment < segments; segment++) {
       indices.push(bottomCenter, bottomRing + segment, bottomRing + segment + 1);
@@ -285,7 +317,7 @@ export function buildPotteryMesh(
 
   start = startPart();
   const floorY = yAt(innerStartRing);
-  const floorCenter = appendVertex(0, floorY, 0, 0, 1, 0, 1);
+  const floorCenter = appendVertex(0, floorY, 0, 0, 1, 0, 1, 0);
   const floorRing = appendRing(inner[innerStartRing], floorY, () => [0, 1, 0], 1);
   if (!cachedTopology) {
     for (let segment = 0; segment < segments; segment++) {
@@ -299,6 +331,7 @@ export function buildPotteryMesh(
   const staticTopology =
     cachedTopology || {
       cavity: new Float32Array(cavity),
+      decorationSurface: new Float32Array(decorationSurface),
       indices: new Uint16Array(indices),
       ranges
     };
@@ -308,6 +341,7 @@ export function buildPotteryMesh(
     positions: new Float32Array(positions),
     normals: new Float32Array(normals),
     cavity: staticTopology.cavity,
+    decorationSurface: staticTopology.decorationSurface,
     indices: staticTopology.indices,
     radius: maxRadius,
     height: safeHeight,

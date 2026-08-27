@@ -28,6 +28,7 @@ const {
   MAX_DECORATION_LAYERS,
   MAX_DECORATION_STAMPS,
   MAX_SEAL_MARK_CHARACTERS,
+  MIN_DECORATION_SURFACE_V,
   MOTIFS,
   stableKilnSeed,
   STYLE_PACKS,
@@ -160,7 +161,13 @@ bottomDecoration.v = 0;
 assert.equal(
   clampDecorationLayer(bottomDecoration, "cup").v,
   0,
-  "任意纹样都必须能移动到器身最底部",
+  "v=0 必须保留为器身与器底的交界",
+);
+bottomDecoration.v = -100;
+assert.equal(
+  clampDecorationLayer(bottomDecoration, "cup").v,
+  MIN_DECORATION_SURFACE_V,
+  "任意纹样都必须能穿过足边并移动到器底中心",
 );
 bottomDecoration.v = 1;
 assert.equal(
@@ -175,7 +182,13 @@ assert.equal(
   MAX_SEAL_MARK_CHARACTERS,
   "题款必须按 Unicode 字符限制为六个字",
 );
-assert.equal(sixCharacterSeal.v, 0, "题款必须能移动到器身最底部");
+assert.equal(sixCharacterSeal.v, 0, "题款必须能落在足边交界");
+const centeredBaseSeal = createSealMark("底款", "cobalt", 0.25, -100);
+assert.equal(
+  centeredBaseSeal.v,
+  MIN_DECORATION_SURFACE_V,
+  "题款必须能完整移动到器底中心",
+);
 const restoredSeal = clampSealMark({
   ...sixCharacterSeal,
   v:1,

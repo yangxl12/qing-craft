@@ -28,6 +28,7 @@ export interface DecorationLayer {
   repeatMode: DecorationRepeatMode;
   colorId?: string;
   u: number;
+  /** 0..1 为器身高度；-1..0 为从器底中心到足边的连续路径。 */
   v: number;
   scale: number;
   scaleX: number;
@@ -60,6 +61,7 @@ export interface SealMark {
   text: string;
   colorId: SealMarkColorId;
   u: number;
+  /** 0..1 为器身高度；-1..0 为从器底中心到足边的连续路径。 */
   v: number;
   scaleX: number;
   scaleY: number;
@@ -125,6 +127,8 @@ export interface InscriptionChoice {
 export const MAX_DECORATION_LAYERS = 5;
 export const MAX_DECORATION_STAMPS = 8;
 export const MAX_SEAL_MARK_CHARACTERS = 6;
+/** 0 是器身与器底交界，-1 是器底中心，1 是器身口沿。 */
+export const MIN_DECORATION_SURFACE_V = -1;
 
 export const STYLE_PACKS: StylePack[] = [
   {
@@ -423,9 +427,12 @@ export function clampDecorationLayer<T extends DecorationLayer | DecorationStamp
     motifId:motif.id,
     anchor,
     u:((finite(layer.u, .5) % 1) + 1) % 1,
-    // anchor 只负责初始构图与语义标记，不能再充当拖动边界。外壁从
-    // 器底到口沿的完整 0-1 区间都可落纹。
-    v:Math.max(0, Math.min(1, finite(layer.v, (range[0] + range[1]) / 2))),
+    // anchor 只负责初始构图与语义标记，不能再充当拖动边界。v>=0
+    // 位于器身外壁；v<0 从足边连续进入器底，-1 到达器底中心。
+    v:Math.max(
+      MIN_DECORATION_SURFACE_V,
+      Math.min(1, finite(layer.v, (range[0] + range[1]) / 2))
+    ),
     scale:Math.max(.42, Math.min(1.65, finite(layer.scale, 1))),
     scaleX:Math.max(.42, Math.min(1.65, finite(layer.scaleX, finite(layer.scale, 1)))),
     scaleY:Math.max(.42, Math.min(1.65, finite(layer.scaleY, finite(layer.scale, 1)))),
@@ -555,7 +562,7 @@ export function clampSealMark(seal: SealMark): SealMark {
   return {
     ...seal,
     u:((finite(seal.u, .75) % 1) + 1) % 1,
-    v:Math.max(0, Math.min(1, finite(seal.v, .45))),
+    v:Math.max(MIN_DECORATION_SURFACE_V, Math.min(1, finite(seal.v, .45))),
     scaleX:Math.max(.42, Math.min(1.65, finite(seal.scaleX, 1))),
     scaleY:Math.max(.42, Math.min(1.65, finite(seal.scaleY, 1)))
   };

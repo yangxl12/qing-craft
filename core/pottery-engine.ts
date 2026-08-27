@@ -15,12 +15,18 @@ import {
   calculatePotteryZoomFactor,
   defaultPotteryPitch,
   normalizePotteryYaw,
+  potteryOrbitUpVector,
   POTTERY_BASE_SCREEN_Y,
+  POTTERY_DETAIL_FOCUS_END,
+  POTTERY_DETAIL_FOCUS_START,
   POTTERY_MANIPULATION_VERTICAL_FILL,
   POTTERY_MAX_PITCH,
+  POTTERY_MAX_ZOOM_FACTOR,
   POTTERY_MIN_PITCH,
+  POTTERY_MIN_ZOOM_FACTOR,
   POTTERY_VERTICAL_FOV,
-  PotteryRotationState
+  PotteryRotationState,
+  solvePotterySurfaceDrag
 } from "./pottery-scene";
 
 type GL = any;
@@ -609,6 +615,8 @@ export class PotteryEngine {
   private normalByteLength = 0;
   private lighting = "workshop";
   private geometrySignature = "";
+  private viewProjectionMatrix: Float32Array | null = null;
+  private modelMatrix: Float32Array | null = null;
   private inscriptionTexture: any;
   private inscriptionKey = "";
   private inscriptionTextureReady = false;
@@ -684,6 +692,7 @@ export class PotteryEngine {
         previousViewportHeight,
         safeHeight
       );
+      this.applyZoomLimits();
     } else {
       this.resetCameraFit();
     }
@@ -855,6 +864,7 @@ export class PotteryEngine {
 
   dolly(scale: number) {
     this.zoomFactor = calculatePotteryZoomFactor(this.zoomFactor, scale);
+    this.applyZoomLimits();
     this.render();
   }
 
@@ -894,7 +904,7 @@ export class PotteryEngine {
     const bottom = this.projectModelY(-this.meshHeight / 2, distance);
     const tangent = Math.tan(POTTERY_VERTICAL_FOV / 2);
     const verticalAllowance =
-      (this.meshRadius * Math.sin(this.pitch)) / Math.max(distance * tangent, 0.01) *
+      (this.meshRadius * Math.abs(Math.sin(this.pitch))) / Math.max(distance * tangent, 0.01) *
         (this.viewportHeight / 2) +
       Math.max(12, this.viewportHeight * 0.018);
     const minY = Math.min(top, bottom) - verticalAllowance;
@@ -921,6 +931,114 @@ export class PotteryEngine {
       (radius / (closestDepth * tangent * this.aspect)) * (this.viewportWidth / 2);
     const horizontalAllowance = Math.max(14, this.viewportWidth * 0.035);
     return Math.abs(canvasX - this.viewportWidth / 2) <= halfWidth + horizontalAllowance;
+  }
+
+  /**
+   * Object-space position of the outer-wall point addressed by surface
+   * coordinates (u, v), matching how the decoration shader places patterns:
+   * u wraps the circumference and v is the normalized height.
+   */
+  private surfaceObjectPosition(u: number, v: number): number[] {
+    const samples = this.work.outerRadius.length;
+    const profilePosition = clamp(v * (samples - 1), 0, samples - 1);
+    const lower = Math.floor(profilePosition);
+    const upper = Math.min(samples - 1, lower + 1);
+    const blend = profilePosition - lower;
+    const radius =
+      (this.work.outerRadius[lower] || this.meshRadius) * (1 - blend) +
+      (this.work.outerRadius[upper] || this.meshRadius) * blend;
+    const theta = (u - 0.5) * Math.PI * 2;
+    return [
+      Math.cos(theta) * radius,
+      (v - 0.5) * this.meshHeight,
+      Math.sin(theta) * radius
+    ];
+  }
+
+  /** Projects an outer-wall surface point to canvas CSS pixels at the last rendered camera. */
+  private projectSurfacePoint(u: number, v: number): { x: number; y: number } | null {
+    const viewProjection = this.viewProjectionMatrix;
+    const model = this.modelMatrix;
+    if (!viewProjection || !model) return null;
+    const object = this.surfaceObjectPosition(u, v);
+    const world = [
+      model[0] * object[0] + model[4] * object[1] + model[8] * object[2] + model[12],
+      model[1] * object[0] + model[5] * object[1] + model[9] * object[2] + model[13],
+      model[2] * object[0] + model[6] * object[1] + model[10] * object[2] + model[14]
+    ];
+    const clipW =
+      viewProjection[3] * world[0] +
+      viewProjection[7] * world[1] +
+      viewProjection[11] * world[2] +
+      viewProjection[15];
+    if (!Number.isFinite(clipW) || clipW <= 1e-6) return null;
+    const clipX =
+      viewProjection[0] * world[0] +
+      viewProjection[4] * world[1] +
+      viewProjection[8] * world[2] +
+      viewProjection[12];
+    const clipY =
+      viewProjection[1] * world[0] +
+      viewProjection[5] * world[1] +
+      viewProjection[9] * world[2] +
+      viewProjection[13];
+    return {
+      x: ((clipX / clipW) + 1) * 0.5 * this.viewportWidth,
+      y: (1 - clipY / clipW) * 0.5 * this.viewportHeight
+    };
+  }
+
+  /**
+   * Converts a finger drag into surface (u, v) movement for the pattern at
+   * (u, v), following the current on-screen projection of the clay so the
+   * pattern tracks the finger at any viewpoint, zoom or turntable angle.
+   */
+  surfaceDragDelta(u: number, v: number, dx: number, dy: number): { du: number; dv: number } {
+    const base = this.projectSurfacePoint(u, v);
+    if (!base) return { du: 0, dv: 0 };
+    const step = 0.02;
+    const uNeighbor = this.projectSurfacePoint(u + step, v);
+    const vNeighbor = this.projectSurfacePoint(u, v + step);
+    if (!uNeighbor || !vNeighbor) return { du: 0, dv: 0 };
+    return solvePotterySurfaceDrag(
+      dx,
+      dy,
+      { x: (uNeighbor.x - base.x) / step, y: (uNeighbor.y - base.y) / step },
+      { x: (vNeighbor.x - base.x) / step, y: (vNeighbor.y - base.y) / step }
+    );
+  }
+
+  /**
+   * Resolves a canvas point to the outer-wall surface coordinates under it
+   * with a few Newton steps on the projected surface, so tapping places a
+   * stamp correctly at any viewpoint. Returns null when the surface cannot
+   * be resolved reliably.
+   */
+  screenToSurface(x: number, y: number): { u: number; v: number } | null {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    const samples = this.work.outerRadius.length;
+    let v = clamp(this.profilePositionAtCanvasY(y) / Math.max(1, samples - 1), 0, 1);
+    // Start on the side facing the camera; past a pole the visible front is on
+    // the opposite side of the orbit. The model rotation maps an object angle
+    // theta to world theta + turntableAngle, so subtract it back to get the
+    // object-space starting point for the refinement below.
+    const facingTheta =
+      Math.PI / 2 - this.viewYaw + (Math.cos(this.pitch) < 0 ? Math.PI : 0);
+    let u = (facingTheta - this.turntableAngle) / (Math.PI * 2) + 0.5;
+    for (let iteration = 0; iteration < 4; iteration++) {
+      const projected = this.projectSurfacePoint(u, v);
+      if (!projected) return null;
+      const correction = this.surfaceDragDelta(
+        u,
+        v,
+        x - projected.x,
+        y - projected.y
+      );
+      if (!correction.du && !correction.dv) break;
+      u += correction.du;
+      v = clamp(v + correction.dv, 0, 1);
+    }
+    return { u: ((u % 1) + 1) % 1, v: clamp(v, 0, 1) };
   }
 
   destroy() {
@@ -983,6 +1101,16 @@ export class PotteryEngine {
       this.aspect,
       this.pitch
     );
+    this.applyZoomLimits();
+  }
+
+  /** Keeps the camera outside the clay at any zoom so detail views never clip into the piece. */
+  private applyZoomLimits() {
+    const floor = Math.max(
+      POTTERY_MIN_ZOOM_FACTOR,
+      (this.meshRadius * 1.08 + 0.09) / Math.max(this.fitDistance, 0.01)
+    );
+    this.zoomFactor = clamp(this.zoomFactor, floor, POTTERY_MAX_ZOOM_FACTOR);
   }
 
   private ensureCameraFit() {
@@ -1001,6 +1129,7 @@ export class PotteryEngine {
       0.86
     );
     this.fitDistance = Math.max(this.fitDistance, hardFit);
+    this.applyZoomLimits();
   }
 
   private projectModelY(modelY: number, distance: number): number {
@@ -1015,13 +1144,23 @@ export class PotteryEngine {
 
   private calculateFocusY(distance: number): number {
     if (this.potteryCentered) return 0;
-    return calculatePotteryFocusY(
+    const anchored = calculatePotteryFocusY(
       this.meshHeight,
       distance,
       this.pitch,
       this.baseScreenY,
       this.work.outerRadius[0] || 0
     );
+    // Deep zoom eases the focus from the wheel contact line to the body
+    // center so a magnified patch anywhere on the piece can be orbited.
+    const zoomSpan = POTTERY_DETAIL_FOCUS_START - POTTERY_DETAIL_FOCUS_END;
+    const progress = clamp(
+      (POTTERY_DETAIL_FOCUS_START - this.zoomFactor) / zoomSpan,
+      0,
+      1
+    );
+    const eased = progress * progress * (3 - progress * 2);
+    return anchored * (1 - eased);
   }
 
   render() {
@@ -1054,9 +1193,13 @@ export class PotteryEngine {
     // presents the same positive angle in the opposite visual direction from
     // the front camera, so invert it to keep clay and wheel turning together.
     const model = rotateY(-this.turntableAngle);
-    const view = lookAt(eye, [0, focusY, 0], [0, 1, 0]);
+    // Tilt the up vector with the pitch so the camera crosses the poles
+    // smoothly and keeps orbiting into a fully flipped view.
+    const view = lookAt(eye, [0, focusY, 0], potteryOrbitUpVector(this.pitch, this.viewYaw));
     const projection = perspective(POTTERY_VERTICAL_FOV, width / height, 0.08, 40);
     const viewProjection = multiply(projection, view);
+    this.modelMatrix = model;
+    this.viewProjectionMatrix = viewProjection;
 
     const attribute = (name: string, buffer: any, size: number) => {
       const location = gl.getAttribLocation(program, name);

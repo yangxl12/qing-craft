@@ -1,14 +1,21 @@
 export const POTTERY_VERTICAL_FOV = 0.62;
 export const POTTERY_BASE_SCREEN_Y = 0.74;
-export const POTTERY_MIN_ZOOM_FACTOR = 0.62;
-export const POTTERY_MAX_ZOOM_FACTOR = 2.2;
+// Deep zoom magnifies a local patch of the surface for fine-tuning (and later
+// manual carving); the engine adds a shape-aware floor on top of this bound.
+export const POTTERY_MIN_ZOOM_FACTOR = 0.12;
+export const POTTERY_MAX_ZOOM_FACTOR = 4;
+// Between these zoom factors the orbit focus eases from the wheel contact
+// line towards the body center so a magnified view can reach every region.
+export const POTTERY_DETAIL_FOCUS_START = 0.55;
+export const POTTERY_DETAIL_FOCUS_END = 0.24;
 // The controls sit at the sides, so a lifted form can safely use more of the
 // clear center column before the camera starts pulling back.
 export const POTTERY_MANIPULATION_VERTICAL_FILL = 0.72;
-// Stop short of the poles so lookAt keeps a stable up vector while still
-// revealing the full mouth and the underside of the foot.
-export const POTTERY_MIN_PITCH = -1.28;
-export const POTTERY_MAX_PITCH = 1.34;
+// The whole sphere is reachable: passing over the mouth or under the foot
+// flips the piece completely upside down. potteryOrbitUpVector keeps lookAt
+// stable across the poles, so the pitch never has to stop at the horizon.
+export const POTTERY_MIN_PITCH = -Math.PI;
+export const POTTERY_MAX_PITCH = Math.PI;
 export const POTTERY_TURNTABLE_PERIOD_MS = 60000 / 38;
 
 export type PotteryRotationState = "idle" | "shaping" | "orbit" | "reduced";
@@ -26,7 +33,7 @@ function clamp(value: number, min: number, max: number): number {
 export function normalizePotteryYaw(angle: number): number {
   if (!Number.isFinite(angle)) return 0;
   const turn = Math.PI * 2;
-  return ((angle + Math.PI) % turn + turn) % turn - Math.PI;
+  return ((((angle + Math.PI) % turn) + turn) % turn) - Math.PI;
 }
 
 /** Short screens keep the contact line clear of the process rail and tray. */
@@ -39,9 +46,11 @@ export function calculatePotteryBaseScreenY(viewportHeight: number): number {
 export function calculatePotteryBaseScreenYFromLayout(
   canvasTop: number,
   canvasHeight: number,
-  contactLineY: number
+  contactLineY: number,
 ): number {
-  const safeHeight = Number.isFinite(canvasHeight) ? Math.max(1, canvasHeight) : 1;
+  const safeHeight = Number.isFinite(canvasHeight)
+    ? Math.max(1, canvasHeight)
+    : 1;
   if (!Number.isFinite(canvasTop) || !Number.isFinite(contactLineY)) {
     return POTTERY_BASE_SCREEN_Y;
   }
@@ -51,7 +60,7 @@ export function calculatePotteryBaseScreenYFromLayout(
 /** Wider clay has a lower target RPM so its edge keeps a controllable speed. */
 export function calculatePotteryTargetRpm(
   maxRadius: number,
-  state: PotteryRotationState
+  state: PotteryRotationState,
 ): number {
   if (state === "reduced") return 0;
   const width = clamp((maxRadius - 0.55) / (1.1 - 0.55), 0, 1);
@@ -65,25 +74,78 @@ export function potteryRpmToPeriodMs(rpm: number): number {
 }
 
 /**
- * One canvas-width of horizontal travel reveals a complete 360-degree orbit.
- * The mapping uses CSS pixels so it feels consistent across device DPRs.
+ * One canvas-width of horizontal travel reveals a complete 360-degree orbit,
+ * and one canvas-height of vertical travel pitches the camera half a turn, so
+ * a continued drag keeps flipping past the mouth or foot into a fully
+ * upside-down view. The mapping uses CSS pixels so it feels consistent
+ * across device DPRs.
  */
 export function calculatePotteryOrbitDelta(
   dx: number,
   dy: number,
   viewportWidth: number,
-  viewportHeight: number
+  viewportHeight: number,
 ): { yaw: number; pitch: number } {
   const safeDx = Number.isFinite(dx) ? dx : 0;
   const safeDy = Number.isFinite(dy) ? dy : 0;
   return {
     yaw: (safeDx / Math.max(1, viewportWidth)) * Math.PI * 2,
-    pitch: (safeDy / Math.max(1, viewportHeight)) * Math.PI * 0.9
+    pitch: (safeDy / Math.max(1, viewportHeight)) * Math.PI,
+  };
+}
+
+/**
+ * Camera up vector for the spherical orbit. Tilting the up vector together
+ * with the pitch lets lookAt pass smoothly over the top and bottom poles, so
+ * the piece can be viewed fully flipped instead of stopping at the horizon.
+ */
+export function potteryOrbitUpVector(pitch: number, yaw: number): number[] {
+  const safePitch = Number.isFinite(pitch) ? pitch : 0;
+  const safeYaw = Number.isFinite(yaw) ? yaw : 0;
+  return [
+    -Math.sin(safePitch) * Math.sin(safeYaw),
+    Math.cos(safePitch),
+    -Math.sin(safePitch) * Math.cos(safeYaw),
+  ];
+}
+
+export interface PotteryScreenTangent {
+  x: number;
+  y: number;
+}
+
+/**
+ * Converts a finger drag into surface (u, v) movement by inverting the
+ * on-screen projection of the surface tangents, so a pattern follows the
+ * finger at any camera angle, zoom or turntable rotation — including fully
+ * flipped views. Returns zero movement when the local projection is
+ * degenerate (grazing the silhouette) instead of jumping the pattern.
+ */
+export function solvePotterySurfaceDrag(
+  dx: number,
+  dy: number,
+  uTangent: PotteryScreenTangent,
+  vTangent: PotteryScreenTangent,
+): { du: number; dv: number } {
+  if (!Number.isFinite(dx) || !Number.isFinite(dy)) return { du: 0, dv: 0 };
+  const determinant = uTangent.x * vTangent.y - vTangent.x * uTangent.y;
+  if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-4) {
+    return { du: 0, dv: 0 };
+  }
+  const du = (dx * vTangent.y - dy * vTangent.x) / determinant;
+  const dv = (uTangent.x * dy - uTangent.y * dx) / determinant;
+  const limit = 0.4;
+  return {
+    du: clamp(du, -limit, limit),
+    dv: clamp(dv, -limit, limit),
   };
 }
 
 /** Pinch-out enlarges the piece; pinch-in reduces it, with useful safe limits. */
-export function calculatePotteryZoomFactor(current: number, pinchScale: number): number {
+export function calculatePotteryZoomFactor(
+  current: number,
+  pinchScale: number,
+): number {
   const safeCurrent = Number.isFinite(current) ? current : 1;
   if (!Number.isFinite(pinchScale) || pinchScale <= 0) {
     return clamp(safeCurrent, POTTERY_MIN_ZOOM_FACTOR, POTTERY_MAX_ZOOM_FACTOR);
@@ -92,7 +154,7 @@ export function calculatePotteryZoomFactor(current: number, pinchScale: number):
   return clamp(
     safeCurrent / stableScale,
     POTTERY_MIN_ZOOM_FACTOR,
-    POTTERY_MAX_ZOOM_FACTOR
+    POTTERY_MAX_ZOOM_FACTOR,
   );
 }
 
@@ -100,13 +162,13 @@ export function calculatePotteryZoomFactor(current: number, pinchScale: number):
 export function advancePotteryTurntable(
   angle: number,
   elapsedMilliseconds: number,
-  rpm = 60000 / POTTERY_TURNTABLE_PERIOD_MS
+  rpm = 60000 / POTTERY_TURNTABLE_PERIOD_MS,
 ): number {
   const safeElapsed = Number.isFinite(elapsedMilliseconds)
     ? Math.max(0, elapsedMilliseconds)
     : 0;
   return normalizePotteryYaw(
-    angle + (Math.PI * 2 * safeElapsed * Math.max(0, rpm)) / 60000
+    angle + (Math.PI * 2 * safeElapsed * Math.max(0, rpm)) / 60000,
   );
 }
 
@@ -115,9 +177,13 @@ export function advancePotteryTurntableFrame(
   angle: number,
   currentRpm: number,
   targetRpm: number,
-  elapsedMilliseconds: number
+  elapsedMilliseconds: number,
 ): PotteryTurntableFrame {
-  const elapsed = clamp(Number.isFinite(elapsedMilliseconds) ? elapsedMilliseconds : 0, 0, 50);
+  const elapsed = clamp(
+    Number.isFinite(elapsedMilliseconds) ? elapsedMilliseconds : 0,
+    0,
+    50,
+  );
   const safeCurrent = Math.max(0, Number.isFinite(currentRpm) ? currentRpm : 0);
   const safeTarget = Math.max(0, Number.isFinite(targetRpm) ? targetRpm : 0);
   if (!elapsed) return { angle: normalizePotteryYaw(angle), rpm: safeCurrent };
@@ -125,8 +191,12 @@ export function advancePotteryTurntableFrame(
   const blend = 1 - Math.exp(-elapsed / transitionMs);
   const nextRpm = safeCurrent + (safeTarget - safeCurrent) * blend;
   return {
-    angle: advancePotteryTurntable(angle, elapsed, (safeCurrent + nextRpm) * 0.5),
-    rpm: Math.abs(nextRpm - safeTarget) < 0.01 ? safeTarget : nextRpm
+    angle: advancePotteryTurntable(
+      angle,
+      elapsed,
+      (safeCurrent + nextRpm) * 0.5,
+    ),
+    rpm: Math.abs(nextRpm - safeTarget) < 0.01 ? safeTarget : nextRpm,
   };
 }
 
@@ -147,7 +217,7 @@ export function calculatePotteryCameraDistance(
   aspect: number,
   pitch: number,
   verticalFill = 0.43,
-  horizontalFill = 0.65
+  horizontalFill = 0.65,
 ): number {
   const safeRadius = Math.max(0.01, radius);
   const safeHeight = Math.max(0.01, height);
@@ -157,8 +227,11 @@ export function calculatePotteryCameraDistance(
     (safeHeight / 2) * Math.abs(Math.cos(pitch)) +
     safeRadius * Math.abs(Math.sin(pitch));
   const verticalDistance = projectedHalfHeight / (tangent * verticalFill);
-  const horizontalDistance = safeRadius / (tangent * safeAspect * horizontalFill);
-  return Math.max(verticalDistance, horizontalDistance, safeRadius * 1.8) * 1.04;
+  const horizontalDistance =
+    safeRadius / (tangent * safeAspect * horizontalFill);
+  return (
+    Math.max(verticalDistance, horizontalDistance, safeRadius * 1.8) * 1.04
+  );
 }
 
 /**
@@ -169,14 +242,20 @@ export function calculatePotteryCameraDistance(
 export function calculatePreservedPotteryCameraDistance(
   previousDistance: number,
   previousViewportHeight: number,
-  nextViewportHeight: number
+  nextViewportHeight: number,
 ): number {
-  const safeDistance = Math.max(0.01, Number.isFinite(previousDistance) ? previousDistance : 0.01);
+  const safeDistance = Math.max(
+    0.01,
+    Number.isFinite(previousDistance) ? previousDistance : 0.01,
+  );
   const previousHeight = Math.max(
     1,
-    Number.isFinite(previousViewportHeight) ? previousViewportHeight : 1
+    Number.isFinite(previousViewportHeight) ? previousViewportHeight : 1,
   );
-  const nextHeight = Math.max(1, Number.isFinite(nextViewportHeight) ? nextViewportHeight : 1);
+  const nextHeight = Math.max(
+    1,
+    Number.isFinite(nextViewportHeight) ? nextViewportHeight : 1,
+  );
   return safeDistance * (nextHeight / previousHeight);
 }
 
@@ -190,7 +269,7 @@ export function calculatePotteryFocusY(
   distance: number,
   pitch: number,
   baseScreenY = POTTERY_BASE_SCREEN_Y,
-  contactRadius = 0
+  contactRadius = 0,
 ): number {
   const bottomY = -Math.max(0.01, height) / 2;
   const ndcY = 1 - clamp(baseScreenY, 0.55, 0.93) * 2;
@@ -200,14 +279,18 @@ export function calculatePotteryFocusY(
   // returning to a working angle settles the foot back onto the wheel.
   const absolutePitch = Math.abs(pitch);
   const releaseProgress = clamp((absolutePitch - 0.82) / 0.34, 0, 1);
-  const easedRelease = releaseProgress * releaseProgress * (3 - releaseProgress * 2);
+  const easedRelease =
+    releaseProgress * releaseProgress * (3 - releaseProgress * 2);
   const anchorStrength = 1 - easedRelease;
   if (anchorStrength <= 0) return 0;
   const anchorPitch = clamp(pitch, -1.05, 1.05);
   const denominator =
     projectionScale * Math.cos(anchorPitch) + ndcY * Math.sin(anchorPitch);
   if (Math.abs(denominator) < 0.08) return 0;
-  const safeContactRadius = Math.max(0, Number.isFinite(contactRadius) ? contactRadius : 0);
+  const safeContactRadius = Math.max(
+    0,
+    Number.isFinite(contactRadius) ? contactRadius : 0,
+  );
   // Anchor the visible front edge of the foot, not its center axis. With an
   // elevated camera the front edge projects lower; ignoring it makes the pot
   // appear embedded in the wheel, especially after zooming in.

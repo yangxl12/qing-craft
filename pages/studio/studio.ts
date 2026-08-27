@@ -132,6 +132,11 @@ const WALL_SLIDER_SCALE = POTTERY_MODEL_UNIT_MILLIMETERS * 10;
 const WALL_SLIDER_MIN = Math.round(MIN_POTTERY_WALL * WALL_SLIDER_SCALE);
 const WALL_SLIDER_MAX = Math.round(MAX_POTTERY_WALL * WALL_SLIDER_SCALE);
 
+// Two fingers travel as a pair, so their midpoint covers less screen than a
+// lone finger; boost yaw and pitch so one stroke still sweeps a full turn and
+// can flip the piece completely over.
+const TWO_FINGER_ORBIT_GAIN = 1.5;
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -288,7 +293,7 @@ Page({
     canRedo: false,
     saveState: "已保存",
     hint: "按住器身，向外轻轻推",
-    cameraHelp: "单指推拉并上下抹平；双指环看与缩放。缩小后仍可继续上拉，点回正完整看全器形。",
+    cameraHelp: "单指推拉并上下抹平；双指环看与缩放，可整圈环视、上下翻转到任意角度并贴近细看纹样。点回正完整看全器形。",
     showHint: false,
     kiln: false,
     kilnProgress: 0,
@@ -1443,30 +1448,38 @@ Page({
     this.commitWallThicknessChange();
     const touches = event.touches;
     if (touches.length >= 2) {
+      this.revertIncidentalDecorDrag();
       this.commitGestureChange();
       this.gesture = this.cameraGesture(touches[0], touches[1]);
       this.setWheelState("orbit");
       return;
     }
+    this.beginSingleTouchGesture(touches[0], true, event);
+  },
 
-    const touch = touches[0];
-    if (!touch) return;
+  beginSingleTouchGesture(
+    touch: WechatMiniprogramTouch | undefined,
+    allowStamp: boolean,
+    event?: WechatMiniprogramTouchEvent
+  ) {
+    if (!this.work || !this.rect || !touch) return;
     const local = this.local(touch);
     const hit = this.hitPot(local.x, local.y);
     if (hit && this.work.currentStage === "decorate" && !this.data.decorFullscreen) {
       const snapshot = cloneWork(this.work);
       let selected = this.selectedDecoration();
-      if (this.data.pendingStampMotifId) {
+      if (allowStamp && this.data.pendingStampMotifId) {
         if (this.work.decorationComposition.stamps.length >= MAX_DECORATION_STAMPS) {
           wx.showToast({ title:"落印已经有八枚了", icon:"none" });
           return;
         }
+        const placement = this.stampPlacementAt(local.x, local.y);
         const stamp = createDecorationStamp(
           this.data.pendingStampMotifId,
           this.work.shapeId,
           this.work.decorationComposition.stylePackId,
-          clamp(local.x / Math.max(1, this.rect.width), 0, 1),
-          clamp(this.profilePositionAt(local.y) / Math.max(1, this.work.outerRadius.length - 1), 0, 1)
+          placement.u,
+          placement.v
         );
         this.work.decorationComposition.stamps.push(stamp);
         selected = stamp;
@@ -1542,6 +1555,7 @@ Page({
       const y = (touches[0].clientY + touches[1].clientY) / 2;
       const angle = this.touchAngle(touches[0], touches[1]);
       if (!this.gesture || this.gesture.type !== "camera2") {
+        this.revertIncidentalDecorDrag();
         this.commitGestureChange();
         this.gesture = { type: "camera2", distance, x, y, angle };
         this.setWheelState("orbit");
@@ -1551,7 +1565,10 @@ Page({
         }
         const twist = this.angleDelta(angle, this.gesture.angle);
         const twistPixels = (twist * this.rect.width * 0.58) / (Math.PI * 2);
-        this.engine?.orbit(x - this.gesture.x + twistPixels, y - this.gesture.y);
+        this.engine?.orbit(
+          (x - this.gesture.x + twistPixels) * TWO_FINGER_ORBIT_GAIN,
+          (y - this.gesture.y) * TWO_FINGER_ORBIT_GAIN
+        );
         this.gesture.distance = distance;
         this.gesture.x = x;
         this.gesture.y = y;
@@ -1567,11 +1584,20 @@ Page({
     if (this.gesture.type === "decor") {
       const selected = this.selectedDecoration();
       if (!selected || selected.layerId !== this.gesture.layerId) return;
-      const deltaX = (touch.clientX - this.gesture.x) / Math.max(1, this.rect.width);
-      const deltaY = (touch.clientY - this.gesture.y) / Math.max(1, this.rect.height);
-      if (Math.abs(deltaX) + Math.abs(deltaY) > .0005) {
-        selected.u += deltaX;
-        selected.v -= deltaY;
+      const dx = touch.clientX - this.gesture.x;
+      const dy = touch.clientY - this.gesture.y;
+      // The motif must follow the finger at any viewpoint, so invert the
+      // on-screen projection of the surface instead of assuming a front view;
+      // the normalized mapping is only the WebGL-free fallback.
+      const delta = this.engine
+        ? this.engine.surfaceDragDelta(selected.u, selected.v, dx, dy)
+        : {
+            du: -(dx / Math.max(1, this.rect.width)),
+            dv: -(dy / Math.max(1, this.rect.height))
+          };
+      if (Math.abs(delta.du) + Math.abs(delta.dv) > 1e-5) {
+        selected.u += delta.du;
+        selected.v += delta.dv;
         Object.assign(selected, clampDecorationLayer(selected, this.work.shapeId));
         this.gesture.changed = true;
         this.engine?.update(this.work);
@@ -1605,10 +1631,48 @@ Page({
 
   touchEnd(event: WechatMiniprogramTouchEvent) {
     if (!this.work || !this.gesture) return;
+    if (this.gesture.type === "camera2") {
+      const touches = event.touches || [];
+      if (touches.length >= 2) {
+        // An extra finger left early: rebase on the remaining pair and keep orbiting.
+        this.gesture = this.cameraGesture(touches[0], touches[1]);
+        return;
+      }
+      if (touches.length === 1 && touches[0] && !this.data.kiln) {
+        // Two fingers became one: hand control to the remaining finger so the
+        // piece can still be edited without lifting and touching down again.
+        this.gesture = null;
+        this.beginSingleTouchGesture(touches[0], false);
+        if ((this.gesture as StudioGesture | null)?.type !== "edit") this.setWheelState("idle");
+        return;
+      }
+    }
     this.commitGestureChange();
     this.gesture = null;
     this.setWheelState("idle");
     this.syncData();
+  },
+
+  // A second finger signals camera intent. If the brief one-finger landing
+  // nudged the selected motif while the pair was being placed, restore it
+  // before switching to the camera so patterns never creep during orbiting.
+  revertIncidentalDecorDrag() {
+    const gesture = this.gesture;
+    if (!this.work || !gesture || gesture.type !== "decor" || !gesture.changed) return;
+    const current = [
+      ...this.work.decorationComposition.layers,
+      ...this.work.decorationComposition.stamps
+    ].find((layer) => layer.layerId === gesture.layerId);
+    const before = [
+      ...gesture.snapshot.decorationComposition.layers,
+      ...gesture.snapshot.decorationComposition.stamps
+    ].find((layer) => layer.layerId === gesture.layerId);
+    if (!current || !before) return;
+    if (Math.abs(current.u - before.u) + Math.abs(current.v - before.v) > 0.01) return;
+    current.u = before.u;
+    current.v = before.v;
+    gesture.changed = false;
+    this.engine?.update(this.work);
   },
 
   flushShapingFrame(renderNow = false): boolean {
@@ -1687,12 +1751,12 @@ Page({
     this.gesture.changed = false;
   },
 
-  inputPoint(x: number, y: number, event: WechatMiniprogramTouchEvent): ShapingInputPoint {
+  inputPoint(x: number, y: number, event?: WechatMiniprogramTouchEvent): ShapingInputPoint {
     return { x, y, timestamp: this.eventTimestamp(event) };
   },
 
-  eventTimestamp(event: WechatMiniprogramTouchEvent): number {
-    return Number.isFinite(event.timeStamp) ? (event.timeStamp as number) : Date.now();
+  eventTimestamp(event?: WechatMiniprogramTouchEvent): number {
+    return Number.isFinite(event?.timeStamp) ? (event?.timeStamp as number) : Date.now();
   },
 
   local(touch: WechatMiniprogramTouch): { x: number; y: number } {
@@ -1720,6 +1784,19 @@ Page({
     const top = Math.max(this.rect.height * 0.08, bottom - this.rect.height * 0.54);
     const position = clamp((bottom - y) / Math.max(1, bottom - top), 0, 1);
     return position * (this.work.outerRadius.length - 1);
+  },
+
+  /** Resolves a tap to surface coordinates so stamps land under the finger at any viewpoint. */
+  stampPlacementAt(x: number, y: number): { u: number; v: number } {
+    const fallback = {
+      u: clamp(x / Math.max(1, this.rect?.width || 1), 0, 1),
+      v: clamp(
+        this.profilePositionAt(y) / Math.max(1, (this.work?.outerRadius.length || 2) - 1),
+        0,
+        1
+      )
+    };
+    return (this.engine && this.engine.screenToSurface(x, y)) || fallback;
   },
 
   distance(a: WechatMiniprogramTouch, b: WechatMiniprogramTouch): number {

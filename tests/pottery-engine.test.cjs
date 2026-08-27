@@ -7,7 +7,10 @@ const ts = require("typescript");
 require.extensions[".ts"] = (module, filename) => {
   const source = fs.readFileSync(filename, "utf8");
   const output = ts.transpileModule(source, {
-    compilerOptions: { target: ts.ScriptTarget.ES2018, module: ts.ModuleKind.CommonJS }
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2018,
+      module: ts.ModuleKind.CommonJS,
+    },
   }).outputText;
   module._compile(output, filename);
 };
@@ -17,21 +20,23 @@ const { createWork, validateWork } = require("../core/model.ts");
 const { profileDeltaFromDrag } = require("../core/profile.ts");
 const {
   DECORATION_PORCELAIN_COLOR,
-  potterySurfaceState
+  potterySurfaceState,
 } = require("../core/pottery-engine.ts");
 const {
   DEFAULT_POTTERY_WALL,
   MAX_POTTERY_HEIGHT,
   MAX_POTTERY_RADIUS,
   MIN_POTTERY_RADIUS,
-  MIN_POTTERY_WALL
+  MIN_POTTERY_WALL,
 } = require("../core/pottery-dimensions.ts");
 const {
   POTTERY_VERTICAL_FOV,
   POTTERY_BASE_SCREEN_Y,
   POTTERY_MAX_PITCH,
   POTTERY_MANIPULATION_VERTICAL_FILL,
+  POTTERY_MAX_ZOOM_FACTOR,
   POTTERY_MIN_PITCH,
+  POTTERY_MIN_ZOOM_FACTOR,
   advancePotteryTurntable,
   advancePotteryTurntableFrame,
   calculatePotteryBaseScreenY,
@@ -44,30 +49,43 @@ const {
   calculatePotteryZoomFactor,
   defaultPotteryPitch,
   normalizePotteryYaw,
-  potteryRpmToPeriodMs
+  potteryOrbitUpVector,
+  potteryRpmToPeriodMs,
+  solvePotterySurfaceDrag,
 } = require("../core/pottery-scene.ts");
 
 assert.equal(
   calculatePreservedPotteryCameraDistance(3.2, 320, 640),
   6.4,
-  "装饰抽屉收起后应按画布高度同比调整相机距离，保持瓷器视觉尺寸"
+  "装饰抽屉收起后应按画布高度同比调整相机距离，保持瓷器视觉尺寸",
 );
 
 assert.equal(DECORATION_PORCELAIN_COLOR, "#c6d8ce", "装饰素坯应固定为青白玉色");
 assert.deepEqual(
   potterySurfaceState(1),
   { clayWetness: 0.12, porcelainFinish: 1 },
-  "进入装饰后应完全切换到细腻素瓷材质"
+  "进入装饰后应完全切换到细腻素瓷材质",
 );
-assert.equal(potterySurfaceState(0).porcelainFinish, 0, "制坯阶段仍应保留湿泥质感");
-assert.equal(potterySurfaceState(2).porcelainFinish, 0, "上釉阶段应交回釉色材质控制");
+assert.equal(
+  potterySurfaceState(0).porcelainFinish,
+  0,
+  "制坯阶段仍应保留湿泥质感",
+);
+assert.equal(
+  potterySurfaceState(2).porcelainFinish,
+  0,
+  "上釉阶段应交回釉色材质控制",
+);
 
 const freshCup = createWork("cup");
 for (let index = 3; index < freshCup.outerRadius.length; index++) {
   assert.ok(
-    Math.abs(freshCup.outerRadius[index] - freshCup.innerRadius[index] - DEFAULT_POTTERY_WALL) <
-      1e-9,
-    "新作品应使用更轻薄且均匀的初始器壁"
+    Math.abs(
+      freshCup.outerRadius[index] -
+        freshCup.innerRadius[index] -
+        DEFAULT_POTTERY_WALL,
+    ) < 1e-9,
+    "新作品应使用更轻薄且均匀的初始器壁",
   );
 }
 assert.ok(MAX_POTTERY_HEIGHT >= 3.4, "制坯高度上限应支持极高器形");
@@ -76,11 +94,11 @@ assert.ok(MAX_POTTERY_RADIUS >= 1.65, "制坯主体应能拉伸到极大半径")
 assert.ok(MIN_POTTERY_WALL <= 0.018, "内腔应支持接近真实薄壁的最小厚度");
 assert.ok(
   POTTERY_MANIPULATION_VERTICAL_FILL > 0.64,
-  "高器形应能利用两侧控件之间更高的中央画面"
+  "高器形应能利用两侧控件之间更高的中央画面",
 );
 const oldThickDraft = JSON.parse(JSON.stringify(freshCup));
 oldThickDraft.innerRadius = oldThickDraft.outerRadius.map((radius, index) =>
-  index < 3 ? 0 : radius - 0.11
+  index < 3 ? 0 : radius - 0.11,
 );
 const upgradedDraft = validateWork(oldThickDraft);
 assert.ok(upgradedDraft, "旧制坯草稿必须仍可加载");
@@ -89,35 +107,40 @@ for (let index = 3; index < upgradedDraft.innerRadius.length; index++) {
     Math.abs(
       upgradedDraft.outerRadius[index] -
         upgradedDraft.innerRadius[index] -
-        DEFAULT_POTTERY_WALL
+        DEFAULT_POTTERY_WALL,
     ) < 1e-9,
-    "旧制坯草稿加载后也应采用更薄的器壁"
+    "旧制坯草稿加载后也应采用更薄的器壁",
   );
 }
 
 const extremeDraft = JSON.parse(JSON.stringify(freshCup));
 extremeDraft.outerRadius = extremeDraft.outerRadius.map((_, index) =>
-  index % 2 ? MAX_POTTERY_RADIUS : MIN_POTTERY_RADIUS
+  index % 2 ? MAX_POTTERY_RADIUS : MIN_POTTERY_RADIUS,
 );
 extremeDraft.height = MAX_POTTERY_HEIGHT;
 const restoredExtremeDraft = validateWork(extremeDraft);
 assert.ok(restoredExtremeDraft, "极限自由造型必须能从本地存储恢复");
-assert.equal(restoredExtremeDraft.height, MAX_POTTERY_HEIGHT, "极高器形重载后不能被旧上限截断");
+assert.equal(
+  restoredExtremeDraft.height,
+  MAX_POTTERY_HEIGHT,
+  "极高器形重载后不能被旧上限截断",
+);
 assert.equal(
   Math.min(...restoredExtremeDraft.outerRadius),
   MIN_POTTERY_RADIUS,
-  "极细半径重载后不能被旧下限撑开"
+  "极细半径重载后不能被旧下限撑开",
 );
 assert.equal(
   Math.max(...restoredExtremeDraft.outerRadius),
   MAX_POTTERY_RADIUS,
-  "极宽半径重载后不能被旧上限压回"
+  "极宽半径重载后不能被旧上限压回",
 );
 
 const ringCount = 48;
 const radialSegments = 64;
-const outer = Array.from({ length: ringCount }, (_, index) =>
-  0.5 + Math.sin((index / (ringCount - 1)) * Math.PI) * 0.18
+const outer = Array.from(
+  { length: ringCount },
+  (_, index) => 0.5 + Math.sin((index / (ringCount - 1)) * Math.PI) * 0.18,
 );
 const inner = outer.map((radius, index) => (index < 3 ? 0 : radius - 0.11));
 const mesh = buildPotteryMesh(outer, inner, 1.2, radialSegments);
@@ -125,36 +148,59 @@ const reshapedMesh = buildPotteryMesh(
   outer.map((radius, index) => radius + (index > 12 ? 0.01 : 0)),
   inner,
   1.2,
-  radialSegments
+  radialSegments,
 );
-assert.equal(mesh.topologyKey, reshapedMesh.topologyKey, "只改剖面时应复用固定拓扑");
+assert.equal(
+  mesh.topologyKey,
+  reshapedMesh.topologyKey,
+  "只改剖面时应复用固定拓扑",
+);
 assert.equal(mesh.indices, reshapedMesh.indices, "只改剖面时不应重新分配索引");
-assert.equal(mesh.cavity, reshapedMesh.cavity, "只改剖面时不应重新分配静态内腔属性");
+assert.equal(
+  mesh.cavity,
+  reshapedMesh.cavity,
+  "只改剖面时不应重新分配静态内腔属性",
+);
 assert.notEqual(
   mesh.topologyKey,
   buildPotteryMesh(outer, inner, 1.2, 48).topologyKey,
-  "画质档变化时必须重建拓扑"
+  "画质档变化时必须重建拓扑",
 );
 
-assert.equal(mesh.positions.length, mesh.normals.length, "每个顶点都必须有法线");
-assert.equal(mesh.positions.length / 3, mesh.cavity.length, "每个顶点都必须标记内外表面");
+assert.equal(
+  mesh.positions.length,
+  mesh.normals.length,
+  "每个顶点都必须有法线",
+);
+assert.equal(
+  mesh.positions.length / 3,
+  mesh.cavity.length,
+  "每个顶点都必须标记内外表面",
+);
 assert.ok(mesh.positions.every(Number.isFinite), "顶点不能包含 NaN/Infinity");
 assert.ok(mesh.normals.every(Number.isFinite), "法线不能包含 NaN/Infinity");
-assert.ok(mesh.cavity.every((value) => value >= 0 && value <= 1), "内腔遮蔽权重必须有效");
-assert.ok(mesh.indices.every((index) => index < mesh.positions.length / 3), "索引必须落在顶点范围内");
+assert.ok(
+  mesh.cavity.every((value) => value >= 0 && value <= 1),
+  "内腔遮蔽权重必须有效",
+);
+assert.ok(
+  mesh.indices.every((index) => index < mesh.positions.length / 3),
+  "索引必须落在顶点范围内",
+);
 assert.ok(mesh.innerStartRing >= 2, "内腔必须留出有厚度的实心底足");
 
-const compressedThickOuter = Array.from({ length: ringCount }, (_, index) =>
-  0.47 + Math.sin((index / (ringCount - 1)) * Math.PI) * 0.1
+const compressedThickOuter = Array.from(
+  { length: ringCount },
+  (_, index) => 0.47 + Math.sin((index / (ringCount - 1)) * Math.PI) * 0.1,
 );
 const compressedThickInner = compressedThickOuter.map((radius, index) =>
-  index < 3 ? 0 : radius - 0.18
+  index < 3 ? 0 : radius - 0.18,
 );
 const compressedThickMesh = buildPotteryMesh(
   compressedThickOuter,
   compressedThickInner,
   0.48,
-  radialSegments
+  radialSegments,
 );
 const rimOffset = compressedThickMesh.ranges.rim.indexOffset;
 const rimOuterVertex = compressedThickMesh.indices[rimOffset];
@@ -166,15 +212,15 @@ const rimInnerX = compressedThickMesh.positions[rimInnerVertex * 3];
 const rimInnerY = compressedThickMesh.positions[rimInnerVertex * 3 + 1];
 assert.ok(
   Math.abs(rimOuterX - compressedThickOuter.at(-1)) < 1e-6,
-  "厚壁压矮后口沿外缘必须与瓶身连续"
+  "厚壁压矮后口沿外缘必须与瓶身连续",
 );
 assert.ok(
   Math.abs(rimInnerX - compressedThickInner.at(-1)) < 1e-6,
-  "厚壁压矮后口沿内缘必须与内壁连续"
+  "厚壁压矮后口沿内缘必须与内壁连续",
 );
 assert.ok(
   Math.abs(rimOuterY - rimInnerY) < 1e-6,
-  "厚壁压矮后口沿两侧接缝必须保持同高"
+  "厚壁压矮后口沿两侧接缝必须保持同高",
 );
 
 for (const shapeId of ["cup", "bowl", "vase", "jar", "plate"]) {
@@ -184,14 +230,20 @@ for (const shapeId of ["cup", "bowl", "vase", "jar", "plate"]) {
       work.outerRadius,
       work.innerRadius,
       work.height,
-      qualitySegments
+      qualitySegments,
     );
-    assert.ok(actual.indices.length > 0, `${shapeId}/${qualitySegments} 必须生成完整网格`);
+    assert.ok(
+      actual.indices.length > 0,
+      `${shapeId}/${qualitySegments} 必须生成完整网格`,
+    );
     assert.ok(
       actual.indices.every((index) => index < actual.positions.length / 3),
-      `${shapeId}/${qualitySegments} 不得生成越界索引`
+      `${shapeId}/${qualitySegments} 不得生成越界索引`,
     );
-    assert.ok(actual.positions.every(Number.isFinite), `${shapeId}/${qualitySegments} 顶点必须有效`);
+    assert.ok(
+      actual.positions.every(Number.isFinite),
+      `${shapeId}/${qualitySegments} 顶点必须有效`,
+    );
   }
 }
 
@@ -199,37 +251,46 @@ for (const part of ["outer", "inner", "rim", "bottom", "floor"]) {
   const range = mesh.ranges[part];
   assert.ok(range.indexCount > 0, `${part} 必须生成三角形`);
   assert.equal(range.indexCount % 3, 0, `${part} 索引必须组成完整三角形`);
-  for (let offset = range.indexOffset; offset < range.indexOffset + range.indexCount; offset += 3) {
+  for (
+    let offset = range.indexOffset;
+    offset < range.indexOffset + range.indexCount;
+    offset += 3
+  ) {
     const ia = mesh.indices[offset] * 3;
     const ib = mesh.indices[offset + 1] * 3;
     const ic = mesh.indices[offset + 2] * 3;
     const ab = [
       mesh.positions[ib] - mesh.positions[ia],
       mesh.positions[ib + 1] - mesh.positions[ia + 1],
-      mesh.positions[ib + 2] - mesh.positions[ia + 2]
+      mesh.positions[ib + 2] - mesh.positions[ia + 2],
     ];
     const ac = [
       mesh.positions[ic] - mesh.positions[ia],
       mesh.positions[ic + 1] - mesh.positions[ia + 1],
-      mesh.positions[ic + 2] - mesh.positions[ia + 2]
+      mesh.positions[ic + 2] - mesh.positions[ia + 2],
     ];
     const face = [
       ab[1] * ac[2] - ab[2] * ac[1],
       ab[2] * ac[0] - ab[0] * ac[2],
-      ab[0] * ac[1] - ab[1] * ac[0]
+      ab[0] * ac[1] - ab[1] * ac[0],
     ];
     const normal = [
       mesh.normals[ia] + mesh.normals[ib] + mesh.normals[ic],
       mesh.normals[ia + 1] + mesh.normals[ib + 1] + mesh.normals[ic + 1],
-      mesh.normals[ia + 2] + mesh.normals[ib + 2] + mesh.normals[ic + 2]
+      mesh.normals[ia + 2] + mesh.normals[ib + 2] + mesh.normals[ic + 2],
     ];
-    const orientation = face[0] * normal[0] + face[1] * normal[1] + face[2] * normal[2];
+    const orientation =
+      face[0] * normal[0] + face[1] * normal[1] + face[2] * normal[2];
     assert.ok(orientation > 0, `${part} 的三角形绕序必须与可见面法线一致`);
   }
 }
 
 for (let index = 0; index < mesh.normals.length; index += 3) {
-  const length = Math.hypot(mesh.normals[index], mesh.normals[index + 1], mesh.normals[index + 2]);
+  const length = Math.hypot(
+    mesh.normals[index],
+    mesh.normals[index + 1],
+    mesh.normals[index + 2],
+  );
   assert.ok(Math.abs(length - 1) < 1e-5, "法线必须归一化，避免局部明暗跳变");
 }
 
@@ -237,24 +298,39 @@ for (const sample of [
   { name: "cup", radius: 0.59, footRadius: 0.52, height: 1.2 },
   { name: "bowl", radius: 0.9, footRadius: 0.56, height: 1.2 },
   { name: "plate", radius: 1.14, footRadius: 0.72, height: 0.58 },
-  { name: "extreme-tall", radius: 0.32, footRadius: 0.2, height: MAX_POTTERY_HEIGHT },
-  { name: "extreme-wide", radius: MAX_POTTERY_RADIUS, footRadius: 0.72, height: 0.72 },
+  {
+    name: "extreme-tall",
+    radius: 0.32,
+    footRadius: 0.2,
+    height: MAX_POTTERY_HEIGHT,
+  },
+  {
+    name: "extreme-wide",
+    radius: MAX_POTTERY_RADIUS,
+    footRadius: 0.72,
+    height: 0.72,
+  },
   {
     name: "extreme-freeform",
     radius: MAX_POTTERY_RADIUS,
     footRadius: MAX_POTTERY_RADIUS,
-    height: MAX_POTTERY_HEIGHT
-  }
+    height: MAX_POTTERY_HEIGHT,
+  },
 ]) {
   const aspect = 0.72;
   const pitch = defaultPotteryPitch(sample.radius, sample.height);
-  const distance = calculatePotteryCameraDistance(sample.radius, sample.height, aspect, pitch);
+  const distance = calculatePotteryCameraDistance(
+    sample.radius,
+    sample.height,
+    aspect,
+    pitch,
+  );
   const focusY = calculatePotteryFocusY(
     sample.height,
     distance,
     pitch,
     POTTERY_BASE_SCREEN_Y,
-    sample.footRadius
+    sample.footRadius,
   );
   const tangent = Math.tan(POTTERY_VERTICAL_FOV / 2);
   const projectedHalfHeight =
@@ -263,18 +339,22 @@ for (const sample of [
   const verticalNdc = projectedHalfHeight / (distance * tangent);
   assert.ok(horizontalNdc <= 0.65, `${sample.name} 横向必须以适中比例进入画面`);
   assert.ok(verticalNdc <= 0.43, `${sample.name} 纵向必须以适中比例进入画面`);
-  assert.ok(horizontalNdc / 0.82 < 0.9, `${sample.name} 最大允许放大时也不应穿出画面`);
+  assert.ok(
+    horizontalNdc / 0.82 < 0.9,
+    `${sample.name} 最大允许放大时也不应穿出画面`,
+  );
   const bottomRelativeToFocus = -sample.height / 2 - focusY;
   const bottomNdc =
-    ((bottomRelativeToFocus * Math.cos(pitch) - sample.footRadius * Math.sin(pitch)) /
-      (distance -
-        bottomRelativeToFocus * Math.sin(pitch) -
-        sample.footRadius * Math.cos(pitch))) /
+    (bottomRelativeToFocus * Math.cos(pitch) -
+      sample.footRadius * Math.sin(pitch)) /
+    (distance -
+      bottomRelativeToFocus * Math.sin(pitch) -
+      sample.footRadius * Math.cos(pitch)) /
     tangent;
   const bottomScreenY = (1 - bottomNdc) / 2;
   assert.ok(
     Math.abs(bottomScreenY - POTTERY_BASE_SCREEN_Y) < 1e-6,
-    `${sample.name} 器底可见前沿必须落在转盘接触线`
+    `${sample.name} 器底可见前沿必须落在转盘接触线`,
   );
 }
 
@@ -289,14 +369,14 @@ const tallDistance = calculatePotteryCameraDistance(
   tallAspect,
   tallPitch,
   POTTERY_MANIPULATION_VERTICAL_FILL,
-  0.86
+  0.86,
 );
 const tallFocus = calculatePotteryFocusY(
   tallHeight,
   tallDistance,
   tallPitch,
   POTTERY_BASE_SCREEN_Y,
-  tallFootRadius
+  tallFootRadius,
 );
 const tallTopRelative = tallHeight / 2 - tallFocus;
 const tallTopDepth = tallDistance - tallTopRelative * Math.sin(tallPitch);
@@ -308,29 +388,111 @@ assert.ok(tallTopScreenY >= 0.025, "极限高器形的口沿必须保留防裁�
 assert.ok(tallTopScreenY <= 0.065, "极限高器形应尽量向中央画面顶部延伸");
 
 const fullOrbit = calculatePotteryOrbitDelta(375, 0, 375, 600);
-assert.ok(Math.abs(fullOrbit.yaw - Math.PI * 2) < 1e-10, "横向移动一屏必须可查看完整 360 度");
+assert.ok(
+  Math.abs(fullOrbit.yaw - Math.PI * 2) < 1e-10,
+  "横向移动一屏必须可查看完整 360 度",
+);
 assert.ok(
   Math.abs(normalizePotteryYaw(0.23 + Math.PI * 8) - 0.23) < 1e-10,
-  "连续环绕后视角必须保持数值稳定"
+  "连续环绕后视角必须保持数值稳定",
 );
-assert.equal(calculatePotteryOrbitDelta(Number.NaN, Number.NaN, 0, 0).yaw, 0, "异常手势不能污染相机");
+assert.equal(
+  calculatePotteryOrbitDelta(Number.NaN, Number.NaN, 0, 0).yaw,
+  0,
+  "异常手势不能污染相机",
+);
 assert.ok(POTTERY_MIN_PITCH < -1.2, "双指俯视必须能越过器底观察下方");
 assert.ok(POTTERY_MAX_PITCH > 1.2, "双指仰视必须能越过口沿观察内腔");
 assert.ok(
+  POTTERY_MIN_PITCH <= -Math.PI * 0.98,
+  "纵向视角必须能翻过器底，把整件作品倒过来看",
+);
+assert.ok(
+  POTTERY_MAX_PITCH >= Math.PI * 0.98,
+  "纵向视角必须能翻过口沿，把整件作品倒过来看",
+);
+assert.ok(POTTERY_MIN_ZOOM_FACTOR <= 0.15, "双指必须能贴得很近细看局部");
+assert.ok(POTTERY_MAX_ZOOM_FACTOR >= 3.5, "双指必须能退得很远纵览全器");
+const levelUp = potteryOrbitUpVector(0, 0.42);
+assert.ok(
+  Math.abs(levelUp[0]) < 1e-9 &&
+    Math.abs(levelUp[1] - 1) < 1e-9 &&
+    Math.abs(levelUp[2]) < 1e-9,
+  "水平视角的上向量仍应竖直向上",
+);
+const poleUp = potteryOrbitUpVector(Math.PI / 2, 0.7);
+assert.ok(
+  Math.abs(poleUp[1]) < 1e-9,
+  "越过极点时上向量必须保持水平，避免相机奇异",
+);
+assert.ok(
+  Math.hypot(
+    potteryOrbitUpVector(Math.PI / 2 - 1e-3, 0.7)[0] -
+      potteryOrbitUpVector(Math.PI / 2 + 1e-3, 0.7)[0],
+    potteryOrbitUpVector(Math.PI / 2 - 1e-3, 0.7)[1] -
+      potteryOrbitUpVector(Math.PI / 2 + 1e-3, 0.7)[1],
+    potteryOrbitUpVector(Math.PI / 2 - 1e-3, 0.7)[2] -
+      potteryOrbitUpVector(Math.PI / 2 + 1e-3, 0.7)[2],
+  ) < 1e-2,
+  "越过极点时相机朝向必须连续，不能突然翻转",
+);
+const uprightDrag = solvePotterySurfaceDrag(
+  24,
+  -18,
+  { x: 60, y: 0 },
+  { x: 0, y: -140 },
+);
+assert.ok(
+  Math.abs(uprightDrag.du - 0.4) < 1e-9,
+  "常规视角水平拖动必须精确跟随手指",
+);
+assert.ok(
+  Math.abs(uprightDrag.dv - 18 / 140) < 1e-9,
+  "常规视角纵向拖动必须精确跟随手指",
+);
+const flippedDrag = solvePotterySurfaceDrag(
+  24,
+  -18,
+  { x: -60, y: 0 },
+  { x: 0, y: 140 },
+);
+assert.ok(
+  Math.abs(flippedDrag.du + 0.4) < 1e-9,
+  "倒置视角下水平拖动方向必须自动反转",
+);
+assert.ok(
+  Math.abs(flippedDrag.dv + 18 / 140) < 1e-9,
+  "倒置视角下纵向拖动方向必须自动反转",
+);
+assert.deepEqual(
+  solvePotterySurfaceDrag(100, 100, { x: 0, y: 0 }, { x: 0, y: -140 }),
+  { du: 0, dv: 0 },
+  "投影退化时不能让纹样跳变",
+);
+assert.ok(
   calculatePotteryOrbitDelta(0, 600, 375, 600).pitch > 2.7,
-  "一次纵向整屏拖动应覆盖从底部到顶部的完整视角"
+  "一次纵向整屏拖动应覆盖从底部到顶部的完整视角",
 );
 assert.ok(
   Math.abs(
     calculatePotteryCameraDistance(0.7, 1.2, 0.72, -1.1) -
-      calculatePotteryCameraDistance(0.7, 1.2, 0.72, 1.1)
+      calculatePotteryCameraDistance(0.7, 1.2, 0.72, 1.1),
   ) < 1e-10,
-  "俯视与仰视必须使用对称安全的相机包围范围"
+  "俯视与仰视必须使用对称安全的相机包围范围",
 );
 for (const extremePitch of [POTTERY_MIN_PITCH, POTTERY_MAX_PITCH]) {
-  const extremeFocus = calculatePotteryFocusY(1.2, 6.4, extremePitch, 0.9, 0.55);
+  const extremeFocus = calculatePotteryFocusY(
+    1.2,
+    6.4,
+    extremePitch,
+    0.9,
+    0.55,
+  );
   assert.ok(Number.isFinite(extremeFocus), "极端俯仰时相机焦点不能发散");
-  assert.ok(Math.abs(extremeFocus) < 0.8, "越过口沿或底足时应平滑转为绕作品中心观察");
+  assert.ok(
+    Math.abs(extremeFocus) < 0.8,
+    "越过口沿或底足时应平滑转为绕作品中心观察",
+  );
 }
 
 assert.ok(calculatePotteryZoomFactor(1, 1.25) < 1, "双指张开必须放大作品");
@@ -340,30 +502,58 @@ let sixtyFrameTurn = 0;
 for (let frame = 0; frame < 60; frame++) {
   sixtyFrameTurn = advancePotteryTurntable(sixtyFrameTurn, 1000 / 60);
 }
-assert.ok(Math.abs(oneSecondTurn - sixtyFrameTurn) < 1e-10, "转盘速度不能随帧率变化");
+assert.ok(
+  Math.abs(oneSecondTurn - sixtyFrameTurn) < 1e-10,
+  "转盘速度不能随帧率变化",
+);
 
 assert.equal(calculatePotteryBaseScreenY(568), 0.72, "短屏接触线应保持在 72%");
 assert.equal(calculatePotteryBaseScreenY(932), 0.75, "长屏接触线可下移到 75%");
 assert.equal(
   calculatePotteryBaseScreenYFromLayout(100, 500, 525),
   0.85,
-  "WebGL 器底必须跟随实测转盘接触线"
+  "WebGL 器底必须跟随实测转盘接触线",
 );
 assert.equal(
   calculatePotteryBaseScreenYFromLayout(0, 500, 480),
   0.93,
-  "转盘中心接近舞台底部时仍应保留完整器底观察范围"
+  "转盘中心接近舞台底部时仍应保留完整器底观察范围",
 );
 assert.ok(
-  calculatePotteryBaseScreenY(812) > 0.739 && calculatePotteryBaseScreenY(812) < 0.741,
-  "常规长屏接触线应约为 74%"
+  calculatePotteryBaseScreenY(812) > 0.739 &&
+    calculatePotteryBaseScreenY(812) < 0.741,
+  "常规长屏接触线应约为 74%",
 );
-assert.equal(calculatePotteryTargetRpm(0.55, "idle"), 44, "窄器形空闲时应为 44 RPM");
-assert.equal(calculatePotteryTargetRpm(1.1, "idle"), 32, "宽器形空闲时应降到 32 RPM");
-assert.equal(calculatePotteryTargetRpm(0.55, "shaping"), 30, "触摸窄器形应降到 30 RPM");
-assert.equal(calculatePotteryTargetRpm(1.1, "orbit"), 18, "观察宽器形应降到 18 RPM");
-assert.equal(calculatePotteryTargetRpm(0.7, "reduced"), 0, "减少动态必须完全停转");
-assert.equal(potteryRpmToPeriodMs(30), 2000, "RPM 与 CSS 单圈时间必须可共享换算");
+assert.equal(
+  calculatePotteryTargetRpm(0.55, "idle"),
+  44,
+  "窄器形空闲时应为 44 RPM",
+);
+assert.equal(
+  calculatePotteryTargetRpm(1.1, "idle"),
+  32,
+  "宽器形空闲时应降到 32 RPM",
+);
+assert.equal(
+  calculatePotteryTargetRpm(0.55, "shaping"),
+  30,
+  "触摸窄器形应降到 30 RPM",
+);
+assert.equal(
+  calculatePotteryTargetRpm(1.1, "orbit"),
+  18,
+  "观察宽器形应降到 18 RPM",
+);
+assert.equal(
+  calculatePotteryTargetRpm(0.7, "reduced"),
+  0,
+  "减少动态必须完全停转",
+);
+assert.equal(
+  potteryRpmToPeriodMs(30),
+  2000,
+  "RPM 与 CSS 单圈时间必须可共享换算",
+);
 
 function replayTurntable(frameRate) {
   let frame = { angle: 0, rpm: 44 };
@@ -372,24 +562,36 @@ function replayTurntable(frameRate) {
       frame.angle,
       frame.rpm,
       24,
-      1000 / frameRate
+      1000 / frameRate,
     );
   }
   return frame;
 }
 const turn30 = replayTurntable(30);
 const turn120 = replayTurntable(120);
-assert.ok(Math.abs(turn30.angle - turn120.angle) < 0.002, "平滑减速角度应基本不受帧率影响");
-assert.ok(Math.abs(turn30.rpm - turn120.rpm) < 0.002, "平滑减速目标应基本不受帧率影响");
+assert.ok(
+  Math.abs(turn30.angle - turn120.angle) < 0.002,
+  "平滑减速角度应基本不受帧率影响",
+);
+assert.ok(
+  Math.abs(turn30.rpm - turn120.rpm) < 0.002,
+  "平滑减速目标应基本不受帧率影响",
+);
 assert.ok(turn30.rpm < 26, "一秒后应平滑接近观察目标转速");
 
 const gentleDrag = profileDeltaFromDrag(4, 375);
 const delayedEvent = profileDeltaFromDrag(80, 375);
 assert.ok(
   gentleDrag > 0.008 && gentleDrag < 0.012,
-  "小幅捏塑移动也应立即产生高灵敏响应"
+  "小幅捏塑移动也应立即产生高灵敏响应",
 );
 assert.ok(delayedEvent < 0.05, "单次延迟触摸事件仍不能让器形失控跳变");
-assert.equal(profileDeltaFromDrag(Number.NaN, 375), 0, "异常触摸位移不能改变器形");
+assert.equal(
+  profileDeltaFromDrag(Number.NaN, 375),
+  0,
+  "异常触摸位移不能改变器形",
+);
 
-console.log("pottery engine tests passed: extreme mesh, complete camera fit, 360 orbit and sensitive input");
+console.log(
+  "pottery engine tests passed: extreme mesh, complete camera fit, 360 orbit and sensitive input",
+);

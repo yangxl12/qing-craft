@@ -19,12 +19,15 @@ const {
   borderRepeatCount,
   BORDERS,
   clampDecorationLayer,
+  clampSealMark,
   createDecorationComposition,
+  createSealMark,
   createDecorationStamp,
   duplicateDecorationLayer,
   DECORATION_TEMPLATES,
   MAX_DECORATION_LAYERS,
   MAX_DECORATION_STAMPS,
+  MAX_SEAL_MARK_CHARACTERS,
   MOTIFS,
   stableKilnSeed,
   STYLE_PACKS,
@@ -53,6 +56,12 @@ assert.doesNotMatch(
   "纹样调校操作不应继续显示冗余文案",
 );
 assert.match(studioMarkup, /bindtap="copySelectedDecoration"/, "纹样调校必须提供复制操作");
+assert.match(studioMarkup, /maxlength="6"/, "装饰页题款输入必须限制为六个字");
+assert.match(
+  studioMarkup,
+  /wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command"[^>]+bindtap="copySelectedDecoration"/,
+  "题款被选中时不能显示复制操作",
+);
 
 for (const shapeId of ["cup", "bowl", "vase", "jar", "plate"]) {
   const anchors = availableAnchors(shapeId);
@@ -140,10 +149,42 @@ assert.ok(
   Number.isFinite(clamped.u) && Number.isFinite(clamped.v),
   "装饰参数不能恢复为 NaN",
 );
+assert.equal(clamped.v, 1, "图案位置只能受器身真实顶边约束，不能被语义分区截回");
 assert.ok(
   clamped.scale >= 0.42 && clamped.scale <= 1.65,
   "装饰大小必须在渲染安全范围",
 );
+
+const bottomDecoration = createDecorationStamp("lotus", "cup", "yuan_blue");
+bottomDecoration.v = 0;
+assert.equal(
+  clampDecorationLayer(bottomDecoration, "cup").v,
+  0,
+  "任意纹样都必须能移动到器身最底部",
+);
+bottomDecoration.v = 1;
+assert.equal(
+  clampDecorationLayer(bottomDecoration, "cup").v,
+  1,
+  "任意纹样都必须能移动到器身最顶部",
+);
+
+const sixCharacterSeal = createSealMark("一二三四五六七", "seal_red", 0.25, 0);
+assert.equal(
+  Array.from(sixCharacterSeal.text).length,
+  MAX_SEAL_MARK_CHARACTERS,
+  "题款必须按 Unicode 字符限制为六个字",
+);
+assert.equal(sixCharacterSeal.v, 0, "题款必须能移动到器身最底部");
+const restoredSeal = clampSealMark({
+  ...sixCharacterSeal,
+  v:1,
+  scaleX:1.4,
+  scaleY:0.7,
+});
+assert.equal(restoredSeal.v, 1, "题款必须能移动到器身最顶部");
+assert.equal(restoredSeal.scaleX, 1.4, "题款横向调校必须可持久化");
+assert.equal(restoredSeal.scaleY, 0.7, "题款纵向调校必须可持久化");
 
 const legacyTransform = createDecorationStamp("plum", "vase", "yuan_blue");
 legacyTransform.scale = 1.24;
@@ -279,6 +320,12 @@ source.decorationComposition.inscription = {
   anchor: "base",
   visibleInExport: true,
 };
+source.decorationComposition.sealMark = createSealMark(
+  "泥火青花作",
+  "cobalt",
+  0.3,
+  0,
+);
 source.status = "completed";
 source.stageIndex = 6;
 source.currentStage = "finished";
@@ -305,10 +352,16 @@ for (const duplicated of [fullCopy, motifCopy]) {
   );
 }
 assert.ok(fullCopy.decorationComposition.inscription, "完整复制必须保留款识");
+assert.ok(fullCopy.decorationComposition.sealMark, "完整复制必须保留作品上的题款");
 assert.equal(
   motifCopy.decorationComposition.inscription,
   undefined,
   "只沿用纹样不应把私人款识带入新作",
+);
+assert.equal(
+  motifCopy.decorationComposition.sealMark,
+  undefined,
+  "只沿用纹样不应把单例题款复制到新作",
 );
 assert.equal(motifCopy.glazeId, "celadon", "只沿用纹样应回到默认釉色");
 motifCopy.decorationComposition.layers[0].scale += 0.3;

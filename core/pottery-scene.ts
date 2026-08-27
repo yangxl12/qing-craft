@@ -36,6 +36,15 @@ export function normalizePotteryYaw(angle: number): number {
   return ((((angle + Math.PI) % turn) + turn) % turn) - Math.PI;
 }
 
+/**
+ * Keeps vertical orbit continuous after every full turn. Pitch represents a
+ * periodic orientation, so wrapping it is equivalent to the same camera pose
+ * without the old hard stop at -PI/PI.
+ */
+export function normalizePotteryPitch(angle: number): number {
+  return normalizePotteryYaw(angle);
+}
+
 /** Short screens keep the contact line clear of the process rail and tray. */
 export function calculatePotteryBaseScreenY(viewportHeight: number): number {
   const safeHeight = Number.isFinite(viewportHeight) ? viewportHeight : 812;

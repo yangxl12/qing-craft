@@ -53,6 +53,18 @@ export interface Inscription {
   visibleInExport: boolean;
 }
 
+export type SealMarkColorId = "seal_red" | "cobalt" | "wujin";
+
+/** 器身题款：正方形印章式款识，字符竖排，可拖动到器身任意位置。 */
+export interface SealMark {
+  text: string;
+  colorId: SealMarkColorId;
+  u: number;
+  v: number;
+  scaleX: number;
+  scaleY: number;
+}
+
 export interface DecorationComposition {
   stylePackId: StylePackId;
   templateId?: string;
@@ -60,6 +72,7 @@ export interface DecorationComposition {
   layers: DecorationLayer[];
   stamps: DecorationStamp[];
   inscription?: Inscription;
+  sealMark?: SealMark;
   kilnSeed: number;
 }
 
@@ -111,6 +124,7 @@ export interface InscriptionChoice {
 
 export const MAX_DECORATION_LAYERS = 5;
 export const MAX_DECORATION_STAMPS = 8;
+export const MAX_SEAL_MARK_CHARACTERS = 6;
 
 export const STYLE_PACKS: StylePack[] = [
   {
@@ -237,6 +251,18 @@ export const DECORATION_COLORS: Record<string, string> = {
   ink: "#27322d",
   porcelain: "#eee9dc"
 };
+
+export const SEAL_MARK_COLORS: Record<SealMarkColorId, string> = {
+  seal_red: "#9d3b2c",
+  cobalt: "#315e73",
+  wujin: "#2a241e"
+};
+
+export const SEAL_MARK_COLOR_OPTIONS: { id: SealMarkColorId; name: string; color: string }[] = [
+  { id: "seal_red", name: "釉里红", color: SEAL_MARK_COLORS.seal_red },
+  { id: "cobalt", name: "青花", color: SEAL_MARK_COLORS.cobalt },
+  { id: "wujin", name: "乌金", color: SEAL_MARK_COLORS.wujin }
+];
 
 export const PALETTES: InscriptionChoice[] = [
   { id:"jade_shadow", name:"青釉浅影", note:"同色浅刻，靠光影显纹" },
@@ -397,7 +423,9 @@ export function clampDecorationLayer<T extends DecorationLayer | DecorationStamp
     motifId:motif.id,
     anchor,
     u:((finite(layer.u, .5) % 1) + 1) % 1,
-    v:Math.max(range[0], Math.min(range[1], finite(layer.v, (range[0] + range[1]) / 2))),
+    // anchor 只负责初始构图与语义标记，不能再充当拖动边界。外壁从
+    // 器底到口沿的完整 0-1 区间都可落纹。
+    v:Math.max(0, Math.min(1, finite(layer.v, (range[0] + range[1]) / 2))),
     scale:Math.max(.42, Math.min(1.65, finite(layer.scale, 1))),
     scaleX:Math.max(.42, Math.min(1.65, finite(layer.scaleX, finite(layer.scale, 1)))),
     scaleY:Math.max(.42, Math.min(1.65, finite(layer.scaleY, finite(layer.scale, 1)))),
@@ -522,6 +550,33 @@ export function defaultInscription(now = new Date()): Inscription {
   };
 }
 
+export function clampSealMark(seal: SealMark): SealMark {
+  const finite = (value: number, fallback: number) => (Number.isFinite(value) ? value : fallback);
+  return {
+    ...seal,
+    u:((finite(seal.u, .75) % 1) + 1) % 1,
+    v:Math.max(0, Math.min(1, finite(seal.v, .45))),
+    scaleX:Math.max(.42, Math.min(1.65, finite(seal.scaleX, 1))),
+    scaleY:Math.max(.42, Math.min(1.65, finite(seal.scaleY, 1)))
+  };
+}
+
+export function createSealMark(
+  text: string,
+  colorId: SealMarkColorId,
+  u = .75,
+  v = .45
+): SealMark {
+  return clampSealMark({
+    text:Array.from(text.replace(/\s/g, "")).slice(0, MAX_SEAL_MARK_CHARACTERS).join(""),
+    colorId:SEAL_MARK_COLORS[colorId] ? colorId : "seal_red",
+    u,
+    v,
+    scaleX:1,
+    scaleY:1
+  });
+}
+
 function safeInscription(raw: any): Inscription | undefined {
   if (!raw || typeof raw.text !== "string") return undefined;
   const text = raw.text.slice(0, 32).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "");
@@ -532,6 +587,25 @@ function safeInscription(raw: any): Inscription | undefined {
   const contentType: InscriptionContentType = ["signature","date","blessing","serial"].includes(raw.contentType) ? raw.contentType : "signature";
   const anchor: InscriptionAnchor = ["base","well","lower_belly"].includes(raw.anchor) ? raw.anchor : "base";
   return { contentType, text, layoutId, styleId, typefaceId, anchor, visibleInExport:raw.visibleInExport !== false };
+}
+
+function safeSealMark(raw: any): SealMark | undefined {
+  if (!raw || typeof raw.text !== "string") return undefined;
+  const text = raw.text
+    .slice(0, 40)
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\s]/g, "");
+  if (!text) return undefined;
+  const colorId: SealMarkColorId = ["seal_red", "cobalt", "wujin"].includes(raw.colorId)
+    ? raw.colorId
+    : "seal_red";
+  return clampSealMark({
+    text:Array.from(text).slice(0, MAX_SEAL_MARK_CHARACTERS).join(""),
+    colorId,
+    u:Number(raw.u),
+    v:Number(raw.v),
+    scaleX:Number(raw.scaleX),
+    scaleY:Number(raw.scaleY)
+  });
 }
 
 export function validateDecorationComposition(
@@ -587,6 +661,7 @@ export function validateDecorationComposition(
     layers,
     stamps,
     inscription,
+    sealMark:safeSealMark(raw.sealMark),
     kilnSeed:seed || fallback.kilnSeed
   };
 }

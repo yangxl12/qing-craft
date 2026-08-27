@@ -48,6 +48,7 @@ const {
   calculatePotteryTargetRpm,
   calculatePotteryZoomFactor,
   defaultPotteryPitch,
+  normalizePotteryPitch,
   normalizePotteryYaw,
   potteryOrbitUpVector,
   potteryRpmToPeriodMs,
@@ -395,6 +396,10 @@ assert.ok(
 assert.ok(
   Math.abs(normalizePotteryYaw(0.23 + Math.PI * 8) - 0.23) < 1e-10,
   "连续环绕后视角必须保持数值稳定",
+);
+assert.ok(
+  Math.abs(normalizePotteryPitch(0.31 + Math.PI * 10) - 0.31) < 1e-10,
+  "纵向转满多圈后必须继续同方向旋转且保持数值稳定",
 );
 assert.equal(
   calculatePotteryOrbitDelta(Number.NaN, Number.NaN, 0, 0).yaw,

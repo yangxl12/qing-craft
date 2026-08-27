@@ -87,9 +87,9 @@
       catchtouchcancel="touchEnd"
     >
       <view class="fallback-pot shape-{{work.shapeId}} stage-{{stageIndex}}"></view>
-      <view wx:if="{{decorationCount||stampCount}}" class="fallback-decor fired-{{firedPreview}}">
+      <view wx:if="{{decorationCount||stampCount||sealApplied}}" class="fallback-decor fired-{{firedPreview}}">
         <text>{{selectedDecorationName||'纹'}}</text>
-        <small>{{decorationCount}} 层 · {{stampCount}} 印</small>
+        <small>{{decorationCount}} 层 · {{stampCount}} 印{{sealApplied?' · 题款':''}}</small>
       </view>
       <view wx:if="{{work.decorationComposition.inscription}}" class="fallback-inscription">
         {{work.decorationComposition.inscription.text}}
@@ -114,7 +114,7 @@
     </view>
 
     <view
-      wx:if="{{stageIndex===1&&selectedDecoration&&!fallback&&!decorFullscreen}}"
+      wx:if="{{stageIndex===1&&hasSelectedDecorItem&&!fallback&&!decorFullscreen}}"
       id="decorToolPanel"
       class="decor-tool-panel {{decorToolsCollapsed?'collapsed':''}}"
       style="{{decorToolStyle}}"
@@ -128,7 +128,7 @@
           catchtouchcancel="endDecorToolDrag"
         >
           <view class="decor-drag-icon" aria-hidden="true"><view></view><view></view><view></view><view></view><view></view><view></view></view>
-          <view class="decor-tool-title"><text>纹样调校</text></view>
+          <view class="decor-tool-title"><text>{{selectedDecorationIsSeal?'题款调校':'纹样调校'}}</text></view>
         </view>
         <view
           class="decor-tool-fold"
@@ -141,20 +141,20 @@
         class="decor-tool-actions {{decorToolsCollapsed?'is-collapsed':''}}"
         aria-hidden="{{decorToolsCollapsed}}"
       >
-        <view class="decor-tool-command danger" role="button" aria-label="删除当前图案" bindtap="deleteSelectedDecoration"><view class="decor-delete-icon" aria-hidden="true"><view></view></view></view>
+        <view class="decor-tool-command danger" role="button" aria-label="删除当前{{selectedDecorationLabel}}" bindtap="deleteSelectedDecoration"><view class="decor-delete-icon" aria-hidden="true"><view></view></view></view>
         <view class="decor-tool-command {{!canUndo?'disabled':''}}" role="button" aria-label="撤回上一步" bindtap="undo"><text aria-hidden="true">↶</text></view>
-        <view class="decor-tool-command" role="button" aria-label="复制当前图案" bindtap="copySelectedDecoration"><view class="decor-copy-icon" aria-hidden="true"><view></view><view></view></view></view>
+        <view wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command" role="button" aria-label="复制当前图案" bindtap="copySelectedDecoration"><view class="decor-copy-icon" aria-hidden="true"><view></view><view></view></view></view>
         <view class="decor-axis-command">
-          <view role="button" aria-label="减小当前图案横向尺寸" data-axis="x" data-direction="-1" bindtap="adjustDecorAxis">−</view>
+          <view role="button" aria-label="减小当前{{selectedDecorationLabel}}横向尺寸" data-axis="x" data-direction="-1" bindtap="adjustDecorAxis">−</view>
           <text aria-hidden="true">↔</text>
-          <view role="button" aria-label="增大当前图案横向尺寸" data-axis="x" data-direction="1" bindtap="adjustDecorAxis">＋</view>
+          <view role="button" aria-label="增大当前{{selectedDecorationLabel}}横向尺寸" data-axis="x" data-direction="1" bindtap="adjustDecorAxis">＋</view>
         </view>
         <view class="decor-axis-command">
-          <view role="button" aria-label="减小当前图案纵向尺寸" data-axis="y" data-direction="-1" bindtap="adjustDecorAxis">−</view>
+          <view role="button" aria-label="减小当前{{selectedDecorationLabel}}纵向尺寸" data-axis="y" data-direction="-1" bindtap="adjustDecorAxis">−</view>
           <text aria-hidden="true">↕</text>
-          <view role="button" aria-label="增大当前图案纵向尺寸" data-axis="y" data-direction="1" bindtap="adjustDecorAxis">＋</view>
+          <view role="button" aria-label="增大当前{{selectedDecorationLabel}}纵向尺寸" data-axis="y" data-direction="1" bindtap="adjustDecorAxis">＋</view>
         </view>
-        <view class="decor-tool-command flip" role="button" aria-label="上下翻转当前图案" bindtap="flipSelectedDecoration"><text aria-hidden="true">⇅</text></view>
+        <view wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command flip" role="button" aria-label="上下翻转当前图案" bindtap="flipSelectedDecoration"><text aria-hidden="true">⇅</text></view>
       </view>
     </view>
 
@@ -286,41 +286,87 @@
           ><small>{{item.seal}}</small><text>{{item.name}}</text></view>
         </view>
         <view class="decor-library-body">
-          <scroll-view class="decor-side-menu" scroll-y enhanced show-scrollbar="false">
-            <view
-              wx:for="{{decorSideMenus}}"
-              wx:key="id"
-              class="decor-side-menu-item {{decorMenuId===item.id?'active':''}}"
-              role="button"
-              aria-label="选择{{item.name}}"
-              data-id="{{item.id}}"
-              bindtap="selectDecorMenu"
-            ><view class="decor-side-menu-icon" aria-hidden="true">{{item.icon}}</view></view>
-          </scroll-view>
-          <scroll-view class="decor-grid-scroll" scroll-y enhanced show-scrollbar="false">
-            <view class="decor-grid">
-              <view
-                wx:for="{{decorCatalogItems}}"
-                wx:key="key"
-                class="decor-grid-card {{item.checked?'checked':''}}"
-                role="checkbox"
-                aria-checked="{{item.checked}}"
-                aria-label="{{item.checked?'取消':'选择'}}{{item.name}}"
-                data-id="{{item.id}}"
-                data-key="{{item.key}}"
-                bindtap="toggleDecorCatalogItem"
-              >
-                <view class="motif-art {{item.patternClass}}"><view></view><text>{{item.glyph}}</text><view></view></view>
-                <view wx:if="{{item.checked}}" class="decor-check">✓</view>
-                <text class="decor-grid-name">{{item.name}}</text>
+          <view wx:if="{{decorTab==='inscription'}}" class="seal-panel">
+            <view class="seal-block">
+              <view class="seal-block-head">
+                <view class="seal-block-title"><small aria-hidden="true">款</small><text>题款内容</text></view>
+                <text class="seal-count">{{sealTextLength}}/{{sealTextLimit}}</text>
+              </view>
+              <input
+                class="seal-input"
+                value="{{sealText}}"
+                maxlength="6"
+                placeholder="最多六个字"
+                placeholder-class="seal-input-placeholder"
+                aria-label="题款内容，最多六个字"
+                bindinput="inputSealText"
+              />
+            </view>
+
+            <view class="seal-block">
+              <view class="seal-block-head">
+                <view class="seal-block-title"><small aria-hidden="true">色</small><text>款色</text></view>
+              </view>
+              <view class="seal-color-row" role="radiogroup" aria-label="选择题款款色">
+                <view
+                  wx:for="{{sealColors}}"
+                  wx:key="id"
+                  class="seal-color {{sealColorId===item.id?'active':''}}"
+                  role="radio"
+                  aria-checked="{{sealColorId===item.id}}"
+                  aria-label="选择{{item.name}}"
+                  data-id="{{item.id}}"
+                  bindtap="chooseSealColor"
+                >
+                  <view class="seal-color-chip" style="background:{{item.color}}"></view>
+                  <text class="seal-color-name">{{item.name}}</text>
+                </view>
               </view>
             </view>
-          </scroll-view>
+
+            <view class="seal-block seal-block-final">
+              <button class="seal-apply" aria-label="在器身生成题款" bindtap="applySealMark">{{sealApplied?'重新生成题款':'落款成印'}}</button>
+              <text class="seal-hint">{{sealApplied?'题款已入被选图菜单 · 选中后可调校或删除':'生成后可在右侧选中、拖动和调校'}}</text>
+            </view>
+          </view>
+
+          <block wx:else>
+            <scroll-view class="decor-side-menu" scroll-y enhanced show-scrollbar="false">
+              <view
+                wx:for="{{decorSideMenus}}"
+                wx:key="id"
+                class="decor-side-menu-item {{decorMenuId===item.id?'active':''}}"
+                role="button"
+                aria-label="选择{{item.name}}"
+                data-id="{{item.id}}"
+                bindtap="selectDecorMenu"
+              ><view class="decor-side-menu-icon" aria-hidden="true">{{item.icon}}</view></view>
+            </scroll-view>
+            <scroll-view class="decor-grid-scroll" scroll-y enhanced show-scrollbar="false">
+              <view class="decor-grid">
+                <view
+                  wx:for="{{decorCatalogItems}}"
+                  wx:key="key"
+                  class="decor-grid-card {{item.checked?'checked':''}}"
+                  role="checkbox"
+                  aria-checked="{{item.checked}}"
+                  aria-label="{{item.checked?'取消':'选择'}}{{item.name}}"
+                  data-id="{{item.id}}"
+                  data-key="{{item.key}}"
+                  bindtap="toggleDecorCatalogItem"
+                >
+                  <view class="motif-art {{item.patternClass}}"><view></view><text>{{item.glyph}}</text><view></view></view>
+                  <view wx:if="{{item.checked}}" class="decor-check">✓</view>
+                  <text class="decor-grid-name">{{item.name}}</text>
+                </view>
+              </view>
+            </scroll-view>
+          </block>
         </view>
       </view>
 
       <view class="decor-selected-panel">
-        <view class="decor-selected-head"><view><small>已入画</small><text>被选图菜单</text></view><text>{{decorationCount+stampCount}}</text></view>
+        <view class="decor-selected-head"><view><small>已入画</small><text>被选图菜单</text></view><text>{{selectedItemCount}}</text></view>
         <scroll-view class="decor-selected-scroll" scroll-y enhanced show-scrollbar="false">
           <view wx:if="{{decorationLayers.length}}" class="decor-selected-grid">
             <view
@@ -329,7 +375,7 @@
               class="decor-selected-card {{item.selected?'active':''}} {{item.visible?'':'hidden'}}"
               role="radio"
               aria-checked="{{item.selected}}"
-              aria-label="选中{{item.roleName}}{{item.name}}进行调整"
+              aria-label="{{item.ariaLabel}}"
               data-id="{{item.id}}"
               bindtap="selectDecoration"
             >
@@ -346,7 +392,7 @@
 
     <view class="decor-bottom">
       <button class="decor-previous" bindtap="returnToShaping"><view>←</view><text>上一步</text></button>
-      <text>{{decorationCount}} 层 · {{stampCount}} 枚落印</text>
+      <text>{{decorationCount}} 层 · {{stampCount}} 枚落印{{sealApplied?' · 1 处题款':''}}</text>
       <button class="decor-complete" bindtap="completeStage">完成装饰 <view>→</view></button>
     </view>
   </view>

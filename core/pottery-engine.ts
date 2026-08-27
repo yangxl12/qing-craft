@@ -2,7 +2,9 @@ import { clayColor, glazeColor, PotteryWork } from "./model";
 import {
   borderRepeatCount,
   decorationColorHex,
-  motifShaderCode
+  MAX_SEAL_MARK_CHARACTERS,
+  motifShaderCode,
+  SEAL_MARK_COLORS
 } from "./decoration";
 import { buildPotteryMesh } from "./pottery-mesh";
 import {
@@ -14,15 +16,14 @@ import {
   calculatePotteryTargetRpm,
   calculatePotteryZoomFactor,
   defaultPotteryPitch,
+  normalizePotteryPitch,
   normalizePotteryYaw,
   potteryOrbitUpVector,
   POTTERY_BASE_SCREEN_Y,
   POTTERY_DETAIL_FOCUS_END,
   POTTERY_DETAIL_FOCUS_START,
   POTTERY_MANIPULATION_VERTICAL_FILL,
-  POTTERY_MAX_PITCH,
   POTTERY_MAX_ZOOM_FACTOR,
-  POTTERY_MIN_PITCH,
   POTTERY_MIN_ZOOM_FACTOR,
   POTTERY_VERTICAL_FOV,
   PotteryRotationState,
@@ -205,6 +206,9 @@ function rotateY(angle: number): Float32Array {
   ]);
 }
 
+/** 题款占器身总高的比例（正方形边长），0.26 约为一只手掌可覆的大小。 */
+const SEAL_MARK_SIZE = 0.26;
+
 const VS = `
 attribute vec3 aPosition;
 attribute vec3 aNormal;
@@ -267,6 +271,9 @@ uniform float uMaxRadius;
 uniform sampler2D uInscription;
 uniform vec4 uInscriptionParams;
 uniform vec3 uInscriptionColor;
+uniform sampler2D uSeal;
+uniform vec4 uSealRegion;
+uniform vec3 uSealColor;
 
 float wrappedDistance(float value, float center){
   return abs(fract(value - center + 0.5) - 0.5);
@@ -507,6 +514,20 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
       }
     }
 
+    if (uSealRegion.w > 0.0) {
+      // Movable square seal on the outer wall. The u axis runs against
+      // surfaceU because on-screen rightward is decreasing surfaceU; without
+      // the inversion the engraved characters would read mirrored.
+      float sealDu = fract(uSealRegion.x - surfaceU + 0.5) - 0.5;
+      float sealDv = vY - uSealRegion.y;
+      vec2 sealUv = vec2(
+        sealDu / (uSealRegion.z * 2.0) + 0.5,
+        sealDv / (uSealRegion.w * 2.0) + 0.5
+      );
+      float seal = texture2D(uSeal, sealUv).a * (1.0 - step(0.48, vCavity));
+      material = mix(material, uSealColor, seal * 0.92);
+    }
+
     // Wheel rings, cloudy slip and sparse mineral grains make raw clay read as
     // damp material. Their amplitude stays below the point where it looks like
     // a printed texture, especially on fine porcelain.
@@ -620,6 +641,9 @@ export class PotteryEngine {
   private inscriptionTexture: any;
   private inscriptionKey = "";
   private inscriptionTextureReady = false;
+  private sealTexture: any;
+  private sealKey = "";
+  private sealTextureReady = false;
   private firedPreview = false;
 
   constructor(canvas: any, work: PotteryWork) {
@@ -641,6 +665,9 @@ export class PotteryEngine {
     this.inscriptionTexture = gl.createTexture();
     this.initializeInscriptionTexture();
     this.updateInscriptionTexture();
+    this.sealTexture = gl.createTexture();
+    this.initializeSealTexture();
+    this.updateSealTexture();
     this.rebuild();
     this.targetRpm = calculatePotteryTargetRpm(this.meshRadius, "idle");
     this.currentRpm = this.targetRpm;
@@ -708,6 +735,7 @@ export class PotteryEngine {
       this.ensureCameraFit();
     }
     this.updateInscriptionTexture();
+    this.updateSealTexture();
     if (renderNow) this.render();
   }
 
@@ -753,6 +781,7 @@ export class PotteryEngine {
 
   private initializeInscriptionTexture() {
     const gl = this.gl;
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.inscriptionTexture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -833,12 +862,84 @@ export class PotteryEngine {
       }
 
       const gl = this.gl;
+      gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, this.inscriptionTexture);
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
       this.inscriptionTextureReady = true;
     } catch (_error) {
       this.inscriptionTextureReady = false;
+    }
+  }
+
+  private initializeSealTexture() {
+    const gl = this.gl;
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this.sealTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      1,
+      1,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      new Uint8Array([0, 0, 0, 0])
+    );
+  }
+
+  private updateSealTexture() {
+    const seal = this.work.decorationComposition.sealMark;
+    const nextKey = seal ? `${seal.text}|${seal.colorId}` : "";
+    if (nextKey === this.sealKey) return;
+    this.sealKey = nextKey;
+    this.sealTextureReady = false;
+    this.initializeSealTexture();
+    if (!seal || !wx.createOffscreenCanvas) return;
+    try {
+      const canvas = wx.createOffscreenCanvas({ type: "2d", width: 512, height: 512 });
+      const context = canvas.getContext("2d");
+      context.clearRect(0, 0, 512, 512);
+      context.fillStyle = "#ffffff";
+      context.strokeStyle = "#ffffff";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      // 印面：外方框 + 满排字符。边框内缩，避免贴边被裁。
+      context.lineWidth = 16;
+      context.strokeRect(26, 26, 460, 460);
+      const characters = Array.from(seal.text.replace(/\s/g, ""))
+        .slice(0, MAX_SEAL_MARK_CHARACTERS);
+      if (characters.length) {
+        // 古代书写顺序：字自上而下，列自左而右；行数不少于列数，
+        // 网格整体竖长，再把全部字数均分进整个正方形。
+        const rows = Math.ceil(Math.sqrt(characters.length));
+        const columns = Math.ceil(characters.length / rows);
+        const cellWidth = 460 / columns;
+        const cellHeight = 460 / rows;
+        context.font = `bold ${Math.floor(Math.min(cellWidth, cellHeight) * 0.8)}px "STKaiti", "KaiTi", serif`;
+        characters.forEach((character, index) => {
+          const column = Math.floor(index / rows);
+          const row = index % rows;
+          context.fillText(
+            character,
+            26 + (column + 0.5) * cellWidth,
+            26 + (row + 0.5) * cellHeight
+          );
+        });
+      }
+      const gl = this.gl;
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, this.sealTexture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+      this.sealTextureReady = true;
+    } catch (_error) {
+      this.sealTextureReady = false;
     }
   }
 
@@ -854,7 +955,9 @@ export class PotteryEngine {
       this.viewportHeight
     );
     this.viewYaw = normalizePotteryYaw(this.viewYaw + delta.yaw);
-    const nextPitch = clamp(this.pitch + delta.pitch, POTTERY_MIN_PITCH, POTTERY_MAX_PITCH);
+    // Pitch is periodic rather than bounded: crossing a full turn wraps to the
+    // equivalent orientation and the same-direction gesture can keep going.
+    const nextPitch = normalizePotteryPitch(this.pitch + delta.pitch);
     if (nextPitch !== this.pitch) {
       this.pitch = nextPitch;
       this.resetCameraFit();
@@ -931,6 +1034,19 @@ export class PotteryEngine {
       (radius / (closestDepth * tangent * this.aspect)) * (this.viewportWidth / 2);
     const horizontalAllowance = Math.max(14, this.viewportWidth * 0.035);
     return Math.abs(canvasX - this.viewportWidth / 2) <= halfWidth + horizontalAllowance;
+  }
+
+  /** Interpolated outer radius at normalized height v, for surface-sized marks. */
+  private radiusAtHeight(v: number): number {
+    const samples = this.work.outerRadius.length;
+    const position = clamp(v * (samples - 1), 0, samples - 1);
+    const lower = Math.floor(position);
+    const upper = Math.min(samples - 1, lower + 1);
+    const blend = position - lower;
+    return (
+      (this.work.outerRadius[lower] || this.meshRadius) * (1 - blend) +
+      (this.work.outerRadius[upper] || this.meshRadius) * blend
+    );
   }
 
   /**
@@ -1071,6 +1187,7 @@ export class PotteryEngine {
     gl.deleteBuffer(this.cbo);
     gl.deleteBuffer(this.ibo);
     gl.deleteTexture(this.inscriptionTexture);
+    gl.deleteTexture(this.sealTexture);
     gl.deleteProgram(this.program);
   }
 
@@ -1347,6 +1464,34 @@ export class PotteryEngine {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.inscriptionTexture);
     gl.uniform1i(gl.getUniformLocation(program, "uInscription"), 0);
+
+    const seal = this.work.decorationComposition.sealMark;
+    if (seal && this.sealTextureReady) {
+      // 正方形题款：竖向半高固定，横向按该高度处的周长换算成 u 半宽。
+      // u 全程 0-1 对应整圈弧长 2πr，印面弧宽 = 2*halfWidth*2πr，
+      // 令其等于竖向边长 SEAL_MARK_SIZE*meshHeight，印面才是正方形。
+      const halfHeight = (SEAL_MARK_SIZE * seal.scaleY) / 2;
+      const radius = this.radiusAtHeight(seal.v);
+      const halfWidth = clamp(
+        (SEAL_MARK_SIZE * seal.scaleX * this.meshHeight) /
+          (4 * Math.PI * Math.max(0.05, radius)),
+        0.02,
+        0.42
+      );
+      gl.uniform4f(
+        gl.getUniformLocation(program, "uSealRegion"),
+        seal.u,
+        seal.v,
+        halfWidth,
+        halfHeight
+      );
+      set3("uSealColor", hexRgb(SEAL_MARK_COLORS[seal.colorId] || SEAL_MARK_COLORS.seal_red));
+    } else {
+      gl.uniform4f(gl.getUniformLocation(program, "uSealRegion"), 0, 0, 0, 0);
+    }
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this.sealTexture);
+    gl.uniform1i(gl.getUniformLocation(program, "uSeal"), 1);
     const methods: Record<string, number> = { full: 0, half: 1, brush: 2, splash: 3 };
     gl.uniform1f(
       gl.getUniformLocation(program, "uMethod"),

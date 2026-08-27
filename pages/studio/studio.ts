@@ -2,14 +2,17 @@ import { CLAYS, GLAZES, SHAPES, ClayId, ShapeId, STAGES, TOOLS } from "../../cor
 import { cloneWork, createWork, PotteryWork } from "../../core/model";
 import {
   ALL_DECORATION_MOTIFS,
+  anchorRange,
   applyDecorationTemplate,
   availableAnchors,
   BLESSINGS,
   BORDERS,
   clampDecorationLayer,
+  clampSealMark,
   createDecorationComposition,
   createDecorationLayer,
   createDecorationStamp,
+  createSealMark,
   duplicateDecorationLayer,
   DecorationAnchor,
   DecorationLayer,
@@ -22,11 +25,14 @@ import {
   Inscription,
   MAX_DECORATION_LAYERS,
   MAX_DECORATION_STAMPS,
+  MAX_SEAL_MARK_CHARACTERS,
   MOTIFS,
   motifById,
   PALETTES,
   REPEAT_LABELS,
   retargetStyle,
+  SEAL_MARK_COLOR_OPTIONS,
+  SealMarkColorId,
   STYLE_PACKS,
   StylePackId,
   TECHNIQUE_LABELS,
@@ -106,7 +112,15 @@ interface DecorGesture {
   snapshot: PotteryWork;
 }
 
-type StudioGesture = EditGesture | CameraGesture | DecorGesture;
+interface SealGesture {
+  type: "seal";
+  x: number;
+  y: number;
+  changed: boolean;
+  snapshot: PotteryWork;
+}
+
+type StudioGesture = EditGesture | CameraGesture | DecorGesture | SealGesture;
 
 const SHAPING_FORMS: { id: ShapingForm; name: string; note: string }[] = [
   { id: "curve", name: "曲线", note: "圆润过渡" },
@@ -135,6 +149,7 @@ const WALL_SLIDER_MAX = Math.round(MAX_POTTERY_WALL * WALL_SLIDER_SCALE);
 // lone finger; boost yaw and pitch so one stroke still sweeps a full turn and
 // can flip the piece completely over.
 const TWO_FINGER_ORBIT_GAIN = 1.5;
+const SEAL_MARK_SELECTION_ID = "seal_mark";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -245,6 +260,12 @@ Page({
     decorSideMenus: DECOR_SIDE_MENUS,
     decorMenuId: DECOR_SIDE_MENUS[0].id,
     decorCatalogItems: [] as any[],
+    sealColors: SEAL_MARK_COLOR_OPTIONS,
+    sealText: "",
+    sealTextLength: 0,
+    sealTextLimit: MAX_SEAL_MARK_CHARACTERS,
+    sealColorId: "seal_red" as SealMarkColorId,
+    sealApplied: false,
     decorTrayOpen: true,
     decorFullscreen: false,
     decorToolsCollapsed: false,
@@ -259,11 +280,15 @@ Page({
     decorationLayers: [] as any[],
     selectedDecorationId: "",
     selectedDecoration: null as any,
+    hasSelectedDecorItem: false,
+    selectedDecorationIsSeal: false,
+    selectedDecorationLabel: "图案",
     selectedDecorationName: "",
     selectedTechniqueName: "",
     selectedRepeatName: "",
     decorationCount: 0,
     stampCount: 0,
+    selectedItemCount: 0,
     pendingStampMotifId: "",
     firedPreview: false,
     paintPanel: "accent",
@@ -352,7 +377,16 @@ Page({
     const inscriptionDraft = work.decorationComposition.inscription
       ? JSON.parse(JSON.stringify(work.decorationComposition.inscription)) as Inscription
       : defaultInscription();
-    this.setData({ inscriptionDraft, privateMarks:loadPrivateMarks() });
+    const sealMark = work.decorationComposition.sealMark;
+    this.setData({
+      inscriptionDraft,
+      privateMarks:loadPrivateMarks(),
+      ...(sealMark ? {
+        sealText:sealMark.text,
+        sealTextLength:Array.from(sealMark.text).length,
+        sealColorId:sealMark.colorId
+      } : {})
+    });
     this.syncData();
     if (work.currentStage === "decorate") this.trackDecorEnter();
   },
@@ -489,6 +523,8 @@ Page({
       ...composition.stamps
     ];
     const selected = all.find((layer) => layer.layerId === this.data.selectedDecorationId) || null;
+    const sealMark = composition.sealMark;
+    const sealSelected = !!sealMark && this.data.selectedDecorationId === SEAL_MARK_SELECTION_ID;
     const roleNames: Record<string, string> = {
       main:"主纹",
       border:"边饰",
@@ -526,6 +562,32 @@ Page({
         patternClass:`motif-ink-${(motif.shaderCode % 6) + 1}`
       };
     });
+    const decorationLayers = all.map((layer) => ({
+      id:layer.layerId,
+      name:motifById(layer.motifId).name,
+      glyph:motifById(layer.motifId).glyph,
+      roleName:roleNames[layer.role],
+      ariaLabel:`选中${roleNames[layer.role]}${motifById(layer.motifId).name}进行调整`,
+      selected:layer.layerId === this.data.selectedDecorationId,
+      visible:layer.visible,
+      copyNumber:layer.copyNumber || 0,
+      isSeal:false,
+      patternClass:`motif-ink-${(motifById(layer.motifId).shaderCode % 6) + 1}`
+    }));
+    if (sealMark) {
+      decorationLayers.push({
+        id:SEAL_MARK_SELECTION_ID,
+        name:"题款",
+        glyph:Array.from(sealMark.text)[0] || "款",
+        roleName:"题款",
+        ariaLabel:"选中题款进行调整",
+        selected:sealSelected,
+        visible:true,
+        copyNumber:0,
+        isSeal:true,
+        patternClass:`seal-mark-art ${sealMark.colorId === "seal_red" ? "motif-ink-5" : sealMark.colorId === "wujin" ? "motif-ink-1" : "motif-ink-3"}`
+      });
+    }
     return {
       stylePackId:composition.stylePackId,
       motifs:this.work.mode === "relaxed" ? compatibleMotifs.slice(0, 4) : compatibleMotifs,
@@ -538,24 +600,20 @@ Page({
         recommended:item.recommendedShapes.includes(this.work!.shapeId),
         active:composition.templateId === item.id
       })),
-      decorationLayers:all.map((layer) => ({
-        id:layer.layerId,
-        name:motifById(layer.motifId).name,
-        glyph:motifById(layer.motifId).glyph,
-        roleName:roleNames[layer.role],
-        selected:layer.layerId === this.data.selectedDecorationId,
-        visible:layer.visible,
-        copyNumber:layer.copyNumber || 0,
-        patternClass:`motif-ink-${(motifById(layer.motifId).shaderCode % 6) + 1}`
-      })),
+      decorationLayers,
       decorCatalogItems:catalogItems,
       selectedDecoration:selected,
-      selectedDecorationName:selected ? motifById(selected.motifId).name : "",
+      hasSelectedDecorItem:!!selected || sealSelected,
+      selectedDecorationIsSeal:sealSelected,
+      selectedDecorationLabel:sealSelected ? "题款" : "图案",
+      selectedDecorationName:sealSelected ? "题款" : selected ? motifById(selected.motifId).name : "",
       selectedTechniqueName:selected ? TECHNIQUE_LABELS[selected.technique] : "",
       selectedRepeatName:selected ? REPEAT_LABELS[selected.repeatMode] : "",
       decorationCount:composition.layers.length,
       stampCount:composition.stamps.length,
+      selectedItemCount:all.length + (sealMark ? 1 : 0),
       accentColorId:accent?.colorId || "",
+      sealApplied:!!composition.sealMark,
       inscriptionAnchors:this.inscriptionAnchorOptions()
     };
   },
@@ -836,7 +894,7 @@ Page({
       const remaining = [...composition.layers, ...composition.stamps];
       this.setData({
         selectedDecorationId:this.data.selectedDecorationId === existing.layerId
-          ? remaining[0]?.layerId || ""
+          ? remaining[0]?.layerId || (composition.sealMark ? SEAL_MARK_SELECTION_ID : "")
           : this.data.selectedDecorationId
       });
     } else if (role === "stamp") {
@@ -871,6 +929,69 @@ Page({
     this.syncData();
     track("decor_layer_add", { role, motif_id:motifId, technique_id:technique });
     this.vibrate();
+  },
+
+  inputSealText(event: any) {
+    const text = Array.from(String(event.detail?.value || "").replace(/\s/g, ""))
+      .slice(0, MAX_SEAL_MARK_CHARACTERS)
+      .join("");
+    this.setData({ sealText:text, sealTextLength:Array.from(text).length });
+    return text;
+  },
+
+  chooseSealColor(event: WechatMiniprogramTouchEvent) {
+    const id = event.currentTarget.dataset.id as SealMarkColorId;
+    if (!SEAL_MARK_COLOR_OPTIONS.some((item) => item.id === id)) return;
+    this.setData({ sealColorId:id });
+    this.vibrate();
+  },
+
+  applySealMark() {
+    if (!this.work) return;
+    const text = Array.from(String(this.data.sealText || "").replace(/\s/g, ""))
+      .slice(0, MAX_SEAL_MARK_CHARACTERS)
+      .join("");
+    if (!text) {
+      wx.showToast({ title:"先写下要刻的内容", icon:"none" });
+      return;
+    }
+    this.pushHistory();
+    const previous = this.work.decorationComposition.sealMark;
+    const position = previous
+      ? { u:previous.u, v:previous.v }
+      : this.sealDefaultPosition();
+    const sealMark = createSealMark(text, this.data.sealColorId, position.u, position.v);
+    if (previous) {
+      sealMark.scaleX = Number.isFinite(previous.scaleX) ? previous.scaleX : 1;
+      sealMark.scaleY = Number.isFinite(previous.scaleY) ? previous.scaleY : 1;
+      Object.assign(sealMark, clampSealMark(sealMark));
+    }
+    this.work.decorationComposition.sealMark = sealMark;
+    this.setData({
+      selectedDecorationId:SEAL_MARK_SELECTION_ID,
+      sealText:sealMark.text,
+      sealTextLength:Array.from(sealMark.text).length
+    });
+    this.changed();
+    this.syncData();
+    track("seal_mark_add", {
+      color_id:sealMark.colorId,
+      text_length:Array.from(sealMark.text).length
+    });
+    this.vibrate("medium");
+    wx.showToast({ title:"题款已落于器身，选中后可拖动", icon:"none" });
+  },
+
+  /** 新题款默认落在正对视线、器身中段的位置。 */
+  sealDefaultPosition(): { u: number; v: number } {
+    if (this.engine && this.rect) {
+      const surface = this.engine.screenToSurface(
+        this.rect.width / 2,
+        this.rect.height * 0.45
+      );
+      if (surface) return { u:surface.u, v:surface.v };
+    }
+    return { u:0.75, v:0.45 };
   },
 
   toggleDecorTray() {
@@ -1012,10 +1133,15 @@ Page({
 
   clearDecoration() {
     if (!this.work) return;
-    if (!this.work.decorationComposition.layers.length && !this.work.decorationComposition.stamps.length) return;
+    if (
+      !this.work.decorationComposition.layers.length &&
+      !this.work.decorationComposition.stamps.length &&
+      !this.work.decorationComposition.sealMark
+    ) return;
     this.pushHistory();
     this.work.decorationComposition.layers = [];
     this.work.decorationComposition.stamps = [];
+    delete this.work.decorationComposition.sealMark;
     delete this.work.decorationComposition.templateId;
     this.setData({ selectedDecorationId:"", pendingStampMotifId:"" });
     this.changed();
@@ -1072,7 +1198,11 @@ Page({
 
   selectDecoration(event: WechatMiniprogramTouchEvent) {
     const id = event.currentTarget.dataset.id;
-    this.setData({ selectedDecorationId:id, pendingStampMotifId:"" }, () => {
+    this.setData({
+      selectedDecorationId:id,
+      pendingStampMotifId:"",
+      ...(id === SEAL_MARK_SELECTION_ID ? { decorTab:"inscription" } : {})
+    }, () => {
       this.setData(this.decorationData());
     });
   },
@@ -1083,6 +1213,11 @@ Page({
       ...this.work.decorationComposition.layers,
       ...this.work.decorationComposition.stamps
     ].find((layer) => layer.layerId === this.data.selectedDecorationId) || null;
+  },
+
+  isSealSelected(): boolean {
+    return !!this.work?.decorationComposition.sealMark &&
+      this.data.selectedDecorationId === SEAL_MARK_SELECTION_ID;
   },
 
   adjustDecoration(event: WechatMiniprogramTouchEvent) {
@@ -1139,19 +1274,33 @@ Page({
 
   adjustDecorAxis(event: WechatMiniprogramTouchEvent) {
     if (!this.work) return;
+    const seal = this.isSealSelected() ? this.work.decorationComposition.sealMark : undefined;
     const selected = this.selectedDecoration();
-    if (!selected) return;
+    if (!selected && !seal) return;
     const axis = event.currentTarget.dataset.axis;
     const direction = Number(event.currentTarget.dataset.direction) < 0 ? -1 : 1;
     if (axis !== "x" && axis !== "y") return;
+    const before = JSON.stringify(seal || selected);
     this.pushHistory();
-    if (axis === "x") selected.scaleX = clamp((selected.scaleX ?? selected.scale) + direction * .1, .42, 1.65);
-    else selected.scaleY = clamp((selected.scaleY ?? selected.scale) + direction * .1, .42, 1.65);
-    selected.scale = ((selected.scaleX ?? selected.scale) + (selected.scaleY ?? selected.scale)) / 2;
-    Object.assign(selected, clampDecorationLayer(selected, this.work.shapeId));
+    if (seal) {
+      if (axis === "x") seal.scaleX += direction * .1;
+      else seal.scaleY += direction * .1;
+      Object.assign(seal, clampSealMark(seal));
+    } else if (selected) {
+      if (axis === "x") selected.scaleX = clamp((selected.scaleX ?? selected.scale) + direction * .1, .42, 1.65);
+      else selected.scaleY = clamp((selected.scaleY ?? selected.scale) + direction * .1, .42, 1.65);
+      selected.scale = ((selected.scaleX ?? selected.scale) + (selected.scaleY ?? selected.scale)) / 2;
+      Object.assign(selected, clampDecorationLayer(selected, this.work.shapeId));
+    }
+    if (before === JSON.stringify(seal || selected)) {
+      this.history.pop();
+      return;
+    }
     this.changed();
     this.syncData();
-    track("decor_layer_adjust", { adjust_type:axis === "x" ? "scale_x" : "scale_y" });
+    track(seal ? "seal_mark_adjust" : "decor_layer_adjust", {
+      adjust_type:axis === "x" ? "scale_x" : "scale_y"
+    });
     this.vibrate();
   },
 
@@ -1169,6 +1318,10 @@ Page({
 
   copySelectedDecoration() {
     if (!this.work || this.work.currentStage !== "decorate") return;
+    if (this.isSealSelected()) {
+      wx.showToast({ title:"题款只能保留一处，可直接修改后重刻", icon:"none" });
+      return;
+    }
     const selected = this.selectedDecoration();
     if (!selected) return;
     const composition = this.work.decorationComposition;
@@ -1203,19 +1356,8 @@ Page({
 
   anchorRangeForSelected(anchor: DecorationAnchor): [number, number] {
     if (!this.work) return [0, 1];
-    // Reuse the clamping result rather than exposing screen coordinates as
-    // persistent data. Two sentinel values reveal the safe semantic range.
-    const low = clampDecorationLayer({
-      ...(this.selectedDecoration() || createDecorationLayer("lotus", "main", this.work.shapeId, this.work.decorationComposition.stylePackId)),
-      anchor,
-      v:-10
-    }, this.work.shapeId).v;
-    const high = clampDecorationLayer({
-      ...(this.selectedDecoration() || createDecorationLayer("lotus", "main", this.work.shapeId, this.work.decorationComposition.stylePackId)),
-      anchor,
-      v:10
-    }, this.work.shapeId).v;
-    return [low, high];
+    // 分区按钮仍是快速落点预设；用户从该落点继续拖动时不再受分区限制。
+    return anchorRange(this.work.shapeId, anchor);
   },
 
   deleteSelectedDecoration() {
@@ -1224,12 +1366,25 @@ Page({
     const id = this.data.selectedDecorationId;
     if (!id) return;
     const composition = this.work.decorationComposition;
+    if (id === SEAL_MARK_SELECTION_ID && composition.sealMark) {
+      this.pushHistory();
+      delete composition.sealMark;
+      const remaining = [...composition.layers, ...composition.stamps];
+      this.setData({ selectedDecorationId:remaining[0]?.layerId || "" });
+      this.changed();
+      this.syncData();
+      track("seal_mark_delete", {});
+      this.vibrate();
+      return;
+    }
     if (!composition.layers.some((layer) => layer.layerId === id) && !composition.stamps.some((layer) => layer.layerId === id)) return;
     this.pushHistory();
     composition.layers = composition.layers.filter((layer) => layer.layerId !== id);
     composition.stamps = composition.stamps.filter((layer) => layer.layerId !== id);
     const remaining = [...composition.layers, ...composition.stamps];
-    this.setData({ selectedDecorationId:remaining[0]?.layerId || "" });
+    this.setData({
+      selectedDecorationId:remaining[0]?.layerId || (composition.sealMark ? SEAL_MARK_SELECTION_ID : "")
+    });
     this.changed();
     this.syncData();
     this.vibrate();
@@ -1493,6 +1648,20 @@ Page({
           technique_id:stamp.technique
         });
       }
+      // 题款和普通纹样共用“先在被选图菜单选中，再到器身拖动”的规则，
+      // 避免写款页签抢走当前普通图案的手势。
+      const sealMark = this.work.decorationComposition.sealMark;
+      if (sealMark && this.isSealSelected()) {
+        this.gesture = {
+          type:"seal",
+          x:touch.clientX,
+          y:touch.clientY,
+          changed:false,
+          snapshot
+        };
+        this.setData({ saveState:"未保存" });
+        return;
+      }
       if (!selected) {
         this.gesture = null;
         return;
@@ -1603,7 +1772,32 @@ Page({
         Object.assign(selected, clampDecorationLayer(selected, this.work.shapeId));
         this.gesture.changed = true;
         this.engine?.update(this.work);
-        this.setData({ saveState:"未保存" });
+        this.setData({ saveState: "未保存" });
+      }
+      this.gesture.x = touch.clientX;
+      this.gesture.y = touch.clientY;
+      return;
+    }
+
+    if (this.gesture.type === "seal") {
+      const seal = this.work.decorationComposition.sealMark;
+      if (!seal) return;
+      const dx = touch.clientX - this.gesture.x;
+      const dy = touch.clientY - this.gesture.y;
+      // 与纹样拖动同源：按当前投影反解表面位移，题款在任何视角都跟手。
+      const delta = this.engine
+        ? this.engine.surfaceDragDelta(seal.u, seal.v, dx, dy)
+        : {
+            du: -(dx / Math.max(1, this.rect.width)),
+            dv: -(dy / Math.max(1, this.rect.height))
+          };
+      if (Math.abs(delta.du) + Math.abs(delta.dv) > 1e-5) {
+        seal.u += delta.du;
+        seal.v += delta.dv;
+        Object.assign(seal, clampSealMark(seal));
+        this.gesture.changed = true;
+        this.engine?.update(this.work);
+        this.setData({ saveState: "未保存" });
       }
       this.gesture.x = touch.clientX;
       this.gesture.y = touch.clientY;
@@ -1660,7 +1854,20 @@ Page({
   // before switching to the camera so patterns never creep during orbiting.
   revertIncidentalDecorDrag() {
     const gesture = this.gesture;
-    if (!this.work || !gesture || gesture.type !== "decor" || !gesture.changed) return;
+    if (!this.work || !gesture) return;
+    if (gesture.type === "seal") {
+      if (!gesture.changed) return;
+      const current = this.work.decorationComposition.sealMark;
+      const before = gesture.snapshot.decorationComposition.sealMark;
+      if (!current || !before) return;
+      if (Math.abs(current.u - before.u) + Math.abs(current.v - before.v) > 0.01) return;
+      current.u = before.u;
+      current.v = before.v;
+      gesture.changed = false;
+      this.engine?.update(this.work);
+      return;
+    }
+    if (gesture.type !== "decor" || !gesture.changed) return;
     const current = [
       ...this.work.decorationComposition.layers,
       ...this.work.decorationComposition.stamps
@@ -1727,30 +1934,33 @@ Page({
 
   commitGestureChange() {
     if (!this.work || !this.gesture) return;
-    if (this.gesture.type === "edit") this.flushShapingFrame(true);
-    if ((this.gesture.type !== "edit" && this.gesture.type !== "decor") || !this.gesture.changed) return;
-    this.history.push(this.gesture.snapshot);
+    const gesture = this.gesture;
+    if (gesture.type === "edit") this.flushShapingFrame(true);
+    if ((gesture.type !== "edit" && gesture.type !== "decor" && gesture.type !== "seal") || !gesture.changed) return;
+    this.history.push(gesture.snapshot);
     if (this.history.length > 50) this.history.shift();
     this.future = [];
     this.changed(false);
-    if (!this.firstDeformTracked && this.gesture.type === "edit" && this.work.currentStage === "shaping") {
+    if (!this.firstDeformTracked && gesture.type === "edit" && this.work.currentStage === "shaping") {
       track("first_deform", {
-        gesture_type: this.gesture.motion,
-        shaping_form: this.gesture.form,
+        gesture_type: gesture.motion,
+        shaping_form: gesture.form,
         quality_tier: (wx.getStorageSync("palm-kiln-settings") || {}).quality || "medium"
       });
       this.firstDeformTracked = true;
     }
-    if (this.gesture.type === "edit") {
+    if (gesture.type === "edit") {
       this.setData({
-        hint:MOTION_LABELS[this.gesture.motion],
+        hint:MOTION_LABELS[gesture.motion],
         showHint:true
       });
       wx.setStorageSync("palm-kiln-tutorial-seen", true);
+    } else if (gesture.type === "seal") {
+      track("seal_mark_move", {});
     } else {
       track("decor_layer_adjust", { adjust_type:"position" });
     }
-    this.gesture.changed = false;
+    gesture.changed = false;
   },
 
   inputPoint(x: number, y: number, event?: WechatMiniprogramTouchEvent): ShapingInputPoint {

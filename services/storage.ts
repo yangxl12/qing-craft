@@ -120,6 +120,7 @@ export function duplicateWork(
     next.glazeId = "celadon";
     next.glazeMethod = "full";
     delete next.decorationComposition.inscription;
+    delete next.decorationComposition.sealMark;
     next.title = `${work.title} · 同纹`;
   }
   saveWork(next);

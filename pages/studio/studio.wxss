@@ -3013,19 +3013,28 @@
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   gap: 12rpx;
 }
+/* 左右两块菜单统一为“薄瓷片”：细边框 + 轻釉底，浮在暗色工坊背景上。 */
 .decor-library-panel,
 .decor-selected-panel {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border: 0;
+  border: 1rpx solid rgba(58, 88, 80, 0.34);
   border-radius: 21rpx;
-  background: transparent;
-  box-shadow: none;
+  background: linear-gradient(
+    165deg,
+    rgba(250, 251, 243, 0.44),
+    rgba(234, 241, 236, 0.3)
+  );
+  box-shadow:
+    inset 0 1rpx rgba(255, 255, 255, 0.42),
+    0 10rpx 26rpx rgba(6, 18, 15, 0.14);
 }
 .decor-library-panel {
   display: flex;
   flex-direction: column;
+  padding: 8rpx;
+  box-sizing: border-box;
 }
 .decor-catalog-tabs {
   height: 70rpx;
@@ -3051,6 +3060,14 @@
     rgba(252, 251, 243, 0.5),
     rgba(234, 240, 236, 0.36)
   );
+  transition:
+    transform 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.decor-catalog-tabs > view:active {
+  transform: scale(0.95);
 }
 .decor-catalog-tabs > view small {
   width: 25rpx;
@@ -3077,50 +3094,61 @@
   min-height: 0;
   display: flex;
 }
+/* 侧边图标按钮放大到指尖可点的尺寸，并给出清晰的选中态。 */
 .decor-side-menu {
-  width: 82rpx;
+  width: 112rpx;
   height: 100%;
   flex: none;
   box-sizing: border-box;
-  border-right: 1rpx solid rgba(50, 76, 69, 0.08);
+  border-right: 1rpx solid rgba(50, 76, 69, 0.14);
+  background: rgba(44, 74, 66, 0.05);
 }
 .decor-side-menu > view {
   position: relative;
-  width: 68rpx;
-  min-height: 64rpx;
-  margin: 7rpx;
-  padding: 8rpx 5rpx;
+  width: 96rpx;
+  min-height: 92rpx;
+  margin: 8rpx;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1rpx solid rgba(49, 76, 69, 0.14);
-  border-radius: 14rpx;
-  color: #41524c;
+  border: 1rpx solid rgba(49, 76, 69, 0.18);
+  border-radius: 18rpx;
+  color: #37453f;
   background: linear-gradient(
     150deg,
-    rgba(252, 251, 243, 0.56),
-    rgba(234, 240, 236, 0.4)
+    rgba(252, 251, 243, 0.62),
+    rgba(234, 240, 236, 0.44)
   );
-  box-shadow: 0 4rpx 12rpx rgba(32, 54, 49, 0.07);
+  box-shadow: 0 4rpx 12rpx rgba(32, 54, 49, 0.08);
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.decor-side-menu > view:active {
+  transform: scale(0.93);
 }
 .decor-side-menu-icon {
   font-family: "Songti SC", serif;
-  font-size: 36rpx;
+  font-size: 46rpx;
+  font-weight: 700;
   line-height: 1;
   text-align: center;
+  text-shadow: 0 1rpx 0 rgba(255, 255, 255, 0.55);
 }
 .decor-side-menu > view.active {
-  color: #2e554c;
+  color: #275246;
   background: linear-gradient(
     150deg,
-    rgba(238, 245, 238, 0.72),
-    rgba(201, 222, 210, 0.5)
+    rgba(238, 245, 238, 0.8),
+    rgba(201, 222, 210, 0.55)
   );
-  border-color: rgba(81, 123, 112, 0.55);
+  border-color: rgba(81, 123, 112, 0.62);
   box-shadow:
     inset 3rpx 0 #517b70,
-    0 4rpx 12rpx rgba(44, 87, 75, 0.12);
+    0 6rpx 14rpx rgba(44, 87, 75, 0.16);
   font-weight: 700;
 }
 .decor-grid-scroll {
@@ -3234,9 +3262,9 @@
   right: 3rpx;
   bottom: 5rpx;
   overflow: hidden;
-  color: #53635e;
-  font-size: 12rpx;
-  line-height: 16rpx;
+  color: #4d5d56;
+  font-size: 13rpx;
+  line-height: 18rpx;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3260,15 +3288,16 @@
 }
 
 .decor-selected-panel {
-  padding: 7rpx;
+  padding: 8rpx;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
 }
+/* 标题栏加大字号、加深字色，计数改为胶囊徽标，双位数也不拥挤。 */
 .decor-selected-head {
-  height: 55rpx;
+  height: 66rpx;
   flex: none;
-  padding: 0 4rpx 7rpx;
+  padding: 0 6rpx 9rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3279,29 +3308,34 @@
   display: block;
 }
 .decor-selected-head > view small {
-  color: #8b6a4e;
+  color: #97744c;
   font-family: "Songti SC", serif;
-  font-size: 10rpx;
+  font-size: 12rpx;
   letter-spacing: 0.22em;
 }
 .decor-selected-head > view text {
-  margin-top: 1rpx;
+  margin-top: 2rpx;
+  color: #2c4a41;
   font-family: "Songti SC", serif;
-  font-size: 16rpx;
+  font-size: 19rpx;
   font-weight: 700;
 }
 .decor-selected-head > text {
-  width: 34rpx;
-  height: 34rpx;
-  border-radius: 50%;
-  color: #f4f4e9;
-  background: #456d63;
-  font-size: 15rpx;
-  line-height: 34rpx;
+  min-width: 42rpx;
+  height: 42rpx;
+  padding: 0 12rpx;
+  box-sizing: border-box;
+  border-radius: 999rpx;
+  color: #f8f6e7;
+  background: linear-gradient(145deg, #4d7a6d, #38584d);
+  box-shadow: 0 5rpx 12rpx rgba(23, 58, 50, 0.22);
+  font-size: 17rpx;
+  font-weight: 700;
+  line-height: 42rpx;
   text-align: center;
 }
 .decor-selected-scroll {
-  height: calc(100% - 55rpx);
+  height: calc(100% - 66rpx);
   flex: 1;
   min-height: 0;
 }
@@ -3325,9 +3359,9 @@
   right: 4rpx;
   bottom: 5rpx;
   overflow: hidden;
-  color: #53635e;
-  font-size: 12rpx;
-  line-height: 16rpx;
+  color: #4d5d56;
+  font-size: 13rpx;
+  line-height: 18rpx;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3410,6 +3444,13 @@
   font-family: "Songti SC", serif;
   font-size: 17rpx;
   line-height: 62rpx;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+.decor-stage .decor-bottom .decor-previous:active {
+  transform: scale(0.96);
+  background: rgba(247, 247, 238, 0.85);
 }
 .decor-stage .decor-bottom .decor-previous::after {
   border: 0;
@@ -3435,6 +3476,12 @@
   font-size: 19rpx;
   line-height: 66rpx;
   letter-spacing: 0.1em;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.decor-stage .decor-bottom .decor-complete:active {
+  transform: scale(0.97);
 }
 .decor-stage .decor-bottom .decor-complete view {
   width: 48rpx;
@@ -3492,7 +3539,11 @@
 }
 .reduce-motion .decor-tray,
 .reduce-motion .decor-tool-actions,
-.reduce-motion .decor-tool-chevron {
+.reduce-motion .decor-tool-chevron,
+.reduce-motion .decor-side-menu > view,
+.reduce-motion .decor-catalog-tabs > view,
+.reduce-motion .decor-stage .decor-bottom .decor-previous,
+.reduce-motion .decor-stage .decor-bottom .decor-complete {
   transition: none;
 }
 
@@ -3512,9 +3563,9 @@
     height: 60rpx;
   }
   .decor-side-menu > view {
-    min-height: 51rpx;
-    margin-top: 5rpx;
-    margin-bottom: 5rpx;
+    min-height: 72rpx;
+    margin-top: 6rpx;
+    margin-bottom: 6rpx;
   }
   .decor-tool-panel {
     top: 70rpx;

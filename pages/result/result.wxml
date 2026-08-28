@@ -27,7 +27,14 @@
    <view class="result-fallback-pattern">{{workInfo.primaryGlyph}}</view>
    <view wx:if="{{work.decorationComposition.inscription}}" class="result-fallback-mark">{{work.decorationComposition.inscription.text}}</view>
   </view>
-  <view class="plinth"></view>
+  <view class="plinth" aria-hidden="true">
+   <view class="plinth-shadow"></view>
+   <view class="plinth-foot"></view>
+   <view class="plinth-body"></view>
+   <view class="plinth-lip"></view>
+   <view class="plinth-plate"></view>
+   <view class="plinth-contact"></view>
+ </view>
  </view>
  <view class="scene-spacer"></view>
  <canvas id="posterCanvas" type="2d" class="poster-canvas"></canvas>

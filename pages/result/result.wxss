@@ -173,35 +173,141 @@
   box-sizing: border-box;
   z-index: 2;
 }
-/* 与引擎的器底可见接触线共用 70%，不同器形都会稳稳落在台面上。 */
+/* 古风木质束腰展座：座面—束腰—展足三段式，全部以器底接触线为锚点。
+   引擎把器底可见前沿锚在画布 74%（POTTERY_BASE_SCREEN_Y），座面椭圆中心
+   对齐这条线，比例与创作台转盘一致（约 20.6%），器物落位自然不悬浮。 */
 .plinth {
   position: absolute;
   left: 50%;
-  top: 70%;
-  transform: translateX(-50%);
+  top: 74%;
   width: 640rpx;
-  height: 200rpx;
-  border-radius: 50%;
-  background: radial-gradient(
-    ellipse at 50% 44%,
-    #3f3c36 0%,
-    #322f2b 55%,
-    #232220 100%
-  );
-  box-shadow:
-    0 34rpx 56rpx rgba(0, 0, 0, 0.52),
-    inset 0 14rpx 0 rgba(255, 255, 255, 0.07);
+  height: 260rpx;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
-.plinth:after {
-  content: "";
+/* 地面投影：贴着展足足缘的一圈柔影。 */
+.plinth-shadow {
   position: absolute;
   left: 50%;
-  top: 8rpx;
-  width: 300rpx;
-  height: 62rpx;
-  transform: translateX(-50%);
+  top: 208rpx;
+  width: 676rpx;
+  height: 88rpx;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(5, 8, 7, 0.55), rgba(5, 8, 7, 0) 72%);
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(2, 5, 4, 0.58),
+    rgba(2, 5, 4, 0.3) 55%,
+    rgba(2, 5, 4, 0) 76%
+  );
+}
+/* 展足：比束腰更宽的喇叭底座，正面留一道弦线高光。 */
+.plinth-foot {
+  position: absolute;
+  left: 50%;
+  top: 186rpx;
+  width: 552rpx;
+  height: 112rpx;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background:
+    linear-gradient(
+      180deg,
+      transparent 58%,
+      rgba(233, 199, 143, 0.17) 73%,
+      rgba(233, 199, 143, 0.05) 83%,
+      transparent 96%
+    ),
+    radial-gradient(ellipse at 50% 40%, #3a2a19 0%, #2b1f13 52%, #1c130b 100%);
+  box-shadow:
+    inset 0 6rpx 14rpx rgba(0, 0, 0, 0.45),
+    0 18rpx 36rpx rgba(2, 6, 5, 0.52);
+}
+/* 束腰座身：顺纹木料 + 左侧暖主光，顶部藏在座面之后。 */
+.plinth-body {
+  position: absolute;
+  left: 50%;
+  top: 30rpx;
+  width: 402rpx;
+  height: 150rpx;
+  transform: translateX(-50%);
+  border-radius: 50rpx 50rpx 56rpx 56rpx / 64rpx 64rpx 72rpx 72rpx;
+  background:
+    radial-gradient(
+      ellipse 120rpx 150rpx at 24% 44%,
+      rgba(226, 186, 124, 0.15),
+      rgba(226, 186, 124, 0) 72%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 240, 214, 0.035) 0 2rpx,
+      rgba(12, 8, 4, 0.06) 2rpx 6rpx,
+      rgba(255, 240, 214, 0.015) 6rpx 11rpx,
+      rgba(12, 8, 4, 0) 11rpx 18rpx
+    ),
+    linear-gradient(180deg, #241a10 0%, #382a1b 26%, #33261a 58%, #1f1509 100%);
+  box-shadow:
+    inset 22rpx 0 30rpx -18rpx rgba(226, 188, 128, 0.1),
+    inset -26rpx 0 34rpx -20rpx rgba(0, 0, 0, 0.55),
+    inset 0 -14rpx 22rpx rgba(0, 0, 0, 0.42);
+}
+/* 座沿厚度：座面下压出的一圈深色边，制造盘口出沿的体量。 */
+.plinth-lip {
+  position: absolute;
+  left: 50%;
+  top: 10rpx;
+  width: 632rpx;
+  height: 130rpx;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: linear-gradient(180deg, #241a10 0%, #191108 58%, #100b06 100%);
+  box-shadow: 0 12rpx 24rpx rgba(2, 6, 5, 0.42);
+}
+/* 座面：大漆木面，左上暖光釉泽 + 前缘受光 + 背缘入影。 */
+.plinth-plate {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 640rpx;
+  height: 132rpx;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      ellipse 78% 68% at 40% 34%,
+      rgba(233, 196, 134, 0.2),
+      rgba(171, 133, 79, 0.07) 46%,
+      rgba(171, 133, 79, 0) 66%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.34) 0%,
+      rgba(0, 0, 0, 0.1) 38%,
+      rgba(0, 0, 0, 0) 55%,
+      rgba(233, 200, 143, 0.1) 82%,
+      rgba(0, 0, 0, 0.3) 100%
+    ),
+    radial-gradient(ellipse at 50% 44%, #453222 0%, #38291a 46%, #291d12 78%, #1f150d 100%);
+  box-shadow:
+    inset 0 4rpx 10rpx rgba(0, 0, 0, 0.5),
+    inset 0 -5rpx 12rpx rgba(236, 206, 152, 0.13),
+    0 16rpx 30rpx rgba(2, 6, 5, 0.48);
+}
+/* 器底接触影：贴着足沿的一圈浓影，让器物真正“落”在座面上。 */
+.plinth-contact {
+  position: absolute;
+  left: 50%;
+  top: 6rpx;
+  width: 316rpx;
+  height: 58rpx;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(3, 6, 5, 0.6),
+    rgba(3, 6, 5, 0.26) 52%,
+    rgba(3, 6, 5, 0) 72%
+  );
 }
 
 /* 底部三枚按钮：主按钮用瓷白微渐层，次按钮用玻璃拟态。 */
@@ -511,7 +617,7 @@
   width: 260rpx;
   height: 350rpx;
   left: 50%;
-  top: 52%;
+  top: 55%;
   transform: translate(-50%, -50%);
   background: linear-gradient(100deg, #52796a, #a9c4b8, #476f60);
   clip-path: polygon(

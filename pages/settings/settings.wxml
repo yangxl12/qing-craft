@@ -1,9 +1,8 @@
 <view class="settings-page">
   <view class="nav" style="padding-top:{{statusBar}}px">
-    <view class="nav-row" style="height:{{navBar}}px">
-      <button class="nav-btn" bindtap="back">‹</button>
+    <view class="nav-row" style="height:{{navBar}}px;padding-right:{{capsulePad}}px">
+      <view class="nav-btn" bindtap="back">‹</view>
       <view class="nav-title display">工坊设置</view>
-      <view class="nav-filler"></view>
     </view>
   </view>
 

@@ -1,10 +1,9 @@
 <view class="gallery {{selectMode ? 'selecting' : ''}}">
   <view class="nav" style="padding-top:{{statusBar}}px">
-    <view class="nav-row" style="height:{{navBar}}px">
+    <view class="nav-row" style="height:{{navBar}}px;padding-right:{{capsulePad}}px">
       <block wx:if="{{!selectMode}}">
-        <button class="nav-btn" bindtap="back">‹</button>
+        <view class="nav-btn" bindtap="back">‹</view>
         <view class="nav-title display">我的作品</view>
-        <view class="nav-filler"></view>
       </block>
       <block wx:else>
         <view class="nav-link left" bindtap="exitSelect">取消</view>

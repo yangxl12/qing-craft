@@ -17,15 +17,14 @@
 }
 .gallery.selecting { padding-bottom: 220rpx; }
 
-/* 顶部导航：与胶囊按钮同顶同高，避开胶囊所在区域 */
+/* 顶部导航：与胶囊按钮同顶同高，右侧留出胶囊宽度 */
 .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 60; background: #f5f1e6; }
 .nav-row { display: flex; align-items: center; justify-content: space-between; padding: 0 24rpx; }
-.nav-title { flex: 1; text-align: center; font-size: 32rpx; letter-spacing: .16em; }
-.nav-btn { width: 64rpx; height: 64rpx; line-height: 60rpx; border-radius: 50%; background: transparent; border: 1rpx solid var(--line); color: var(--ink); font-size: 40rpx; font-weight: 600; }
-.nav-filler { width: 64rpx; }
-.nav-link { width: 96rpx; font-size: 26rpx; color: var(--ink-soft); letter-spacing: .06em; }
-.nav-link.left { text-align: left; }
-.nav-link.right { text-align: right; color: var(--jade); font-weight: 600; }
+.nav-title { flex: 1; text-align: center; font-size: 32rpx; letter-spacing: .16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-btn { width: 56rpx; height: 56rpx; border-radius: 50%; background: transparent; border: 1rpx solid var(--line); color: var(--ink); font-size: 32rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.nav-link { flex-shrink: 0; font-size: 26rpx; color: var(--ink-soft); letter-spacing: .06em; padding: 8rpx 0; }
+.nav-link.left { margin-right: 8rpx; }
+.nav-link.right { margin-left: 8rpx; color: var(--jade); font-weight: 600; }
 
 /* 题头：朱砂印 + 宋体标题 */
 .hero { display: flex; align-items: center; gap: 28rpx; padding: 46rpx 4rpx 26rpx; }

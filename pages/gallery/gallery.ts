@@ -23,6 +23,7 @@ Page({
     counts: { all: 0, draft: 0, completed: 0 },
     statusBar: 20,
     navBar: 32,
+    capsulePad: 96,
     selectMode: false,
     selectedCount: 0,
     allSelected: false
@@ -30,19 +31,23 @@ Page({
   selection: new Set<string>(),
 
   onLoad() {
-    // 对齐微信胶囊按钮：自定义导航栏与胶囊同顶、同高，避免互相重叠。
+    // 对齐微信胶囊按钮：导航与胶囊同顶同高，右侧让出胶囊宽度，避免重叠。
     let statusBar = 20;
     let navBar = 32;
+    let capsulePad = 96;
     try {
       const rect = wx.getMenuButtonBoundingClientRect();
       if (rect && rect.top > 0 && rect.height > 0) {
+        const win = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+        const windowWidth = (win && win.windowWidth) || 375;
         statusBar = rect.top;
         navBar = rect.height;
+        capsulePad = Math.max(90, windowWidth - rect.left);
       }
     } catch (_error) {
       // 取不到胶囊位置时退回保守值。
     }
-    this.setData({ statusBar, navBar });
+    this.setData({ statusBar, navBar, capsulePad });
   },
 
   onShow() {

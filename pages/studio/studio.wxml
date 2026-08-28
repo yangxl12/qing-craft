@@ -51,16 +51,16 @@
       aria-label="{{decorFullscreen?'退出全屏视图':'进入瓷器全屏视图'}}"
       bindtap="toggleDecorFullscreen"
     ><text>{{decorFullscreen?'退出':'全屏'}}</text><view>{{decorFullscreen?'↙':'⛶'}}</view></view>
-    <view class="work-title">
-      <view>{{stageName}} · {{stageIndex+1}} / 7</view>
-      <text class="{{saveState==='已保存'?'saved':''}}">{{saveState}}</text>
-    </view>
     <view class="top-actions">
       <view class="top-action top-exit" role="button" aria-label="退出创作台" bindtap="close">退出</view>
       <view class="top-action top-reset" role="button" aria-label="视角回正" bindtap="resetCamera">回正</view>
       <view class="circle {{!canUndo?'disabled':''}}" role="button" aria-label="撤销" bindtap="undo">↶</view>
       <view class="circle {{!canRedo?'disabled':''}}" role="button" aria-label="重做" bindtap="redo">↷</view>
       <view class="circle" role="button" aria-label="查看手势帮助" bindtap="help">?</view>
+    </view>
+    <view class="work-title">
+      <view>{{stageName}} · {{stageIndex+1}} / 7</view>
+      <text class="{{saveState==='已保存'?'saved':''}}">{{saveState}}</text>
     </view>
   </view>
 

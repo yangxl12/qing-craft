@@ -815,7 +815,8 @@
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 14rpx;
   color: #f5f7f2;
 }
 .top-button,
@@ -840,11 +841,8 @@
   margin: 0 !important;
 }
 .work-title {
-  position: absolute;
-  left: 50%;
-  width: 230rpx;
-  transform: translateX(-50%);
-  text-align: center;
+  flex: none;
+  text-align: left;
   pointer-events: none;
 }
 .topbar {
@@ -870,10 +868,7 @@
   color: #c7d9d0;
 }
 .top-actions {
-  position: absolute;
-  right: 22rpx;
-  flex: 0 0 202rpx;
-  width: 202rpx;
+  flex: none;
   display: flex;
   gap: 8rpx;
 }
@@ -1365,10 +1360,6 @@
   padding: 0 20rpx;
 }
 .top-actions {
-  position: absolute;
-  left: 20rpx;
-  right: auto;
-  width: auto;
   display: flex;
   align-items: center;
   gap: 8rpx;
@@ -1759,13 +1750,6 @@
 }
 
 /* 装饰工作台：以一只器形剖面卡作为套版的识别核心，其余控件保持安静。 */
-.work-title {
-  left: auto;
-  right: 20rpx;
-  width: 176rpx;
-  transform: none;
-  text-align: right;
-}
 .work-title view {
   color: rgba(247, 249, 245, 0.94);
   font-size: 19rpx;
@@ -2595,8 +2579,6 @@
   min-height: 0;
 }
 .decor-stage .top-actions {
-  left: 148rpx;
-  right: auto;
   gap: 6rpx;
 }
 .decor-stage .top-action {
@@ -2629,10 +2611,9 @@
 }
 
 .decor-fullscreen-trigger {
-  position: absolute;
+  position: relative;
   z-index: 8;
-  left: 18rpx;
-  top: 8rpx;
+  flex: none;
   height: 70rpx;
   min-width: 116rpx;
   padding: 0 18rpx;

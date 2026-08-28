@@ -282,6 +282,7 @@ Page({
     clayMenuOpen: false,
     glazes: CLASSIC_GLAZES,
     glazeId: "celadon",
+    glazeName: CLASSIC_GLAZES[0].name,
     paintColors: [
       { id:"cobalt", name:"青花蓝", color:"#315e73" },
       { id:"seal_red", name:"印红", color:"#a84f43" },
@@ -556,6 +557,7 @@ Page({
         tool: selected?.id || "",
         toolName: selected?.name || "",
         glazeId: this.work.glazeId,
+        glazeName: CLASSIC_GLAZES.find((item) => item.id === this.work!.glazeId)?.name || "",
         shapeName: SHAPES.find((item) => item.id === this.work!.shapeId)?.glyph || "瓶",
         clayName: CLAYS.find((item) => item.id === this.work!.clayId)?.name || "白瓷泥",
         canUndo: this.history.length > 0,
@@ -1634,7 +1636,10 @@ Page({
     this.pushHistory();
     this.work.glazeId = glazeId;
     this.work.glazeMethod = "full";
-    this.setData({ glazeId: this.work.glazeId });
+    this.setData({
+      glazeId: this.work.glazeId,
+      glazeName: CLASSIC_GLAZES.find((item) => item.id === glazeId)?.name || ""
+    });
     this.changed();
     this.vibrate();
   },
@@ -2415,24 +2420,7 @@ Page({
     this.changed();
     this.syncData();
     if (this.work.currentStage === "decorate") this.trackDecorEnter();
-    if (this.work.currentStage === "paint") {
-      const inscriptionDraft = this.work.decorationComposition.inscription
-        ? JSON.parse(JSON.stringify(this.work.decorationComposition.inscription)) as Inscription
-        : defaultInscription();
-      const firstPaintLayer = this.work.decorationComposition.layers.find((layer) =>
-        layer.technique === "overglaze"
-      );
-      this.setData({
-        inscriptionDraft,
-        inscriptionError:"",
-        selectedDecorationId:firstPaintLayer?.layerId || "",
-        paintTab:"pattern",
-        decorTrayOpen:true,
-        decorFullscreen:false,
-        decorToolsCollapsed:false,
-        decorToolStyle:""
-      }, () => this.setData(this.decorationData()));
-    }
+    if (this.work.currentStage === "paint") this.enterPaintStage();
     this.setWheelState("idle");
     const showStageHint = this.work.currentStage !== "decorate";
     this.setData({
@@ -2440,6 +2428,70 @@ Page({
       showHint: showStageHint
     });
     this.vibrate("medium");
+  },
+
+  /** 工序底栏「上一步」：制坯返回前置设置，其余工序回到上一道可驻留工序（窑烧为自动过渡，直接跳过）。 */
+  goPreviousStage() {
+    if (!this.work) return;
+    if (this.work.stageIndex === 0) {
+      wx.showModal({
+        title: "返回前置设置？",
+        content: "当前草稿已保存在本机，可随时从首页继续；重新练泥会开始一件新作品。",
+        confirmText: "去选泥料",
+        cancelText: "继续制坯",
+        success: (result: any) => {
+          if (!result.confirm) return;
+          this.persist();
+          wx.redirectTo({ url: "/pages/setup/setup" });
+        }
+      });
+      return;
+    }
+    const targetIndex = this.work.stageIndex >= 5 ? 4 : this.work.stageIndex >= 3 ? 2 : this.work.stageIndex - 1;
+    this.commitGestureChange();
+    this.gesture = null;
+    this.pushHistory();
+    this.work.stageIndex = targetIndex;
+    this.work.currentStage = STAGES[targetIndex].id;
+    this.changed();
+    this.syncData();
+    if (this.work.currentStage === "paint") {
+      this.enterPaintStage();
+    } else {
+      this.setData({
+        selectedDecorationId: "",
+        pendingStampMotifId: "",
+        decorTrayOpen: true,
+        decorFullscreen: false,
+        decorToolsCollapsed: false,
+        decorToolStyle: ""
+      });
+      if (this.work.currentStage === "decorate") this.trackDecorEnter();
+    }
+    this.setWheelState("idle");
+    this.persist();
+    this.vibrate("medium");
+  },
+
+  /** 进入彩绘工序：复位图库页签与被选图层（前进与返回上一步共用）。 */
+  enterPaintStage() {
+    if (!this.work) return;
+    const inscriptionDraft = this.work.decorationComposition.inscription
+      ? JSON.parse(JSON.stringify(this.work.decorationComposition.inscription)) as Inscription
+      : defaultInscription();
+    const firstPaintLayer = this.work.decorationComposition.layers.find((layer) =>
+      layer.technique === "overglaze"
+    );
+    this.setData({
+      inscriptionDraft,
+      inscriptionError: "",
+      selectedDecorationId: firstPaintLayer?.layerId || "",
+      paintTab: "pattern",
+      decorTrayOpen: true,
+      decorFullscreen: false,
+      decorToolsCollapsed: false,
+      decorToolStyle: ""
+    }, () => this.setData(this.decorationData()));
   },
 
   startKiln(refire: boolean) {

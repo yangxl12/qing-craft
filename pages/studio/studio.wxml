@@ -252,15 +252,20 @@
     </view>
   </view>
 
-  <view wx:if="{{stageIndex===0}}" class="stage-footer">
+  <view wx:if="{{stageIndex===0}}" class="stage-footer stagebar">
+    <button
+      class="stagebar-prev"
+      aria-label="返回前置设置"
+      bindtap="goPreviousStage"
+    ><view>←</view><text>上一步</text></button>
     <view class="stage-footer-title">{{stageName}}</view>
     <button
-      class="stage-next"
+      class="stagebar-next"
       aria-label="进入下一道工序：{{nextStageName}}"
       bindtap="completeStage"
     >
       <text>{{nextStageName}}</text>
-      <view class="stage-next-icon">→</view>
+      <view>→</view>
     </button>
   </view>
 
@@ -420,9 +425,15 @@
         </view>
       </view>
     </view>
-    <view class="glaze-bottom">
-      <button class="glaze-complete" aria-label="完成上釉，直接进入高温烤制" bindtap="startFiring">
-        <text>高温烤制</text><view>-></view>
+    <view class="glaze-bottom stagebar">
+      <button
+        class="stagebar-prev"
+        aria-label="返回装饰工序"
+        bindtap="goPreviousStage"
+      ><view>←</view><text>上一步</text></button>
+      <text class="stagebar-info">{{glazeName}} · 完整施釉</text>
+      <button class="stagebar-next" aria-label="完成上釉，直接进入高温烤制" bindtap="startFiring">
+        <text>高温烤制</text><view>→</view>
       </button>
     </view>
   </view>
@@ -512,6 +523,11 @@
     </view>
 
     <view class="decor-bottom paint-bottom">
+      <button
+        class="decor-previous"
+        aria-label="返回上釉工序"
+        bindtap="goPreviousStage"
+      ><view>←</view><text>上一步</text></button>
       <text>{{paintLayerCount?paintLayerCount+' 层釉上彩':'可保留烧后素面'}}</text>
       <button class="decor-complete" aria-label="完成彩绘，直接进入低温烤花" bindtap="startRefire">低温烤花 <view>→</view></button>
     </view>
@@ -525,10 +541,16 @@
         </view>
       </view>
     </scroll-view>
-    <view class="tray-bottom">
-      <view class="tool-hint">{{toolName}}</view>
-      <button class="complete" aria-label="进入下一道工序" bindtap="completeStage">
-        {{stageIndex===6?'查看成品':'完成'+stageName+' →'}}
+    <view class="tray-bottom stagebar">
+      <button
+        class="stagebar-prev"
+        aria-label="返回上一道工序"
+        bindtap="goPreviousStage"
+      ><view>←</view><text>上一步</text></button>
+      <view class="tool-hint">{{stageIndex===6?'七道工序已完成':toolName}}</view>
+      <button class="stagebar-next" aria-label="进入下一道工序" bindtap="completeStage">
+        <text>{{stageIndex===6?'查看成品':'完成'+stageName}}</text>
+        <view>→</view>
       </button>
     </view>
   </view>

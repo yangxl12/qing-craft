@@ -74,6 +74,18 @@ const LIGHTING: Record<string, LightingPreset> = {
     keyIntensity: 0.8,
     fillIntensity: 0.21,
     exposure: 2.35
+  },
+  // 成品展台：暖主光自左上方压下，冷补光自右低角度托起，整体亮度
+  // 略高于工坊，配合釉面的环境映照呈现出博物馆展柜的莹润光泽。
+  showcase: {
+    keyDirection: [-0.38, 0.88, 0.32],
+    fillDirection: [0.82, 0.16, 0.56],
+    keyColor: [1, 0.95, 0.86],
+    fillColor: [0.4, 0.55, 0.58],
+    ambient: [0.23, 0.25, 0.24],
+    keyIntensity: 1.16,
+    fillIntensity: 0.26,
+    exposure: 2.58
   }
 };
 
@@ -283,6 +295,7 @@ uniform sampler2D uSeal;
 uniform vec4 uSealRegion;
 uniform vec2 uSealHalfSize;
 uniform vec3 uSealColor;
+uniform float uShowcase;
 
 float wrappedDistance(float value, float center){
   return abs(fract(value - center + 0.5) - 0.5);
@@ -709,6 +722,9 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     vec3 fillHalfVector = normalize(fillDirection + viewDirection);
     float glazeSpecularPower = mix(132.0, 38.0, glazeRoughness);
     float glazeSpecularStrength = mix(0.42, 0.22, glazeRoughness);
+    // 展台模式：高光收得更紧、更亮，接近抛光釉面的镜面质感。
+    glazeSpecularPower = mix(glazeSpecularPower, glazeSpecularPower * 1.4 + 24.0, uShowcase);
+    glazeSpecularStrength = mix(glazeSpecularStrength, glazeSpecularStrength * 1.5 + 0.12, uShowcase);
     float specularPower = mix(mix(20.0, 30.0, uClayWetness), glazeSpecularPower, surfaceGlaze);
     specularPower = mix(specularPower, 58.0, porcelainFinish);
     float specular = pow(max(dot(normal, halfVector), 0.0), specularPower);
@@ -735,6 +751,22 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
       mix(0.026 + wetClay * 0.024, mix(0.11, 0.068, glazeRoughness), surfaceGlaze);
     fresnel = mix(fresnel, pow(1.0 - facing, 3.5) * 0.082, porcelainFinish);
 
+    // 成品展台专属：用一条简化的展馆环境（顶光渐亮 + 一带软箱高光）
+    // 映照釉面，掠射角反射更强，釉色因此呈现古瓷特有的莹润玻璃感。
+    vec3 showcaseReflect = reflect(-viewDirection, normal);
+    float envUp = clamp(showcaseReflect.y * 0.5 + 0.5, 0.0, 1.0);
+    vec3 envTone = mix(
+      vec3(0.05, 0.075, 0.08),
+      vec3(0.96, 0.94, 0.87),
+      smoothstep(0.12, 0.88, envUp)
+    );
+    float softbox = exp(-pow((showcaseReflect.y - 0.38) * 3.4, 2.0));
+    envTone += vec3(1.0, 0.97, 0.9) * softbox * 0.6;
+    float envFacing = pow(1.0 - facing, 2.5) * 0.33 + 0.055;
+    float envMask = uShowcase * surfaceGlaze *
+      mix(0.5, 1.0, 1.0 - glazeRoughness) *
+      (1.0 - vCavity * 0.7);
+
     vec3 linearMaterial = pow(max(material, vec3(0.0)), vec3(2.2));
     float porcelainKey = clamp((dot(normal, keyDirection) + 0.28) / 1.28, 0.0, 1.0);
     float porcelainFill = clamp((dot(normal, fillDirection) + 0.18) / 1.18, 0.0, 1.0);
@@ -757,6 +789,9 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
       surfaceGlaze * mix(0.035, 0.07, glazeRoughness) *
       mix(0.84, 1.12, glazeThickness);
     linearColor += uKeyColor * glazeBloom * (1.0 - vCavity * 0.55);
+    linearColor += envTone *
+      mix(vec3(1.0), min(glazeTone + vec3(0.25), vec3(1.0)), 0.5) *
+      envFacing * envMask;
     linearColor +=
       pow(max(uBase, vec3(0.0)), vec3(2.2)) *
       pow(1.0 - facing, 2.4) *
@@ -948,6 +983,55 @@ export class PotteryEngine {
   setFiredPreview(value: boolean) {
     this.firedPreview = value;
     this.render();
+  }
+
+  /**
+   * 导出成品图用：以正方形构图重新渲染当前器物并读回像素。
+   * 渲染完成后立即还原现场画布与相机，全程同步执行，页面无可感知闪动。
+   * 返回自上而下的 RGBA 像素（背景透明，未做 alpha 预乘）。
+   */
+  snapshot(size: number): Uint8Array | null {
+    const gl = this.gl;
+    const safeSize = Math.max(64, Math.floor(size));
+    const restoreWidth = this.canvas.width || 1;
+    const restoreHeight = this.canvas.height || 1;
+    const restoreViewportWidth = this.viewportWidth;
+    const restoreViewportHeight = this.viewportHeight;
+    const restoreAspect = this.aspect;
+    const restoreFit = this.fitDistance;
+    const restoreZoom = this.zoomFactor;
+    try {
+      this.canvas.width = safeSize;
+      this.canvas.height = safeSize;
+      this.viewportWidth = safeSize;
+      this.viewportHeight = safeSize;
+      this.aspect = 1;
+      this.resetCameraFit();
+      this.render();
+      const pixels = new Uint8Array(safeSize * safeSize * 4);
+      gl.readPixels(0, 0, safeSize, safeSize, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      // readPixels 的原点在左下角，翻转为自上而下，方便 2D 画布直接合成。
+      const flipped = new Uint8Array(pixels.length);
+      const rowBytes = safeSize * 4;
+      for (let row = 0; row < safeSize; row++) {
+        flipped.set(
+          pixels.subarray(row * rowBytes, (row + 1) * rowBytes),
+          (safeSize - 1 - row) * rowBytes
+        );
+      }
+      return flipped;
+    } catch (_error) {
+      return null;
+    } finally {
+      this.canvas.width = restoreWidth;
+      this.canvas.height = restoreHeight;
+      this.viewportWidth = restoreViewportWidth;
+      this.viewportHeight = restoreViewportHeight;
+      this.aspect = restoreAspect;
+      this.fitDistance = restoreFit;
+      this.zoomFactor = restoreZoom;
+      this.render();
+    }
   }
 
   private initializeInscriptionTexture() {
@@ -1607,6 +1691,10 @@ export class PotteryEngine {
     gl.uniform1f(gl.getUniformLocation(program, "uKeyIntensity"), lighting.keyIntensity);
     gl.uniform1f(gl.getUniformLocation(program, "uFillIntensity"), lighting.fillIntensity);
     gl.uniform1f(gl.getUniformLocation(program, "uExposure"), lighting.exposure);
+    gl.uniform1f(
+      gl.getUniformLocation(program, "uShowcase"),
+      this.lighting === "showcase" ? 1 : 0
+    );
 
     gl.uniform1f(gl.getUniformLocation(program, "uClayGrain"), CLAY_GRAIN[this.work.clayId] ?? 0.62);
     gl.uniform1f(gl.getUniformLocation(program, "uClayWetness"), surface.clayWetness);

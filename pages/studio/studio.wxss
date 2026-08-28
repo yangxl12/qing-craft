@@ -940,47 +940,49 @@
 }
 .stage-footer-title {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: rgba(246, 248, 244, 0.92);
   font-family: "Songti SC", "STSong", serif;
   font-size: 22rpx;
   font-weight: 700;
-  letter-spacing: 0.18em;
-  text-indent: 0.18em;
+  letter-spacing: 0.14em;
+  text-indent: 0.14em;
   text-align: center;
   white-space: nowrap;
 }
 
-/* 工序底栏（装饰页以外各工序共用）：与装饰页底部同构 —— 左「上一步」· 中状态 · 右主按钮。 */
+/* 工序底栏（装饰页以外各工序共用）：与装饰页底部同构 —— 左「上一步」· 中状态 · 右主按钮。
+   按钮用 view 实现，宽度紧贴内容，绝不挤压中间文案。 */
 .stagebar {
   display: flex;
   align-items: center;
-  gap: 12rpx;
+  justify-content: space-between;
+  gap: 10rpx;
 }
 .stagebar-prev {
-  width: 154rpx;
-  height: 62rpx;
-  margin: 0;
-  padding: 0 17rpx;
+  flex: none;
+  height: 56rpx;
+  padding: 0 18rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8rpx;
+  gap: 6rpx;
   border: 1rpx solid rgba(57, 83, 76, 0.18);
   border-radius: 999rpx;
   color: #45635c;
   background: rgba(247, 247, 238, 0.62);
   font-family: "Songti SC", "STSong", serif;
-  font-size: 17rpx;
-  line-height: 62rpx;
+  font-size: 16rpx;
+  line-height: 1;
+  white-space: nowrap;
   transition:
     transform 0.15s ease,
     background 0.15s ease;
 }
-.stagebar-prev::after {
-  border: 0;
-}
 .stagebar-prev view {
-  font-size: 22rpx;
+  font-size: 17rpx;
   line-height: 1;
 }
 .stagebar-prev:active {
@@ -989,43 +991,44 @@
 }
 .stagebar-info {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: #71817b;
   font-size: 14rpx;
   text-align: center;
+  white-space: nowrap;
 }
 .stagebar-next {
-  width: 218rpx;
-  height: 66rpx;
-  margin: 0;
-  padding: 0 10rpx 0 22rpx;
+  flex: none;
+  height: 60rpx;
+  padding: 0 8rpx 0 18rpx;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8rpx;
   border-radius: 999rpx;
   color: #f8f6e9;
   background: linear-gradient(145deg, #315d54, #1d403b);
   box-shadow:
-    0 9rpx 24rpx rgba(14, 48, 41, 0.22),
+    0 8rpx 20rpx rgba(14, 48, 41, 0.2),
     inset 0 1rpx 0 rgba(255, 255, 255, 0.12);
   font-family: "Songti SC", "STSong", serif;
-  font-size: 19rpx;
-  line-height: 66rpx;
-  letter-spacing: 0.1em;
+  font-size: 17rpx;
+  line-height: 1;
+  letter-spacing: 0.08em;
   white-space: nowrap;
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease;
 }
-.stagebar-next::after {
-  border: 0;
-}
 .stagebar-next view {
-  width: 48rpx;
-  height: 48rpx;
+  flex: none;
+  width: 44rpx;
+  height: 44rpx;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.12);
-  font-size: 23rpx;
-  line-height: 48rpx;
+  font-size: 20rpx;
+  line-height: 44rpx;
   text-align: center;
 }
 .stagebar-next:active {
@@ -1036,9 +1039,17 @@
   transition: none;
 }
 @media (max-height: 700px) {
+  .stagebar-prev {
+    height: 50rpx;
+  }
   .stagebar-next {
-    height: 58rpx;
-    line-height: 58rpx;
+    height: 54rpx;
+  }
+  .stagebar-next view {
+    width: 38rpx;
+    height: 38rpx;
+    font-size: 18rpx;
+    line-height: 38rpx;
   }
 }
 .tray {
@@ -1265,10 +1276,14 @@
   font-size: 21rpx;
 }
 .tool-hint {
-  font-size: 19rpx;
-  color: #66716b;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 16rpx;
+  color: #66716b;
   text-align: center;
+  white-space: nowrap;
 }
 .reduce-motion .shape-mode {
   transition: none;

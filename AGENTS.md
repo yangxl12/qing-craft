@@ -399,6 +399,14 @@ digital-ceramics/
 - 不能在埋点中记录触摸点、笔迹、作品名、图片或其他创作原始内容。
 - 相册权限只在用户主动保存图片时申请。
 
+### 页面 UI 布局与按钮红线
+
+历史踩坑集中在三类，新页面与全屏覆盖层（预览、弹窗）上线前必须自查：
+
+- 顶部内容避开胶囊：页面顶栏与所有全屏覆盖层的内容起点，必须由 `wx.getMenuButtonBoundingClientRect().bottom` 推导（参考 `pages/result/result.ts` 的 `resolveNavTop()`），禁止用 `env(safe-area-inset-top)` 或固定小值——状态栏高度不等于胶囊下缘，固定值会把标题/按钮顶进胶囊或压得过高。
+- 按钮必须自绘：微信原生 `button` 自带边框、行高与灰底，不重置必然难看。纯导航小按钮直接用 `<view role="button">` 自绘；用 `<button>` 时必须显式写背景/边框/阴影/行高并重置 `::after`。禁止把纯符号字符（`×`、`···`）塞进 `button`，会被默认样式挤成一团。
+- 中间标题防挤压：顶栏标题用 `flex: none` + `white-space: nowrap` + `letter-spacing`，两侧留弹性饰线占位，避免被左右按钮挤压换行。
+
 ### 代码搜索建议
 
 仓库较小，优先用 `rg` 做影响面确认：

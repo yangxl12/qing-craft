@@ -5,6 +5,8 @@ import { PotteryWork } from "../../core/model";
 import { duplicateWork, loadWork, removeWork, saveWork } from "../../services/storage";
 import { track } from "../../services/analytics";
 
+const ART_SIZE = 1080;
+
 function workInfo(work: PotteryWork) {
   const summary = decorationSummary(work.decorationComposition);
   const style = STYLE_PACKS.find((item) => item.id === work.decorationComposition.stylePackId);
@@ -33,8 +35,7 @@ Page({
     workInfo:null as any,
     ready:false,
     fallback:false,
-    light:"workshop",
-    lightName:"工坊光",
+    navTop:88,
     infoOpen:false,
     exporting:false,
     preview:"",
@@ -42,7 +43,6 @@ Page({
   },
   work:null as PotteryWork | null,
   engine:null as PotteryEngine | null,
-  canvas:null as any,
   gesture:null as any,
 
   onLoad(query: any) {
@@ -58,7 +58,7 @@ Page({
     try { saveWork(this.work); } catch (_error) {
       wx.showToast({ title:"成品状态还没落盘", icon:"none" });
     }
-    this.setData({ work:this.work, workInfo:workInfo(this.work) });
+    this.setData({ work:this.work, workInfo:workInfo(this.work), navTop:resolveNavTop() });
   },
 
   onReady() {
@@ -76,13 +76,13 @@ Page({
         this.setData({ fallback:true, ready:true });
         return;
       }
-      this.canvas = info.node;
       try {
         this.engine = new PotteryEngine(info.node, this.work!);
         const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
         this.engine.resize(info.width, info.height, Math.min(system.pixelRatio || 2, 2));
-        this.engine.setLighting(this.data.light);
-        this.engine.setAutoRotate(!(wx.getStorageSync("palm-kiln-settings") || {}).reduceMotion);
+        this.engine.setLighting("showcase");
+        // 展台上的成品保持静止，只在用户拖动时改变视角。
+        this.engine.setAutoRotate(false);
         this.setData({ ready:true });
       } catch (_error) {
         this.setData({ fallback:true, ready:true });
@@ -92,22 +92,13 @@ Page({
 
   backHome() { wx.reLaunch({ url:"/pages/index/index" }); },
 
-  chooseLight(event: WechatMiniprogramTouchEvent) {
-    const id = event.currentTarget.dataset.id;
-    const names: Record<string, string> = {
-      workshop:"工坊光",
-      museum:"博物馆光",
-      window:"日光窗边"
-    };
-    this.setData({ light:id, lightName:names[id] || names.workshop });
-    this.engine?.setLighting(id);
-  },
-
   toggleInfo() { this.setData({ infoOpen:!this.data.infoOpen }); },
+
+  /** 弹窗本体拦截点击冒泡，让遮罩层负责“点外部关闭”。 */
+  noop() {},
 
   touchStart(event: WechatMiniprogramTouchEvent) {
     const touches = event.touches;
-    this.engine?.setAutoRotate(false);
     if (touches.length === 2) {
       this.gesture = {
         type:"two",
@@ -149,8 +140,6 @@ Page({
       return;
     }
     this.gesture = null;
-    const reduceMotion = (wx.getStorageSync("palm-kiln-settings") || {}).reduceMotion;
-    this.engine?.setAutoRotate(!reduceMotion);
   },
 
   rename() {
@@ -200,13 +189,10 @@ Page({
 
   async exportWork() {
     if (this.data.exporting || !this.work) return;
-    this.engine?.setAutoRotate(false);
     this.setData({ exporting:true });
     const started = Date.now();
     try {
-      const path = this.canvas
-        ? await this.canvasFile(this.canvas, 1080, 1080)
-        : await this.renderFallbackArt();
+      const path = await this.renderShowcaseArt();
       this.setData({ preview:path, previewType:"纯作品图" });
       track("export_result", { format:"art", duration_ms:Date.now() - started, success:true });
     } catch (_error) {
@@ -219,13 +205,10 @@ Page({
 
   async exportPoster() {
     if (this.data.exporting || !this.work) return;
-    this.engine?.setAutoRotate(false);
     this.setData({ exporting:true });
     const started = Date.now();
     try {
-      const art = this.canvas
-        ? await this.canvasFile(this.canvas, 900, 900)
-        : await this.renderFallbackArt();
+      const art = await this.renderShowcaseArt();
       const poster = await this.composePoster(art);
       this.setData({ preview:poster, previewType:"纪念海报" });
       track("export_result", { format:"poster", duration_ms:Date.now() - started, success:true });
@@ -249,47 +232,63 @@ Page({
     }));
   },
 
-  renderFallbackArt(): Promise<string> {
+  /**
+   * 生成正方形成品图。WebGL 画布不支持直接 canvasToTempFilePath，
+   * 所以先从引擎读回像素，再与展台底景在 2D 画布上合成后导出。
+   */
+  renderShowcaseArt(): Promise<string> {
     return new Promise((resolve, reject) => {
       wx.createSelectorQuery().in(this).select("#posterCanvas").fields({ node:true, size:true }).exec((results: any[]) => {
         const canvas = results?.[0]?.node;
         if (!canvas || !this.work) {
-          reject(new Error("fallback canvas"));
+          reject(new Error("poster canvas"));
           return;
         }
-        canvas.width = 1080;
-        canvas.height = 1080;
+        canvas.width = ART_SIZE;
+        canvas.height = ART_SIZE;
         const context = canvas.getContext("2d");
-        const info = workInfo(this.work);
-        context.fillStyle = "#dce6df";
-        context.fillRect(0, 0, 1080, 1080);
-        context.save();
-        context.translate(540, 548);
-        context.beginPath();
-        context.moveTo(-150, -330);
-        context.bezierCurveTo(-185, -205, -285, 88, -228, 312);
-        context.quadraticCurveTo(0, 372, 228, 312);
-        context.bezierCurveTo(285, 88, 185, -205, 150, -330);
-        context.closePath();
-        context.fillStyle = GLAZES.find((item) => item.id === this.work!.glazeId)?.fired || "#78a291";
-        context.fill();
-        context.clip();
-        context.fillStyle = "#315e73";
-        context.textAlign = "center";
-        context.textBaseline = "middle";
-        context.font = "bold 150px serif";
-        context.fillText(info.primaryGlyph, 0, 0);
-        context.font = "42px serif";
-        context.fillText(info.motifs, 0, 155);
-        if (this.work!.decorationComposition.inscription) {
-          context.fillStyle = this.work!.decorationComposition.inscription!.styleId === "seal_red" ? "#a84f43" : "#315e73";
-          context.font = "34px serif";
-          context.fillText(this.work!.decorationComposition.inscription!.text.replace(/\n/g, " "), 0, 252);
+        const pixels = this.engine ? this.engine.snapshot(ART_SIZE) : null;
+        if (pixels) {
+          const image = context.createImageData(ART_SIZE, ART_SIZE);
+          compositeShowcasePixels(image.data, pixels, ART_SIZE);
+          context.putImageData(image, 0, 0);
+        } else {
+          this.drawFallbackArt(context);
         }
-        context.restore();
-        this.canvasFile(canvas, 1080, 1080).then(resolve, reject);
+        this.canvasFile(canvas, ART_SIZE, ART_SIZE).then(resolve, reject);
       });
     });
+  },
+
+  drawFallbackArt(context: any) {
+    if (!this.work) return;
+    const info = workInfo(this.work);
+    context.fillStyle = "#dce6df";
+    context.fillRect(0, 0, ART_SIZE, ART_SIZE);
+    context.save();
+    context.translate(ART_SIZE / 2, ART_SIZE / 2 + 8);
+    context.beginPath();
+    context.moveTo(-150, -330);
+    context.bezierCurveTo(-185, -205, -285, 88, -228, 312);
+    context.quadraticCurveTo(0, 372, 228, 312);
+    context.bezierCurveTo(285, 88, 185, -205, 150, -330);
+    context.closePath();
+    context.fillStyle = GLAZES.find((item) => item.id === this.work!.glazeId)?.fired || "#78a291";
+    context.fill();
+    context.clip();
+    context.fillStyle = "#315e73";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.font = "bold 150px serif";
+    context.fillText(info.primaryGlyph, 0, 0);
+    context.font = "42px serif";
+    context.fillText(info.motifs, 0, 155);
+    if (this.work!.decorationComposition.inscription) {
+      context.fillStyle = this.work!.decorationComposition.inscription!.styleId === "seal_red" ? "#a84f43" : "#315e73";
+      context.font = "34px serif";
+      context.fillText(this.work!.decorationComposition.inscription!.text.replace(/\n/g, " "), 0, 252);
+    }
+    context.restore();
   },
 
   composePoster(art: string): Promise<string> {
@@ -314,8 +313,6 @@ Page({
         context.fillText(`${info.style} · ${info.techniques}`, 72, 130);
         const image = canvas.createImage();
         image.onload = () => {
-          context.fillStyle = "#cbd7cf";
-          context.fillRect(72, 190, 936, 936);
           context.drawImage(image, 72, 190, 936, 936);
           context.fillStyle = "#202822";
           context.font = "bold 56px serif";
@@ -360,3 +357,59 @@ Page({
     };
   }
 });
+
+/** 顶栏避开右上角胶囊按钮：整体下移到胶囊下方。 */
+function resolveNavTop(): number {
+  try {
+    const rect = wx.getMenuButtonBoundingClientRect();
+    if (rect && rect.bottom > 0) return Math.round(rect.bottom + 10);
+  } catch (_error) {
+    // 拿不到胶囊位置时退回保守值。
+  }
+  return 88;
+}
+
+/**
+ * 把 WebGL 快照合成到展台底景上：深青绿渐变 + 中央柔光 + 底部投影，
+ * 与成品页背景同一氛围。快照为非预乘 RGBA，按 alpha 直接混合。
+ */
+function compositeShowcasePixels(target: Uint8ClampedArray, pixels: Uint8Array, size: number): void {
+  const footY = 0.74 * size;
+  for (let y = 0; y < size; y++) {
+    const top = y / size;
+    // 纵向渐变：上暖下冷的深色展台空间。
+    const baseRed = 32 + (14 - 32) * top;
+    const baseGreen = 50 + (26 - 50) * top;
+    const baseBlue = 45 + (23 - 45) * top;
+    const dy = (y + 0.5) / size - 0.42;
+    const shadowY = (y - footY) * (y - footY) / 3000;
+    for (let x = 0; x < size; x++) {
+      const dx = (x + 0.5) / size - 0.5;
+      // 器物背后的柔光晕。
+      const glow = Math.exp(-(dx * dx * 9 + dy * dy * 16));
+      // 器底的接触投影。
+      const shade = 1 - 0.4 * Math.exp(-((dx * dx) / 0.028 + shadowY));
+      const red = (baseRed + 26 * glow) * shade;
+      const green = (baseGreen + 23 * glow) * shade;
+      const blue = (baseBlue + 17 * glow) * shade;
+      const index = (y * size + x) * 4;
+      const alpha = pixels[index + 3] / 255;
+      if (alpha >= 1) {
+        target[index] = pixels[index];
+        target[index + 1] = pixels[index + 1];
+        target[index + 2] = pixels[index + 2];
+        target[index + 3] = 255;
+      } else if (alpha > 0) {
+        target[index] = pixels[index] * alpha + red * (1 - alpha);
+        target[index + 1] = pixels[index + 1] * alpha + green * (1 - alpha);
+        target[index + 2] = pixels[index + 2] * alpha + blue * (1 - alpha);
+        target[index + 3] = 255;
+      } else {
+        target[index] = red;
+        target[index + 1] = green;
+        target[index + 2] = blue;
+        target[index + 3] = 255;
+      }
+    }
+  }
+}

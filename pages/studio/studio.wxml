@@ -421,8 +421,8 @@
       </view>
     </view>
     <view class="glaze-bottom">
-      <button class="glaze-complete" aria-label="完成上釉，进入高温烧制" bindtap="completeStage">
-        <text>完成上釉</text><view>→</view>
+      <button class="glaze-complete" aria-label="完成上釉，直接进入高温烤制" bindtap="startFiring">
+        <text>高温烤制</text><view>-></view>
       </button>
     </view>
   </view>
@@ -513,7 +513,7 @@
 
     <view class="decor-bottom paint-bottom">
       <text>{{paintLayerCount?paintLayerCount+' 层釉上彩':'可保留烧后素面'}}</text>
-      <button class="decor-complete" bindtap="completeStage">完成彩绘 <view>→</view></button>
+      <button class="decor-complete" aria-label="完成彩绘，直接进入低温烤花" bindtap="startRefire">低温烤花 <view>→</view></button>
     </view>
   </view>
 

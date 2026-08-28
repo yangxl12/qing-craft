@@ -442,6 +442,8 @@ Page({
     });
     this.syncData();
     if (work.currentStage === "decorate") this.trackDecorEnter();
+    // 草稿若停在窑烧工序（上次烧制被打断），重新进入时直接续烧，不再回到待机过渡页。
+    this.igniteKilnIfPending();
   },
 
   onReady() {
@@ -2303,6 +2305,7 @@ Page({
     this.changed();
     this.syncData();
     this.setWheelState("idle");
+    this.igniteKilnIfPending();
   },
 
   redo() {
@@ -2313,6 +2316,7 @@ Page({
     this.changed();
     this.syncData();
     this.setWheelState("idle");
+    this.igniteKilnIfPending();
   },
 
   resetCamera() {
@@ -2344,6 +2348,28 @@ Page({
         hint:"这次修改还没落盘，请再试一次",
         showHint:true
       });
+    }
+  },
+
+  /** 彩釉页右下角按钮：完成上釉后直接入窑点火，不再经过高温烧制的待机过渡页。 */
+  startFiring() {
+    if (!this.work || this.work.currentStage !== "glaze") return;
+    this.completeStage();
+    this.igniteKilnIfPending();
+  },
+
+  /** 彩绘页右下角按钮：完成彩绘后直接合窑烤花，不再经过低温烤花的待机过渡页。 */
+  startRefire() {
+    if (!this.work || this.work.currentStage !== "paint") return;
+    this.completeStage();
+    this.igniteKilnIfPending();
+  },
+
+  /** 工序只要停在窑烧（高温烧制/低温烤花）就立即点火：窑烧工序不再有独立待机页面。 */
+  igniteKilnIfPending() {
+    const stage = this.work?.currentStage;
+    if ((stage === "firing" || stage === "refire") && !this.data.kiln) {
+      this.startKiln(stage === "refire");
     }
   },
 

@@ -1,57 +1,101 @@
-<view class="settings-page">
+<view class="settings-page ui-content-page {{settings.reduceMotion ? 'reduce-motion' : ''}}">
   <app-nav title="工坊设置" theme="light" back-label="返回首页"></app-nav>
 
-  <view class="body">
-    <view class="hero">
-      <view class="seal display">设</view>
-      <view class="hero-main">
-        <view class="eyebrow">WORKSHOP · 工坊偏好</view>
-        <view class="hero-title display">静火慢工，各随其性</view>
+  <view class="settings-body ui-content-body">
+    <view class="ui-page-heading">
+      <view class="ui-page-mark" aria-hidden="true">设</view>
+      <view class="ui-page-heading__main">
+        <view class="ui-page-kicker">工坊偏好</view>
+        <view class="ui-page-title">按你的节奏创作</view>
       </view>
-    </view>
-    <view class="hero-hint">偏好只存本机，改动即时生效</view>
-
-    <view class="group">
-      <view class="group-title"><view class="tick"></view>触感与动效</view>
-      <view class="row">
-        <view class="row-text"><view class="row-label">轻触反馈</view><text>切换工具与工序完成时轻震</text></view>
-        <switch color="#5f8272" checked="{{settings.haptics}}" data-key="haptics" aria-label="轻触反馈" bindchange="toggle"/>
-      </view>
-      <view class="row">
-        <view class="row-text"><view class="row-label">减少动态效果</view><text>停止自动转盘与镜头扫光</text></view>
-        <switch color="#5f8272" checked="{{settings.reduceMotion}}" data-key="reduceMotion" aria-label="减少动态效果" bindchange="toggle"/>
-      </view>
+      <view class="ui-page-description">触感、提示和画面细节都会立即应用到创作台。</view>
     </view>
 
-    <view class="group">
-      <view class="group-title"><view class="tick"></view>引导强度</view>
-      <view class="choices">
-        <view role="radio" aria-checked="{{settings.guidance === 'relaxed'}}" aria-label="轻松引导，工具、停滞与风险提示" data-key="guidance" data-value="relaxed" bindtap="setValue" class="choice {{settings.guidance === 'relaxed' ? 'active' : ''}}">
-          <view class="choice-label">轻松引导</view><text>工具、停滞与风险提示</text>
+    <view class="settings-status" aria-role="status" aria-label="{{saveState || '偏好保存在本机，改动即时生效'}}">
+      <ui-icon wx:if="{{saveState}}" name="check" size="28" tone="dark" decorative></ui-icon>
+      <text>{{saveState || '偏好保存在本机，改动即时生效'}}</text>
+    </view>
+
+    <view class="settings-group ui-section-card" aria-label="触感与动效">
+      <view class="group-heading">
+        <view class="group-title">触感与动效</view>
+        <view class="group-note">按你的使用习惯调整反馈</view>
+      </view>
+
+      <label class="setting-row">
+        <view class="row-text">
+          <view class="row-label">轻触反馈</view>
+          <text>切换重要工具与完成工序时轻震</text>
         </view>
-        <view role="radio" aria-checked="{{settings.guidance === 'necessary'}}" aria-label="仅必要提示，只在作品有风险时提醒" data-key="guidance" data-value="necessary" bindtap="setValue" class="choice {{settings.guidance === 'necessary' ? 'active' : ''}}">
-          <view class="choice-label">仅必要提示</view><text>只在作品有风险时提醒</text>
+        <switch color="var(--ui-action)" checked="{{settings.haptics}}" data-key="haptics" aria-label="轻触反馈，当前{{settings.haptics ? '已开启' : '已关闭'}}" bindchange="toggle"/>
+      </label>
+
+      <label class="setting-row">
+        <view class="row-text">
+          <view class="row-label">减少动态效果</view>
+          <text>停止自动转盘、扫光与环境动效</text>
         </view>
-        <view role="radio" aria-checked="{{settings.guidance === 'free'}}" aria-label="自由创作，需要时再点帮助" data-key="guidance" data-value="free" bindtap="setValue" class="choice {{settings.guidance === 'free' ? 'active' : ''}}">
-          <view class="choice-label">自由创作</view><text>需要时再点问号</text>
-        </view>
-      </view>
+        <switch color="var(--ui-action)" checked="{{settings.reduceMotion}}" data-key="reduceMotion" aria-label="减少动态效果，当前{{settings.reduceMotion ? '已开启' : '已关闭'}}" bindchange="toggle"/>
+      </label>
     </view>
 
-    <view class="group">
-      <view class="group-title"><view class="tick"></view>画质</view>
-      <view class="quality">
-        <view wx:for="{{['low', 'medium', 'high']}}" wx:key="*this" data-key="quality" data-value="{{item}}" bindtap="setValue" class="q {{settings.quality === item ? 'active' : ''}}">{{item === 'low' ? '流畅' : item === 'medium' ? '均衡' : '精细'}}</view>
+    <view class="settings-group ui-section-card" aria-label="引导强度">
+      <view class="group-heading">
+        <view class="group-title">引导强度</view>
+        <view class="group-note">帮助入口在所有模式下都可使用</view>
       </view>
-      <view class="tip">持续掉帧时会自动降低细节，不影响作品数据。</view>
+
+      <radio-group class="choice-list" bindchange="setGuidance">
+        <label
+          wx:for="{{guidanceOptions}}"
+          wx:key="value"
+          class="setting-choice {{settings.guidance === item.value ? 'is-selected' : ''}}"
+        >
+          <radio
+            class="choice-radio"
+            value="{{item.value}}"
+            checked="{{settings.guidance === item.value}}"
+            color="var(--ui-action)"
+            aria-label="{{item.label}}，{{item.description}}，{{settings.guidance === item.value ? '已选中' : '未选中'}}"
+          />
+          <view class="choice-copy">
+            <view class="choice-label">{{item.label}}</view>
+            <text>{{item.description}}</text>
+          </view>
+        </label>
+      </radio-group>
     </view>
 
-    <view class="privacy">
+    <view class="settings-group ui-section-card" aria-label="画质">
+      <view class="group-heading">
+        <view class="group-title">画质</view>
+        <view class="group-note">作品数据不会因画质变化而改变</view>
+      </view>
+
+      <radio-group class="quality-options" bindchange="setQuality">
+        <label
+          wx:for="{{qualityOptions}}"
+          wx:key="value"
+          class="quality-choice {{settings.quality === item.value ? 'is-selected' : ''}}"
+        >
+          <radio
+            value="{{item.value}}"
+            checked="{{settings.quality === item.value}}"
+            color="var(--ui-action)"
+            aria-label="画质{{item.label}}，{{settings.quality === item.value ? '已选中' : '未选中'}}"
+          />
+          <text>{{item.label}}</text>
+        </label>
+      </radio-group>
+      <view class="quality-tip">“流畅”适合较旧设备，“精细”会增加实时渲染负载。</view>
+    </view>
+
+    <view class="privacy-card ui-section-card">
       <view class="privacy-head">
-        <view class="privacy-seal display">私</view>
-        <view class="display privacy-title">作品留在本机</view>
+        <view class="privacy-icon" aria-hidden="true"><ui-icon name="info" size="36" tone="dark" decorative></ui-icon></view>
+        <view class="privacy-title">作品留在本机</view>
       </view>
-      <text>v1 原型无需登录。只有你主动保存图片或分享时，才会调用对应的微信能力。</text>
+      <text>当前版本无需登录。只有你主动保存图片或分享时，才会调用对应的微信能力。</text>
     </view>
   </view>
 </view>

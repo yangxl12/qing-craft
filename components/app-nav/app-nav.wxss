@@ -9,6 +9,7 @@
 .app-nav.is-fixed { position: fixed; z-index: var(--z-nav); top: 0; left: 0; right: 0; }
 .app-nav--dark { color: var(--color-on-dark); background: var(--color-workshop-bg); }
 .app-nav__row {
+  position: relative;
   min-height: 88rpx;
   padding-left: var(--space-4);
   box-sizing: border-box;
@@ -23,7 +24,10 @@
   flex: none;
 }
 .app-nav__action {
-  margin: 0;
+  width: 88rpx !important;
+  min-width: 88rpx;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
   padding: 0;
   border: 0;
   border-radius: var(--radius-full);
@@ -34,12 +38,24 @@
   background: transparent;
   transition: transform var(--motion-fast) var(--ease-enter), background var(--motion-fast) var(--ease-enter);
 }
+.app-nav__action.has-label {
+  width: auto !important;
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-line);
+  white-space: nowrap;
+}
+.app-nav__action--right {
+  position: absolute;
+  margin-left: 0;
+}
 .app-nav__action::after { border: 0; }
 .app-nav__action:active { transform: scale(0.96); background: var(--ui-surface-subtle); }
 .app-nav--dark .app-nav__action:active { background: var(--color-workshop-surface); }
 .app-nav__title {
-  min-width: 0;
-  flex: 1;
+  position: absolute;
+  left: 50%;
+  width: 42%;
+  transform: translateX(-50%);
   overflow: hidden;
   text-align: center;
   text-overflow: ellipsis;
@@ -48,4 +64,5 @@
   line-height: var(--type-h3-line);
   font-weight: 500;
   letter-spacing: 0.06em;
+  pointer-events: none;
 }

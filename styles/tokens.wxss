@@ -38,11 +38,28 @@ page {
   --ui-action: var(--color-celadon-700);
   --ui-action-text: #f8faf6;
   --ui-accent: var(--color-cinnabar);
+  --ui-accent-text: #fff9f4;
   --ui-danger: var(--color-danger);
   --ui-danger-text: #fff9f4;
   --ui-focus: var(--color-cobalt);
   --ui-overlay: rgba(12, 22, 19, 0.58);
   --ui-disabled-opacity: 0.46;
+
+  /* Content-scene surfaces and artwork */
+  --ui-content-backdrop: radial-gradient(140% 64% at 50% -14%, #fafbf7 0%, #f2f4ef 66%, #e9eee9 100%);
+  --ui-selected-surface: #e7efeb;
+  --ui-pressed-surface: #edf1ed;
+  --ui-paper-grain: repeating-linear-gradient(17deg, rgba(32, 41, 35, 0.018) 0, rgba(32, 41, 35, 0.018) 1rpx, transparent 1rpx, transparent 10rpx), repeating-linear-gradient(103deg, rgba(255, 255, 255, 0.2) 0, rgba(255, 255, 255, 0.2) 1rpx, transparent 1rpx, transparent 14rpx);
+  --ui-media-overlay: linear-gradient(180deg, rgba(18, 33, 29, 0) 52%, rgba(18, 33, 29, 0.78) 100%);
+  --ui-media-chip: rgba(22, 33, 30, 0.84);
+  --ui-media-text: #f2f4ee;
+  --ui-media-text-muted: #dce4df;
+  --ui-preview-background: radial-gradient(130% 100% at 50% 0%, #f1f4f0 0%, #dce4de 100%);
+  --ui-preview-background-complete: radial-gradient(130% 100% at 50% 0%, #405149 0%, #1d2a26 100%);
+  --ui-pottery-preview: linear-gradient(100deg, #7f9f91 0%, #e2ebe5 48%, #6d8f81 100%);
+  --ui-pottery-preview-complete: linear-gradient(100deg, #b8c9c0 0%, #f1f5ef 48%, #96ac9f 100%);
+  --ui-pottery-shadow: rgba(32, 41, 35, 0.28);
+  --ui-hero-placeholder: #d7e1dc;
 
   /* Type roles */
   --font-display: "Songti SC", "STSong", "SimSun", serif;

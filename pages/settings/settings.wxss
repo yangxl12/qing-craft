@@ -1,56 +1,148 @@
-/* 工坊设置 · 与作品集同源的宣纸/墨色/朱砂古风视觉 */
-.settings-page {
-  --paper: #f5f1e6;
-  --card: #fbf8f0;
-  --ink: #2f2b23;
-  --ink-soft: #8b8574;
-  --line: rgba(72, 62, 44, 0.16);
-  --cinnabar: #b04a3a;
-  --jade: #5f8272;
-  --celadon-deep: #5f8272;
-  min-height: 100vh;
-  box-sizing: border-box;
-  padding: 0 30rpx 80rpx;
-  background:
-    radial-gradient(150% 55% at 50% -8%, rgba(255, 253, 245, 0.85), rgba(255, 253, 245, 0) 62%),
-    linear-gradient(#f5f1e6, #ece7d8 72%, #e7e1d0);
+.settings-page { overflow-x: hidden; }
+.settings-status {
+  min-height: 64rpx;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ui-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
 }
 
-/* 题头：朱砂印 + 宋体标题 */
-.hero { display: flex; align-items: center; gap: 28rpx; padding: 46rpx 4rpx 26rpx; }
-.seal { width: 96rpx; height: 96rpx; border-radius: 14rpx; background: linear-gradient(135deg, #c05a46, #a4422f); color: #fbf6ec; display: flex; align-items: center; justify-content: center; font-size: 46rpx; box-shadow: inset 0 0 0 3rpx rgba(251, 246, 236, 0.32), 0 12rpx 26rpx rgba(176, 74, 58, 0.26); flex-shrink: 0; }
-.hero-title { font-size: 44rpx; line-height: 1.38; margin-top: 12rpx; letter-spacing: .08em; }
-.hero-hint { font-size: 20rpx; color: var(--ink-soft); letter-spacing: .08em; padding: 0 6rpx 6rpx; }
+.settings-group { margin-top: var(--space-6); padding: 0 var(--space-8); }
+.group-heading { padding: var(--space-8) 0 var(--space-4); }
+.group-title {
+  font-size: var(--type-body-lg-size);
+  line-height: var(--type-body-lg-line);
+  font-weight: 600;
+}
+.group-note {
+  margin-top: var(--space-1);
+  color: var(--ui-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
 
-/* 设置分组卡片 */
-.group { margin-top: 30rpx; background: var(--card); border: 1rpx solid var(--line); border-radius: 22rpx; padding: 6rpx 28rpx 10rpx; box-shadow: 0 12rpx 30rpx rgba(72, 62, 44, 0.06); }
-.group-title { display: flex; align-items: center; gap: 14rpx; font-size: 22rpx; color: var(--ink-soft); letter-spacing: .26em; padding: 28rpx 0 6rpx; }
-.tick { width: 12rpx; height: 12rpx; border-radius: 3rpx; background: var(--cinnabar); flex-shrink: 0; }
+.setting-row {
+  min-height: 112rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding: var(--space-4) 0;
+  border-top: 1rpx solid var(--ui-border);
+}
+.setting-row:active { background: var(--ui-pressed-surface); }
+.row-text { min-width: 0; flex: 1; }
+.row-label {
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  font-weight: 600;
+}
+.row-text text,
+.choice-copy text {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--ui-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
 
-/* 开关行 */
-.row { display: flex; justify-content: space-between; align-items: center; padding: 26rpx 0; border-top: 1rpx solid var(--line); }
-.row-text { flex: 1; padding-right: 20rpx; }
-.row-label { font-size: 28rpx; font-weight: 600; letter-spacing: .05em; }
-.row-text text { display: block; color: var(--ink-soft); font-size: 21rpx; margin-top: 8rpx; line-height: 1.5; letter-spacing: .03em; }
+.choice-list { display: block; padding-bottom: var(--space-4); }
+.setting-choice {
+  position: relative;
+  min-height: 112rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-top: 1rpx solid var(--ui-border);
+  transition: background var(--motion-base) var(--ease-enter), box-shadow var(--motion-base) var(--ease-enter);
+}
+.setting-choice:active { background: var(--ui-pressed-surface); }
+.setting-choice.is-selected {
+  background: var(--ui-selected-surface);
+  box-shadow: inset 4rpx 0 0 var(--ui-action);
+}
+.choice-radio { flex: none; }
+.choice-copy { min-width: 0; flex: 1; }
+.choice-label {
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  font-weight: 600;
+}
 
-/* 引导选项 */
-.choices { padding-bottom: 6rpx; }
-.choice { position: relative; padding: 26rpx 20rpx 26rpx 30rpx; border-top: 1rpx solid var(--line); }
-.choice.active { background: linear-gradient(90deg, rgba(176, 74, 58, 0.07), rgba(176, 74, 58, 0)); }
-.choice.active::before { content: ""; position: absolute; left: 0; top: 24rpx; bottom: 24rpx; width: 6rpx; border-radius: 6rpx; background: var(--cinnabar); }
-.choice-label { font-size: 27rpx; font-weight: 600; letter-spacing: .05em; }
-.choice text { display: block; color: var(--ink-soft); font-size: 21rpx; margin-top: 8rpx; line-height: 1.5; letter-spacing: .03em; }
-.choice.active .choice-label { color: var(--cinnabar); }
+.quality-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+}
+.quality-choice {
+  min-width: 0;
+  min-height: 96rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  color: var(--ui-text-secondary);
+  background: var(--ui-surface-subtle);
+  border: 1rpx solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-line);
+  transition: transform var(--motion-fast) var(--ease-enter), background var(--motion-base) var(--ease-enter), border-color var(--motion-base) var(--ease-enter);
+}
+.quality-choice:active { transform: scale(0.98); }
+.quality-choice.is-selected {
+  color: var(--ui-text);
+  background: var(--ui-selected-surface);
+  border: 2rpx solid var(--ui-action);
+  font-weight: 600;
+}
+.quality-tip {
+  padding: 0 0 var(--space-6);
+  color: var(--ui-text-secondary);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+}
 
-/* 画质分段 */
-.quality { display: flex; gap: 12rpx; padding: 12rpx 0 6rpx; }
-.q { flex: 1; text-align: center; padding: 22rpx 0; border-radius: 14rpx; background: #efeadb; border: 1rpx solid var(--line); font-size: 24rpx; color: var(--ink-soft); letter-spacing: .14em; }
-.q.active { background: var(--ink); border-color: var(--ink); color: #f7f3e8; font-weight: 600; }
-.tip { font-size: 20rpx; color: var(--ink-soft); padding: 14rpx 0 18rpx; line-height: 1.6; letter-spacing: .03em; }
+.privacy-card { margin-top: var(--space-8); padding: var(--space-8); }
+.privacy-head { display: flex; align-items: center; gap: var(--space-4); }
+.privacy-icon {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ui-action);
+  background: var(--ui-selected-surface);
+}
+.privacy-title {
+  font-family: var(--font-display);
+  font-size: var(--type-h3-size);
+  line-height: var(--type-h3-line);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.privacy-card > text {
+  display: block;
+  margin-top: var(--space-4);
+  color: var(--ui-text-secondary);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-line);
+}
 
-/* 隐私说明：双线裱框 */
-.privacy { margin-top: 38rpx; background: var(--card); border: 1rpx solid var(--line); border-radius: 22rpx; padding: 36rpx 32rpx; box-shadow: inset 0 0 0 6rpx var(--card), inset 0 0 0 7rpx rgba(72, 62, 44, 0.22), 0 12rpx 30rpx rgba(72, 62, 44, 0.06); }
-.privacy-head { display: flex; align-items: center; gap: 18rpx; }
-.privacy-seal { width: 52rpx; height: 52rpx; border-radius: 8rpx; background: var(--cinnabar); color: #fbf6ec; font-size: 26rpx; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 2rpx rgba(251, 246, 236, 0.32); flex-shrink: 0; }
-.privacy-title { font-size: 30rpx; letter-spacing: .14em; }
-.privacy text { display: block; color: var(--ink-soft); font-size: 21rpx; line-height: 1.7; margin-top: 18rpx; letter-spacing: .03em; }
+.reduce-motion .setting-choice,
+.reduce-motion .quality-choice { transition: none; }
+
+@media (max-width: 340px) {
+  .settings-group { padding: 0 var(--space-6); }
+  .ui-page-heading { gap: var(--space-4); }
+  .ui-page-mark { width: 56rpx; height: 56rpx; }
+}

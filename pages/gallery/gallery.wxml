@@ -1,71 +1,86 @@
-<view class="gallery {{selectMode ? 'selecting' : ''}}">
-  <view class="nav" style="padding-top:{{statusBar}}px">
-    <view class="nav-row" style="height:{{navBar}}px;padding-right:{{capsulePad}}px">
-      <block wx:if="{{!selectMode}}">
-        <view class="nav-btn" bindtap="back">‹</view>
-        <view class="nav-title display">我的作品</view>
-      </block>
-      <block wx:else>
-        <view class="nav-link left" bindtap="exitSelect">取消</view>
-        <view class="nav-title display">选择作品</view>
-        <view class="nav-link right" bindtap="toggleAll">{{allSelected ? '全不选' : '全选'}}</view>
-      </block>
-    </view>
-  </view>
+<view class="gallery-page ui-content-page {{selectMode ? 'is-selecting' : ''}} {{reduceMotion ? 'reduce-motion' : ''}}">
+  <app-nav
+    title="{{selectMode ? '选择作品' : '我的作品'}}"
+    theme="light"
+    back-label="{{selectMode ? '退出整理' : '返回首页'}}"
+    auto-back="{{!selectMode}}"
+    bindback="handleNavBack"
+  ></app-nav>
 
-  <view class="body" style="padding-top:{{statusBar + navBar}}px">
-    <view class="hero">
-      <view class="seal display">藏</view>
-      <view class="hero-main">
-        <view class="eyebrow">本机藏器 · LOCAL COLLECTION</view>
-        <view class="hero-title display">泥火所出，皆在此间</view>
+  <view class="gallery-body ui-content-body">
+    <view class="ui-page-heading">
+      <view class="ui-page-mark" aria-hidden="true">藏</view>
+      <view class="ui-page-heading__main">
+        <view class="ui-page-kicker">本机作品</view>
+        <view class="ui-page-title">泥火所出，皆在此间</view>
+      </view>
+      <view class="ui-page-description">
+        {{works.length ? '共 ' + works.length + ' 件作品。可点整理进入多选，长按作品也能快速进入。' : '从一团泥开始，留下你的第一件作品。'}}
       </view>
     </view>
-    <view wx:if="{{works.length}}" class="hero-hint">长按作品可多选整理</view>
 
-    <view wx:if="{{!selectMode}}" class="toolbar">
-      <view class="tabs">
-        <view class="tab {{tab === 'all' ? 'active' : ''}}" data-id="all" bindtap="chooseTab">全部 {{counts.all}}</view>
-        <view class="tab {{tab === 'draft' ? 'active' : ''}}" data-id="draft" bindtap="chooseTab">草稿 {{counts.draft}}</view>
-        <view class="tab {{tab === 'completed' ? 'active' : ''}}" data-id="completed" bindtap="chooseTab">已成 {{counts.completed}}</view>
+    <view wx:if="{{!selectMode}}" class="gallery-toolbar">
+      <view class="gallery-tabs ui-tabs" aria-label="作品筛选">
+        <button class="gallery-tab ui-tab {{tab === 'all' ? 'is-active' : ''}}" data-id="all" bindtap="chooseTab" aria-label="全部 {{counts.all}} 件，{{tab === 'all' ? '已选中' : '未选中'}}">全部 {{counts.all}}</button>
+        <button class="gallery-tab ui-tab {{tab === 'draft' ? 'is-active' : ''}}" data-id="draft" bindtap="chooseTab" aria-label="草稿 {{counts.draft}} 件，{{tab === 'draft' ? '已选中' : '未选中'}}">草稿 {{counts.draft}}</button>
+        <button class="gallery-tab ui-tab {{tab === 'completed' ? 'is-active' : ''}}" data-id="completed" bindtap="chooseTab" aria-label="已成 {{counts.completed}} 件，{{tab === 'completed' ? '已选中' : '未选中'}}">已成 {{counts.completed}}</button>
       </view>
-      <view class="new-pill" bindtap="start">＋ 新作</view>
+      <view class="gallery-toolbar__actions">
+        <button wx:if="{{works.length}}" class="gallery-organize ui-button ui-button--text" bindtap="enterSelectMode">整理</button>
+        <button class="gallery-create ui-button ui-button--text" bindtap="start">新建作品</button>
+      </view>
     </view>
 
-    <view wx:if="{{filtered.length}}" class="grid">
-      <view
+    <view wx:else class="selection-hint">
+      <text aria-role="status">轻触作品进行选择。</text>
+      <button class="selection-toggle-all ui-button ui-button--text" bindtap="toggleAll">{{allSelected ? '全不选' : '全选'}}</button>
+    </view>
+
+    <view wx:if="{{filtered.length}}" class="gallery-grid">
+      <button
         wx:for="{{filtered}}"
         wx:key="workId"
-        class="work-card {{item.selected ? 'picked' : ''}}"
+        class="work-card {{item.selected ? 'is-selected' : ''}}"
         data-id="{{item.workId}}"
         bindtap="open"
         bindlongpress="longpress"
+        hover-class="work-card--pressed"
+        aria-label="{{item.accessibilityLabel}}"
       >
-        <view class="thumb {{item.status === 'completed' ? 'done' : ''}}">
-          <view class="mini-work shape-{{item.shapeId}}"></view>
-          <view class="stage-chip">{{item.status === 'completed' ? '已成器' : '工序 ' + (item.stageIndex + 1) + ' / 7'}}</view>
-          <view wx:if="{{selectMode}}" class="check {{item.selected ? 'on' : ''}}">✓</view>
+        <view class="work-thumb {{item.status === 'completed' ? 'is-complete' : ''}}">
+          <view class="mini-work shape-{{item.shapeId}}" aria-hidden="true"></view>
+          <view class="stage-chip">{{item.statusLabel}}</view>
+          <view wx:if="{{selectMode}}" class="card-check {{item.selected ? 'is-checked' : ''}}" aria-hidden="true">
+            <ui-icon wx:if="{{item.selected}}" name="check" size="30" tone="light" decorative></ui-icon>
+          </view>
         </view>
-        <view class="work-name display">{{item.title}}</view>
-        <view class="work-meta">{{item.shapeName}} · {{item.clayName}} · {{item.timeText}}</view>
-      </view>
+        <view class="work-name">{{item.title}}</view>
+        <view class="work-meta">{{item.shapeName}} · {{item.clayName}}</view>
+        <view class="work-time">{{item.timeText}}</view>
+      </button>
     </view>
 
-    <view wx:elif="{{works.length}}" class="empty-tab">
-      <view class="display">此列暂无藏器</view>
-      <text>换个筛子看看，或先去制坯。</text>
+    <view wx:elif="{{works.length}}" class="gallery-empty ui-section-card">
+      <view class="empty-title">当前筛选下没有作品</view>
+      <text>切回“全部”查看其他作品。</text>
+      <button class="ui-button ui-button--secondary" bindtap="showAll">查看全部作品</button>
     </view>
 
-    <view wx:else class="empty">
-      <view class="moon"></view>
-      <view class="display empty-title">窑里还空着</view>
-      <text>先从一团泥开始，做你的第一件作品。</text>
-      <button class="btn-primary" bindtap="start">开始捏陶</button>
+    <view wx:else class="gallery-empty gallery-empty--first ui-section-card">
+      <view class="empty-moon" aria-hidden="true"></view>
+      <view class="empty-title">还没有作品</view>
+      <text>从制坯开始，完成属于你的第一件器物。</text>
+      <button class="ui-button ui-button--primary" bindtap="start">开始制坯</button>
     </view>
   </view>
 
-  <view wx:if="{{selectMode}}" class="action-bar">
-    <view class="action-info">已选 <text class="count">{{selectedCount}}</text> / {{filtered.length}} 件</view>
-    <button class="btn-delete {{selectedCount ? '' : 'off'}}" disabled="{{!selectedCount}}" aria-disabled="{{!selectedCount}}" bindtap="deleteSelected">删除所选</button>
+  <view wx:if="{{selectMode}}" class="gallery-action-bar ui-bottom-bar">
+    <view class="selection-count" aria-role="status">已选 <text>{{selectedCount}}</text> / {{filtered.length}} 件</view>
+    <button
+      class="gallery-delete ui-button ui-button--danger"
+      disabled="{{!selectedCount}}"
+      aria-disabled="{{!selectedCount}}"
+      bindtap="deleteSelected"
+    >删除所选</button>
   </view>
 </view>

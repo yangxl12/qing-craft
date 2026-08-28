@@ -1,44 +1,46 @@
-<view class="home {{entrance ? 'is-in' : ''}}">
-  <view class="paper-grain"></view>
-  <view class="safe-top" style="height:{{statusBarHeight}}px"></view>
+<view class="home ui-content-page {{entrance ? 'is-in' : ''}} {{reduceMotion ? 'reduce-motion' : ''}}">
+  <view class="paper-grain" aria-hidden="true"></view>
+  <view class="home-safe-top" style="height:{{statusBarHeight}}px"></view>
 
-  <view class="topbar" style="height:{{navigationBarHeight}}px">
+  <view class="home-topbar" style="height:{{navigationBarHeight}}px">
     <view class="brand" aria-label="泥火青花">
-      <image class="brand-logo" src="/assets/yao.png" mode="aspectFill"></image>
-      <view class="brand-name display">泥火青花</view>
+      <image class="brand-logo" src="/assets/yao.png" mode="aspectFill" aria-hidden="true"></image>
+      <view class="brand-name">泥火青花</view>
     </view>
   </view>
 
-  <view class="intro">
-    <view class="display title">一捧泥，<text>成一件心中器。</text></view>
+  <view class="home-intro">
+    <view class="home-title">一捧泥，<text>成一件心中器。</text></view>
     <view class="top-links">
       <button class="top-link" bindtap="gallery" aria-label="打开本机作品">作品</button>
       <button class="top-link" bindtap="settings" aria-label="打开工坊设置">设置</button>
     </view>
   </view>
 
-  <view class="hero-art" aria-label="月窗前陈设的天青釉瓷瓶">
-    <image class="hero-image" src="/assets/home-song-celadon.jpg" mode="aspectFill"></image>
-    <view class="hero-wash"></view>
+  <view class="hero-art" aria-role="img" aria-label="月窗前陈设的天青釉瓷瓶">
+    <image class="hero-image" src="/assets/home-song-celadon.jpg" mode="aspectFill" aria-hidden="true"></image>
+    <view class="hero-wash" aria-hidden="true"></view>
     <view class="hero-caption">
-      <view class="caption-rule"></view>
+      <view class="caption-rule" aria-hidden="true"></view>
       <view>
-        <view class="caption-title display">汝窑天青意象</view>
+        <view class="caption-title">汝窑天青意象</view>
         <view class="caption-sub">雨过天青 · 温润如玉</view>
       </view>
     </view>
-    <view class="hero-seal display">天青</view>
+    <view class="hero-seal" aria-hidden="true">天青</view>
   </view>
 
-  <view class="actions">
-    <button class="action action-primary" bindtap="start" hover-class="action--pressed">
-      <text>开始</text><text class="action-arrow">→</text>
+  <view class="home-actions">
+    <button class="home-action ui-button ui-button--primary" bindtap="start">
+      <ui-icon name="clay" size="38" tone="light" decorative></ui-icon>
+      <text>开始制坯</text>
     </button>
-    <button wx:if="{{hasDraft}}" class="action action-secondary" bindtap="continueWork" hover-class="action--pressed">
-      <text>续作</text><text class="action-arrow">↗</text>
-    </button>
-    <button wx:else class="action action-secondary" bindtap="gallery" hover-class="action--pressed">
-      <text>作品</text><text class="action-arrow">↗</text>
-    </button>
+    <button
+      wx:if="{{hasDraft}}"
+      class="home-action ui-button ui-button--secondary"
+      bindtap="continueWork"
+      aria-label="继续创作{{draftTitle ? '，' + draftTitle : ''}}"
+    >继续创作</button>
+    <button wx:else class="home-action ui-button ui-button--secondary" bindtap="gallery">查看作品</button>
   </view>
 </view>

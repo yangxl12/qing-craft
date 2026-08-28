@@ -54,15 +54,36 @@ for (const file of tokenOnlyFiles) {
 }
 
 const legacyBudgets = {
-  "pages/index/index.wxss":29,
-  "pages/gallery/gallery.wxss":39,
-  "pages/settings/settings.wxss":22,
+  "pages/index/index.wxss":0,
+  "pages/gallery/gallery.wxss":0,
+  "pages/settings/settings.wxss":0,
   "pages/result/result.wxss":108,
   "pages/studio/studio.wxss":603
 };
 for (const [file, budget] of Object.entries(legacyBudgets)) {
   const count = normalizedLiterals(read(file)).size;
   if (count > budget) failures.push(`${file} 硬编码色从基线 ${budget} 增至 ${count}`);
+}
+
+const migratedContentFiles = [
+  "pages/index/index.wxss",
+  "pages/gallery/gallery.wxss",
+  "pages/settings/settings.wxss"
+];
+for (const file of migratedContentFiles) {
+  const source = read(file);
+  const undersized = [...source.matchAll(/font-size:\s*(\d+(?:\.\d+)?)rpx/g)]
+    .map((match) => Number(match[1]))
+    .filter((size) => size < 22);
+  if (undersized.length) failures.push(`${file} 出现小于 22rpx 的字号：${undersized.join(", ")}`);
+  if (/--(?:paper|ink|ink-soft|celadon-deep)\s*:/.test(source)) {
+    failures.push(`${file} 不得重新定义迁移别名`);
+  }
+}
+
+for (const file of migratedContentFiles.map((file) => file.replace(/\.wxss$/, ".wxml"))) {
+  const literals = [...normalizedLiterals(read(file))];
+  if (literals.length) failures.push(`${file} 原生组件颜色也必须引用 Token：${literals.join(", ")}`);
 }
 
 const primitives = read("styles/primitives.wxss");
@@ -87,7 +108,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`UI foundation checks passed: ${contrastPairs.length} contrast pairs, ${new Set(iconNames).size} local icons, legacy color budgets held`);
+console.log(`UI checks passed: ${contrastPairs.length} contrast pairs, ${new Set(iconNames).size} local icons, stage 2 content pages use tokens only`);
 
 function contrast(first, second) {
   const light = luminance(first);

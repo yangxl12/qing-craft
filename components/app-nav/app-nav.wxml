@@ -17,7 +17,8 @@
       <view class="app-nav__title display">{{title}}</view>
       <button
         wx:if="{{rightIcon || rightLabel}}"
-        class="app-nav__action"
+        class="app-nav__action app-nav__action--right {{rightLabel ? 'has-label' : ''}}"
+        style="right:{{avoidCapsule&&!embedded?capsulePadding:16}}px"
         aria-label="{{rightLabel}}"
         bindtap="onRight"
       >

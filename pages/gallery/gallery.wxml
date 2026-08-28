@@ -1,6 +1,72 @@
-<view class="gallery"><view class="safe-top"></view><view class="top"><button class="icon-btn" bindtap="back">‹</button><view class="display">我的作品</view><button class="icon-btn" bindtap="start">＋</button></view>
- <view class="intro"><view class="eyebrow">LOCAL COLLECTION · 本机作品集</view><view class="display heading">手作留下的，<br/>不止一个结果。</view></view>
- <view class="tabs"><view data-id="all" bindtap="chooseTab" class="{{tab==='all'?'active':''}}">全部 {{works.length}}</view><view data-id="draft" bindtap="chooseTab" class="{{tab==='draft'?'active':''}}">草稿</view><view data-id="completed" bindtap="chooseTab" class="{{tab==='completed'?'active':''}}">已完成</view></view>
- <view wx:if="{{works.length}}" class="grid"><view wx:for="{{works}}" wx:key="workId" wx:if="{{tab==='all'||tab===item.status}}" class="work-card" data-id="{{item.workId}}" bindtap="open"><view class="thumb status-{{item.status}}"><view class="mini-work shape-{{item.shapeId}}"></view><view class="stage-chip">{{item.status==='completed'?'已完成':'工序 '+(item.stageIndex+1)+'/7'}}</view></view><view class="work-name display">{{item.title}}</view><view class="work-meta">{{item.shapeId}} · {{item.clayId}}</view></view></view>
- <view wx:else class="empty"><view class="empty-rings"><view></view></view><view class="display">窑里还空着</view><text>先从一团泥开始，做你的第一件作品。</text><button class="btn-primary" bindtap="start">开始捏陶</button></view>
+<view class="gallery {{selectMode ? 'selecting' : ''}}">
+  <view class="nav" style="padding-top:{{statusBar}}px">
+    <view class="nav-row" style="height:{{navBar}}px">
+      <block wx:if="{{!selectMode}}">
+        <button class="nav-btn" bindtap="back">‹</button>
+        <view class="nav-title display">我的作品</view>
+        <view class="nav-filler"></view>
+      </block>
+      <block wx:else>
+        <view class="nav-link left" bindtap="exitSelect">取消</view>
+        <view class="nav-title display">选择作品</view>
+        <view class="nav-link right" bindtap="toggleAll">{{allSelected ? '全不选' : '全选'}}</view>
+      </block>
+    </view>
+  </view>
+
+  <view class="body" style="padding-top:{{statusBar + navBar}}px">
+    <view class="hero">
+      <view class="seal display">藏</view>
+      <view class="hero-main">
+        <view class="eyebrow">本机藏器 · LOCAL COLLECTION</view>
+        <view class="hero-title display">泥火所出，皆在此间</view>
+      </view>
+    </view>
+    <view wx:if="{{works.length}}" class="hero-hint">长按作品可多选整理</view>
+
+    <view wx:if="{{!selectMode}}" class="toolbar">
+      <view class="tabs">
+        <view class="tab {{tab === 'all' ? 'active' : ''}}" data-id="all" bindtap="chooseTab">全部 {{counts.all}}</view>
+        <view class="tab {{tab === 'draft' ? 'active' : ''}}" data-id="draft" bindtap="chooseTab">草稿 {{counts.draft}}</view>
+        <view class="tab {{tab === 'completed' ? 'active' : ''}}" data-id="completed" bindtap="chooseTab">已成 {{counts.completed}}</view>
+      </view>
+      <view class="new-pill" bindtap="start">＋ 新作</view>
+    </view>
+
+    <view wx:if="{{filtered.length}}" class="grid">
+      <view
+        wx:for="{{filtered}}"
+        wx:key="workId"
+        class="work-card {{item.selected ? 'picked' : ''}}"
+        data-id="{{item.workId}}"
+        bindtap="open"
+        bindlongpress="longpress"
+      >
+        <view class="thumb {{item.status === 'completed' ? 'done' : ''}}">
+          <view class="mini-work shape-{{item.shapeId}}"></view>
+          <view class="stage-chip">{{item.status === 'completed' ? '已成器' : '工序 ' + (item.stageIndex + 1) + ' / 7'}}</view>
+          <view wx:if="{{selectMode}}" class="check {{item.selected ? 'on' : ''}}">✓</view>
+        </view>
+        <view class="work-name display">{{item.title}}</view>
+        <view class="work-meta">{{item.shapeName}} · {{item.clayName}} · {{item.timeText}}</view>
+      </view>
+    </view>
+
+    <view wx:elif="{{works.length}}" class="empty-tab">
+      <view class="display">此列暂无藏器</view>
+      <text>换个筛子看看，或先去制坯。</text>
+    </view>
+
+    <view wx:else class="empty">
+      <view class="moon"></view>
+      <view class="display empty-title">窑里还空着</view>
+      <text>先从一团泥开始，做你的第一件作品。</text>
+      <button class="btn-primary" bindtap="start">开始捏陶</button>
+    </view>
+  </view>
+
+  <view wx:if="{{selectMode}}" class="action-bar">
+    <view class="action-info">已选 <text class="count">{{selectedCount}}</text> / {{filtered.length}} 件</view>
+    <button class="btn-delete {{selectedCount ? '' : 'off'}}" bindtap="deleteSelected">删除所选</button>
+  </view>
 </view>

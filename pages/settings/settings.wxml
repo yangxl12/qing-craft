@@ -1,7 +1,67 @@
-<view class="settings-page"><view class="safe-top"></view><view class="top"><button class="icon-btn" bindtap="back">‹</button><view class="display">工坊设置</view><view class="spacer"></view></view>
- <view class="intro"><view class="eyebrow">SETTINGS · 按你的习惯来</view><view class="display">让工坊安静一点，<br/>或让技师少说一点。</view></view>
- <view class="group"><view class="group-title">声音与动作</view><view class="row"><view><view>环境声音</view><text>转盘、木屋与窑火</text></view><switch color="#52796a" checked="{{settings.sound}}" data-key="sound" bindchange="toggle"/></view><view class="row"><view><view>轻触反馈</view><text>切换工具与工序完成时轻震</text></view><switch color="#52796a" checked="{{settings.haptics}}" data-key="haptics" bindchange="toggle"/></view><view class="row"><view><view>减少动态效果</view><text>停止自动转盘与镜头扫光</text></view><switch color="#52796a" checked="{{settings.reduceMotion}}" data-key="reduceMotion" bindchange="toggle"/></view></view>
- <view class="group"><view class="group-title">引导强度</view><view class="choices"><view data-key="guidance" data-value="relaxed" bindtap="setValue" class="{{settings.guidance==='relaxed'?'active':''}}"><view>轻松引导</view><text>工具、停滞与风险提示</text></view><view data-key="guidance" data-value="necessary" bindtap="setValue" class="{{settings.guidance==='necessary'?'active':''}}"><view>仅必要提示</view><text>只在作品有风险时提醒</text></view><view data-key="guidance" data-value="free" bindtap="setValue" class="{{settings.guidance==='free'?'active':''}}"><view>自由创作</view><text>需要时再点问号</text></view></view></view>
- <view class="group"><view class="group-title">画质</view><view class="quality"><view wx:for="{{['low','medium','high']}}" wx:key="*this" data-key="quality" data-value="{{item}}" bindtap="setValue" class="{{settings.quality===item?'active':''}}">{{item==='low'?'流畅':item==='medium'?'均衡':'精细'}}</view></view><view class="tip">持续掉帧时会自动降低细节，不影响作品数据。</view></view>
- <view class="privacy"><view class="display">作品留在本机</view><text>v1 原型无需登录。只有你主动保存图片或分享时，才会调用对应的微信能力。</text></view>
+<view class="settings-page">
+  <view class="nav" style="padding-top:{{statusBar}}px">
+    <view class="nav-row" style="height:{{navBar}}px">
+      <button class="nav-btn" bindtap="back">‹</button>
+      <view class="nav-title display">工坊设置</view>
+      <view class="nav-filler"></view>
+    </view>
+  </view>
+
+  <view class="body" style="padding-top:{{statusBar + navBar}}px">
+    <view class="hero">
+      <view class="seal display">设</view>
+      <view class="hero-main">
+        <view class="eyebrow">WORKSHOP · 工坊偏好</view>
+        <view class="hero-title display">静火慢工，各随其性</view>
+      </view>
+    </view>
+    <view class="hero-hint">偏好只存本机，改动即时生效</view>
+
+    <view class="group">
+      <view class="group-title"><view class="tick"></view>声与动</view>
+      <view class="row">
+        <view class="row-text"><view class="row-label">环境声音</view><text>转盘、木屋与窑火</text></view>
+        <switch color="#5f8272" checked="{{settings.sound}}" data-key="sound" bindchange="toggle"/>
+      </view>
+      <view class="row">
+        <view class="row-text"><view class="row-label">轻触反馈</view><text>切换工具与工序完成时轻震</text></view>
+        <switch color="#5f8272" checked="{{settings.haptics}}" data-key="haptics" bindchange="toggle"/>
+      </view>
+      <view class="row">
+        <view class="row-text"><view class="row-label">减少动态效果</view><text>停止自动转盘与镜头扫光</text></view>
+        <switch color="#5f8272" checked="{{settings.reduceMotion}}" data-key="reduceMotion" bindchange="toggle"/>
+      </view>
+    </view>
+
+    <view class="group">
+      <view class="group-title"><view class="tick"></view>引导强度</view>
+      <view class="choices">
+        <view data-key="guidance" data-value="relaxed" bindtap="setValue" class="choice {{settings.guidance === 'relaxed' ? 'active' : ''}}">
+          <view class="choice-label">轻松引导</view><text>工具、停滞与风险提示</text>
+        </view>
+        <view data-key="guidance" data-value="necessary" bindtap="setValue" class="choice {{settings.guidance === 'necessary' ? 'active' : ''}}">
+          <view class="choice-label">仅必要提示</view><text>只在作品有风险时提醒</text>
+        </view>
+        <view data-key="guidance" data-value="free" bindtap="setValue" class="choice {{settings.guidance === 'free' ? 'active' : ''}}">
+          <view class="choice-label">自由创作</view><text>需要时再点问号</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="group">
+      <view class="group-title"><view class="tick"></view>画质</view>
+      <view class="quality">
+        <view wx:for="{{['low', 'medium', 'high']}}" wx:key="*this" data-key="quality" data-value="{{item}}" bindtap="setValue" class="q {{settings.quality === item ? 'active' : ''}}">{{item === 'low' ? '流畅' : item === 'medium' ? '均衡' : '精细'}}</view>
+      </view>
+      <view class="tip">持续掉帧时会自动降低细节，不影响作品数据。</view>
+    </view>
+
+    <view class="privacy">
+      <view class="privacy-head">
+        <view class="privacy-seal display">私</view>
+        <view class="display privacy-title">作品留在本机</view>
+      </view>
+      <text>v1 原型无需登录。只有你主动保存图片或分享时，才会调用对应的微信能力。</text>
+    </view>
+  </view>
 </view>

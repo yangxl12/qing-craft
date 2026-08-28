@@ -173,140 +173,144 @@
   box-sizing: border-box;
   z-index: 2;
 }
-/* 古风木质束腰展座：座面—束腰—展足三段式，全部以器底接触线为锚点。
-   引擎把器底可见前沿锚在画布 74%（POTTERY_BASE_SCREEN_Y），座面椭圆中心
-   对齐这条线，比例与创作台转盘一致（约 20.6%），器物落位自然不悬浮。 */
+/* 低矮乌木漆座：以器底接触线为锚点，收窄体量，让瓷器而非底座成为焦点。
+   引擎把器底可见前沿锚在画布 74%（POTTERY_BASE_SCREEN_Y），漆座顶面的
+   椭圆中心与它对齐；前沿和短足向下展开，透视关系不会让器物悬浮。 */
 .plinth {
   position: absolute;
   left: 50%;
   top: 74%;
-  width: 640rpx;
-  height: 260rpx;
+  width: 520rpx;
+  height: 132rpx;
   transform: translateX(-50%);
   pointer-events: none;
 }
-/* 地面投影：贴着展足足缘的一圈柔影。 */
+/* 地面投影偏向右下，与左上方的展台主光一致。 */
 .plinth-shadow {
   position: absolute;
   left: 50%;
-  top: 208rpx;
-  width: 676rpx;
-  height: 88rpx;
-  transform: translate(-50%, -50%);
+  top: 103rpx;
+  width: 536rpx;
+  height: 62rpx;
+  transform: translate(-47%, -50%);
   border-radius: 50%;
   background: radial-gradient(
-    ellipse at 50% 50%,
-    rgba(2, 5, 4, 0.58),
-    rgba(2, 5, 4, 0.3) 55%,
-    rgba(2, 5, 4, 0) 76%
+    ellipse at 47% 46%,
+    rgba(2, 5, 4, 0.52),
+    rgba(2, 5, 4, 0.24) 56%,
+    rgba(2, 5, 4, 0) 78%
   );
 }
-/* 展足：比束腰更宽的喇叭底座，正面留一道弦线高光。 */
+
+/* 四足木座只露出前方两只短足，避免旧底座的柱状厚重感。 */
+.plinth-feet {
+  position: absolute;
+  left: 72rpx;
+  right: 72rpx;
+  top: 73rpx;
+  height: 38rpx;
+}
 .plinth-foot {
   position: absolute;
-  left: 50%;
-  top: 186rpx;
-  width: 552rpx;
-  height: 112rpx;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background:
-    linear-gradient(
-      180deg,
-      transparent 58%,
-      rgba(233, 199, 143, 0.17) 73%,
-      rgba(233, 199, 143, 0.05) 83%,
-      transparent 96%
-    ),
-    radial-gradient(ellipse at 50% 40%, #3a2a19 0%, #2b1f13 52%, #1c130b 100%);
+  width: 58rpx;
+  height: 34rpx;
+  clip-path: polygon(12% 0, 88% 0, 100% 100%, 0 100%);
+  background: linear-gradient(100deg, #100e0c 0%, #271a17 38%, #15110f 100%);
   box-shadow:
-    inset 0 6rpx 14rpx rgba(0, 0, 0, 0.45),
-    0 18rpx 36rpx rgba(2, 6, 5, 0.52);
+    inset 5rpx 0 8rpx rgba(176, 133, 88, 0.08),
+    inset -8rpx 0 10rpx rgba(0, 0, 0, 0.34),
+    0 8rpx 12rpx rgba(2, 5, 4, 0.34);
 }
-/* 束腰座身：顺纹木料 + 左侧暖主光，顶部藏在座面之后。 */
-.plinth-body {
+.plinth-foot-left { left: 24rpx; }
+.plinth-foot-right { right: 24rpx; }
+
+/* 内收牙板用一层暗红漆色承接背景里的炉火，中央只留一笔如意云纹。 */
+.plinth-apron {
   position: absolute;
   left: 50%;
   top: 30rpx;
-  width: 402rpx;
-  height: 150rpx;
+  width: 426rpx;
+  height: 64rpx;
   transform: translateX(-50%);
-  border-radius: 50rpx 50rpx 56rpx 56rpx / 64rpx 64rpx 72rpx 72rpx;
+  clip-path: polygon(2% 0, 98% 0, 91% 100%, 9% 100%);
   background:
-    radial-gradient(
-      ellipse 120rpx 150rpx at 24% 44%,
-      rgba(226, 186, 124, 0.15),
-      rgba(226, 186, 124, 0) 72%
-    ),
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 240, 214, 0.035) 0 2rpx,
-      rgba(12, 8, 4, 0.06) 2rpx 6rpx,
-      rgba(255, 240, 214, 0.015) 6rpx 11rpx,
-      rgba(12, 8, 4, 0) 11rpx 18rpx
-    ),
-    linear-gradient(180deg, #241a10 0%, #382a1b 26%, #33261a 58%, #1f1509 100%);
+    radial-gradient(ellipse at 32% 0%, rgba(159, 111, 71, 0.16), transparent 46%),
+    linear-gradient(180deg, #34211c 0%, #281714 48%, #150f0d 100%);
+  border-bottom: 1rpx solid rgba(184, 154, 101, 0.26);
   box-shadow:
-    inset 22rpx 0 30rpx -18rpx rgba(226, 188, 128, 0.1),
-    inset -26rpx 0 34rpx -20rpx rgba(0, 0, 0, 0.55),
-    inset 0 -14rpx 22rpx rgba(0, 0, 0, 0.42);
+    inset 0 7rpx 12rpx rgba(0, 0, 0, 0.28),
+    inset 18rpx 0 22rpx -18rpx rgba(190, 143, 91, 0.18),
+    inset -20rpx 0 24rpx -18rpx rgba(0, 0, 0, 0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
 }
-/* 座沿厚度：座面下压出的一圈深色边，制造盘口出沿的体量。 */
-.plinth-lip {
+.plinth-cloud {
+  width: 32rpx;
+  height: 14rpx;
+  margin-top: 16rpx;
+  border-top: 2rpx solid rgba(184, 154, 101, 0.46);
+  border-radius: 50%;
+}
+.plinth-cloud-left { transform: rotate(8deg); }
+.plinth-cloud-right { transform: rotate(-8deg); }
+.plinth-cloud-pearl {
+  width: 7rpx;
+  height: 7rpx;
+  margin-top: 10rpx;
+  transform: rotate(45deg);
+  background: rgba(184, 154, 101, 0.52);
+  box-shadow: 0 0 8rpx rgba(184, 154, 101, 0.12);
+}
+
+/* 漆座前沿仅露一条薄边，形成明确的座面厚度。 */
+.plinth-rim {
   position: absolute;
   left: 50%;
-  top: 10rpx;
-  width: 632rpx;
-  height: 130rpx;
+  top: 7rpx;
+  width: 516rpx;
+  height: 82rpx;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: linear-gradient(180deg, #241a10 0%, #191108 58%, #100b06 100%);
-  box-shadow: 0 12rpx 24rpx rgba(2, 6, 5, 0.42);
+  background: linear-gradient(180deg, #211915 0%, #100d0b 55%, #080706 100%);
+  box-shadow:
+    inset 0 -3rpx 5rpx rgba(184, 154, 101, 0.13),
+    0 10rpx 18rpx rgba(2, 6, 5, 0.38);
 }
-/* 座面：大漆木面，左上暖光釉泽 + 前缘受光 + 背缘入影。 */
-.plinth-plate {
+
+/* 顶面压得很薄：左上有一道漆光，右后缘沉入暗部，建立合理的受光方向。 */
+.plinth-top {
   position: absolute;
   left: 50%;
   top: 0;
-  width: 640rpx;
-  height: 132rpx;
+  width: 496rpx;
+  height: 70rpx;
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background:
-    radial-gradient(
-      ellipse 78% 68% at 40% 34%,
-      rgba(233, 196, 134, 0.2),
-      rgba(171, 133, 79, 0.07) 46%,
-      rgba(171, 133, 79, 0) 66%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0.34) 0%,
-      rgba(0, 0, 0, 0.1) 38%,
-      rgba(0, 0, 0, 0) 55%,
-      rgba(233, 200, 143, 0.1) 82%,
-      rgba(0, 0, 0, 0.3) 100%
-    ),
-    radial-gradient(ellipse at 50% 44%, #453222 0%, #38291a 46%, #291d12 78%, #1f150d 100%);
+    radial-gradient(ellipse 52% 48% at 34% 28%, rgba(198, 166, 119, 0.2), transparent 66%),
+    linear-gradient(155deg, rgba(68, 50, 41, 0.92) 0%, rgba(29, 24, 21, 0.96) 48%, #0f0d0c 100%);
+  border: 1rpx solid rgba(190, 164, 119, 0.3);
   box-shadow:
-    inset 0 4rpx 10rpx rgba(0, 0, 0, 0.5),
-    inset 0 -5rpx 12rpx rgba(236, 206, 152, 0.13),
-    0 16rpx 30rpx rgba(2, 6, 5, 0.48);
+    inset 0 3rpx 8rpx rgba(218, 190, 142, 0.08),
+    inset 0 -5rpx 10rpx rgba(0, 0, 0, 0.42);
 }
-/* 器底接触影：贴着足沿的一圈浓影，让器物真正“落”在座面上。 */
+
+/* 器底接触影与顶面同透视，浓度集中在足沿附近。 */
 .plinth-contact {
   position: absolute;
   left: 50%;
-  top: 6rpx;
-  width: 316rpx;
-  height: 58rpx;
+  top: 1rpx;
+  width: 286rpx;
+  height: 42rpx;
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background: radial-gradient(
     ellipse at 50% 50%,
-    rgba(3, 6, 5, 0.6),
-    rgba(3, 6, 5, 0.26) 52%,
-    rgba(3, 6, 5, 0) 72%
+    rgba(3, 5, 4, 0.62),
+    rgba(3, 5, 4, 0.28) 50%,
+    rgba(3, 5, 4, 0) 74%
   );
 }
 

@@ -29,12 +29,19 @@
   </view>
   <view class="plinth" aria-hidden="true">
    <view class="plinth-shadow"></view>
-   <view class="plinth-foot"></view>
-   <view class="plinth-body"></view>
-   <view class="plinth-lip"></view>
-   <view class="plinth-plate"></view>
+   <view class="plinth-feet">
+    <view class="plinth-foot plinth-foot-left"></view>
+    <view class="plinth-foot plinth-foot-right"></view>
+   </view>
+   <view class="plinth-apron">
+    <view class="plinth-cloud plinth-cloud-left"></view>
+    <view class="plinth-cloud-pearl"></view>
+    <view class="plinth-cloud plinth-cloud-right"></view>
+   </view>
+   <view class="plinth-rim"></view>
+   <view class="plinth-top"></view>
    <view class="plinth-contact"></view>
- </view>
+  </view>
  </view>
  <view class="scene-spacer"></view>
  <canvas id="posterCanvas" type="2d" class="poster-canvas"></canvas>

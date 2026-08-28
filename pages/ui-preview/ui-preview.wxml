@@ -1,0 +1,49 @@
+<view class="ui-preview {{reduceMotion?'reduce-motion':''}}">
+  <app-nav title="设计基础设施" theme="light" back="{{false}}"></app-nav>
+
+  <view class="ui-preview__content u-page-gutter">
+    <view class="ui-preview__eyebrow">FOUNDATION · 月白场景</view>
+    <view class="ui-preview__title display">雨过天青，窑火一瞬</view>
+    <view class="ui-preview__lead">器物是主角，界面只负责托举、引导和反馈。</view>
+
+    <view class="ui-card ui-preview__card">
+      <view class="ui-preview__section-title">操作与状态</view>
+      <view class="ui-preview__actions">
+        <button class="ui-button ui-button--primary">开始制坯</button>
+        <button class="ui-button ui-button--secondary">继续创作</button>
+        <button class="ui-button ui-button--secondary ui-button--icon" aria-label="帮助"><ui-icon name="help" size="40" decorative></ui-icon></button>
+      </view>
+      <view class="ui-tabs" role="tablist" aria-label="作品筛选示例">
+        <view class="ui-tab is-active" role="button" aria-label="全部，已选中">全部</view>
+        <view class="ui-tab" role="button" aria-label="草稿，未选中">草稿</view>
+        <view class="ui-tab" role="button" aria-label="已成，未选中">已成</view>
+      </view>
+      <view class="ui-preview__choices">
+        <view class="ui-choice is-selected" role="radio" aria-checked="true">轻松引导</view>
+        <view class="ui-choice" role="radio" aria-checked="false">自由创作</view>
+      </view>
+      <view class="ui-status"><ui-icon name="check" size="32" decorative></ui-icon><text>已保存</text></view>
+    </view>
+
+    <view class="ui-preview__glaze ui-motion" aria-hidden="true"></view>
+  </view>
+
+  <view class="tone-dark ui-preview__dark">
+    <app-nav title="窑夜工具" theme="dark" back="{{false}}" fixed="{{false}}" embedded="{{true}}" avoid-capsule="{{false}}"></app-nav>
+    <view class="u-page-gutter ui-preview__dark-content">
+      <view class="ui-preview__eyebrow">WORKSHOP · 深釉场景</view>
+      <view class="ui-tool-surface ui-preview__tool">
+        <view>
+          <view class="ui-preview__section-title">纹样调校</view>
+          <view class="ui-status"><ui-icon name="saving" size="32" tone="light" decorative></ui-icon><text>保存中</text></view>
+        </view>
+        <view class="ui-preview__icon-row">
+          <button class="ui-button ui-button--secondary ui-button--icon" aria-label="撤销"><ui-icon name="undo" size="40" tone="light" decorative></ui-icon></button>
+          <button class="ui-button ui-button--secondary ui-button--icon" aria-label="复制"><ui-icon name="copy" size="40" tone="light" decorative></ui-icon></button>
+          <button class="ui-button ui-button--danger ui-button--icon" aria-label="删除"><ui-icon name="delete" size="40" tone="light" decorative></ui-icon></button>
+        </view>
+      </view>
+      <view class="ui-preview__note">标准热区 88rpx · 创作台密集场景不低于 80rpx</view>
+    </view>
+  </view>
+</view>

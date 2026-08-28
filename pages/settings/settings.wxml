@@ -1,12 +1,7 @@
 <view class="settings-page">
-  <view class="nav" style="padding-top:{{statusBar}}px">
-    <view class="nav-row" style="height:{{navBar}}px;padding-right:{{capsulePad}}px">
-      <view class="nav-btn" bindtap="back">‹</view>
-      <view class="nav-title display">工坊设置</view>
-    </view>
-  </view>
+  <app-nav title="工坊设置" theme="light" back-label="返回首页"></app-nav>
 
-  <view class="body" style="padding-top:{{statusBar + navBar}}px">
+  <view class="body">
     <view class="hero">
       <view class="seal display">设</view>
       <view class="hero-main">
@@ -17,31 +12,27 @@
     <view class="hero-hint">偏好只存本机，改动即时生效</view>
 
     <view class="group">
-      <view class="group-title"><view class="tick"></view>声与动</view>
-      <view class="row">
-        <view class="row-text"><view class="row-label">环境声音</view><text>转盘、木屋与窑火</text></view>
-        <switch color="#5f8272" checked="{{settings.sound}}" data-key="sound" bindchange="toggle"/>
-      </view>
+      <view class="group-title"><view class="tick"></view>触感与动效</view>
       <view class="row">
         <view class="row-text"><view class="row-label">轻触反馈</view><text>切换工具与工序完成时轻震</text></view>
-        <switch color="#5f8272" checked="{{settings.haptics}}" data-key="haptics" bindchange="toggle"/>
+        <switch color="#5f8272" checked="{{settings.haptics}}" data-key="haptics" aria-label="轻触反馈" bindchange="toggle"/>
       </view>
       <view class="row">
         <view class="row-text"><view class="row-label">减少动态效果</view><text>停止自动转盘与镜头扫光</text></view>
-        <switch color="#5f8272" checked="{{settings.reduceMotion}}" data-key="reduceMotion" bindchange="toggle"/>
+        <switch color="#5f8272" checked="{{settings.reduceMotion}}" data-key="reduceMotion" aria-label="减少动态效果" bindchange="toggle"/>
       </view>
     </view>
 
     <view class="group">
       <view class="group-title"><view class="tick"></view>引导强度</view>
       <view class="choices">
-        <view data-key="guidance" data-value="relaxed" bindtap="setValue" class="choice {{settings.guidance === 'relaxed' ? 'active' : ''}}">
+        <view role="radio" aria-checked="{{settings.guidance === 'relaxed'}}" aria-label="轻松引导，工具、停滞与风险提示" data-key="guidance" data-value="relaxed" bindtap="setValue" class="choice {{settings.guidance === 'relaxed' ? 'active' : ''}}">
           <view class="choice-label">轻松引导</view><text>工具、停滞与风险提示</text>
         </view>
-        <view data-key="guidance" data-value="necessary" bindtap="setValue" class="choice {{settings.guidance === 'necessary' ? 'active' : ''}}">
+        <view role="radio" aria-checked="{{settings.guidance === 'necessary'}}" aria-label="仅必要提示，只在作品有风险时提醒" data-key="guidance" data-value="necessary" bindtap="setValue" class="choice {{settings.guidance === 'necessary' ? 'active' : ''}}">
           <view class="choice-label">仅必要提示</view><text>只在作品有风险时提醒</text>
         </view>
-        <view data-key="guidance" data-value="free" bindtap="setValue" class="choice {{settings.guidance === 'free' ? 'active' : ''}}">
+        <view role="radio" aria-checked="{{settings.guidance === 'free'}}" aria-label="自由创作，需要时再点帮助" data-key="guidance" data-value="free" bindtap="setValue" class="choice {{settings.guidance === 'free' ? 'active' : ''}}">
           <view class="choice-label">自由创作</view><text>需要时再点问号</text>
         </view>
       </view>

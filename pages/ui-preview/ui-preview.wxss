@@ -1,0 +1,22 @@
+.ui-preview { min-height: 100vh; background: var(--ui-bg); color: var(--ui-text); }
+.ui-preview__content { padding-top: var(--space-10); padding-bottom: var(--space-16); }
+.ui-preview__eyebrow { color: var(--ui-action); font-size: var(--type-caption-size); line-height: var(--type-caption-line); font-weight: 600; letter-spacing: 0.12em; }
+.ui-preview__title { margin-top: var(--space-3); font-size: var(--type-h1-size); line-height: var(--type-h1-line); }
+.ui-preview__lead { margin-top: var(--space-2); color: var(--ui-text-secondary); font-size: var(--type-body-sm-size); line-height: var(--type-body-sm-line); }
+.ui-preview__card { margin-top: var(--space-10); }
+.ui-preview__section-title { font-size: var(--type-h3-size); line-height: var(--type-h3-line); font-weight: 600; }
+.ui-preview__actions { margin-top: var(--space-6); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 88rpx; gap: var(--space-3); }
+.ui-preview__choices { margin-top: var(--space-6); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.ui-preview__choices + .ui-status { margin-top: var(--space-6); }
+.ui-preview__glaze { width: 72%; height: 4rpx; margin-top: var(--space-12); border-radius: var(--radius-full); background: linear-gradient(90deg, var(--ui-text), var(--color-celadon-300)); transform-origin: left; animation: glaze-flow var(--motion-stage) var(--ease-enter) both; }
+.ui-preview__dark { background: var(--ui-bg); color: var(--ui-text); }
+.ui-preview__dark-content { padding-top: var(--space-8); padding-bottom: calc(var(--space-16) + env(safe-area-inset-bottom)); }
+.ui-preview__tool { margin-top: var(--space-6); padding: var(--space-8); display: flex; align-items: center; justify-content: space-between; gap: var(--space-6); }
+.ui-preview__icon-row { display: flex; gap: var(--space-2); }
+.ui-preview__note { margin-top: var(--space-6); color: var(--ui-text-secondary); font-size: var(--type-caption-size); line-height: var(--type-caption-line); }
+@keyframes glaze-flow { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
+@media (max-width: 340px) {
+  .ui-preview__actions { grid-template-columns: minmax(0, 1fr) 88rpx; }
+  .ui-preview__actions .ui-button--primary { grid-column: 1 / -1; }
+  .ui-preview__tool { align-items: flex-start; flex-direction: column; }
+}

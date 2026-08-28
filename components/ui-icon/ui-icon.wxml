@@ -1,0 +1,12 @@
+<view
+  class="ui-icon"
+  aria-hidden="{{decorative || !label}}"
+  aria-label="{{decorative ? '' : label}}"
+>
+  <image
+    class="ui-icon__image ui-icon__image--{{tone}}"
+    src="/assets/icons/{{resolvedName}}.svg"
+    mode="aspectFit"
+    style="width:{{size}}rpx;height:{{size}}rpx"
+  ></image>
+</view>

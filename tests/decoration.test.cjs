@@ -58,7 +58,7 @@ assert.doesNotMatch(
   /bindlongpress="deleteSelectedDecoration"/,
   "双指观察时不能再由画布长按事件误删纹样",
 );
-assert.match(studioMarkup, /class="decor-previous" bindtap="returnToShaping"/, "装饰页底部必须保留上一步入口");
+assert.match(studioMarkup, /class="decor-previous"[^>]+bindtap="returnToShaping"/, "装饰页底部必须保留上一步入口");
 assert.match(studioMarkup, /catchtap="toggleDecorTools"/, "纹样调校标题必须提供独立收展按钮");
 assert.doesNotMatch(studioMarkup, /<text>{{item.name}}<\/text><small>/, "装饰侧栏不应显示临时菜单文案");
 assert.doesNotMatch(

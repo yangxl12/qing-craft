@@ -145,26 +145,26 @@
           role="button"
           aria-label="{{decorToolsCollapsed?'展开操作按钮':'收起操作按钮'}}"
           catchtap="toggleDecorTools"
-        ><view class="decor-tool-chevron {{decorToolsCollapsed?'down':'up'}}"></view></view>
+        ><ui-icon name="{{decorToolsCollapsed?'expand':'collapse'}}" size="36" tone="light" decorative></ui-icon></view>
       </view>
       <view
         class="decor-tool-actions {{decorToolsCollapsed?'is-collapsed':''}}"
         aria-hidden="{{decorToolsCollapsed}}"
       >
-        <view class="decor-tool-command danger" role="button" aria-label="删除当前{{selectedDecorationLabel}}" bindtap="deleteSelectedDecoration"><view class="decor-delete-icon" aria-hidden="true"><view></view></view></view>
-        <view class="decor-tool-command {{!canUndo?'disabled':''}}" role="button" aria-label="撤回上一步" bindtap="undo"><text aria-hidden="true">↶</text></view>
-        <view wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command" role="button" aria-label="复制当前图案" bindtap="copySelectedDecoration"><view class="decor-copy-icon" aria-hidden="true"><view></view><view></view></view></view>
+        <view class="decor-tool-command danger" role="button" aria-label="删除当前{{selectedDecorationLabel}}" bindtap="deleteSelectedDecoration"><ui-icon name="delete" size="40" decorative></ui-icon></view>
+        <view class="decor-tool-command {{!canUndo?'disabled':''}}" role="button" aria-label="撤回上一步" aria-disabled="{{!canUndo}}" bindtap="undo"><ui-icon name="undo" size="40" decorative></ui-icon></view>
+        <view wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command" role="button" aria-label="复制当前图案" bindtap="copySelectedDecoration"><ui-icon name="copy" size="40" decorative></ui-icon></view>
         <view class="decor-axis-command">
           <view role="button" aria-label="减小当前{{selectedDecorationLabel}}横向尺寸" data-axis="x" data-direction="-1" bindtap="adjustDecorAxis">−</view>
-          <text aria-hidden="true">↔</text>
+          <ui-icon name="scale-horizontal" size="36" decorative></ui-icon>
           <view role="button" aria-label="增大当前{{selectedDecorationLabel}}横向尺寸" data-axis="x" data-direction="1" bindtap="adjustDecorAxis">＋</view>
         </view>
         <view class="decor-axis-command">
           <view role="button" aria-label="减小当前{{selectedDecorationLabel}}纵向尺寸" data-axis="y" data-direction="-1" bindtap="adjustDecorAxis">−</view>
-          <text aria-hidden="true">↕</text>
+          <ui-icon name="scale-vertical" size="36" decorative></ui-icon>
           <view role="button" aria-label="增大当前{{selectedDecorationLabel}}纵向尺寸" data-axis="y" data-direction="1" bindtap="adjustDecorAxis">＋</view>
         </view>
-        <view wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command flip" role="button" aria-label="上下翻转当前图案" bindtap="flipSelectedDecoration"><text aria-hidden="true">⇅</text></view>
+        <view wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command flip" role="button" aria-label="上下翻转当前图案" bindtap="flipSelectedDecoration"><ui-icon name="flip-vertical" size="40" decorative></ui-icon></view>
       </view>
     </view>
 
@@ -256,7 +256,7 @@
       </view>
     </view>
 
-    <view class="hint panel" wx:if="{{showHelp||(showHint&&stageIndex!==0)}}" bindtap="hideHint">
+    <view class="hint panel" wx:if="{{showHelp||showHint}}" bindtap="hideHint">
       <text>{{showHelp?cameraHelp:hint}}</text>
       <small>轻触收起</small>
     </view>
@@ -284,7 +284,7 @@
       role="button"
       aria-label="{{decorTrayOpen?'收起全部装饰菜单':'展开全部装饰菜单'}}"
       bindtap="toggleDecorTray"
-    ><view>{{decorTrayOpen?'⌄':'⌃'}}</view><text>{{decorTrayOpen?'收起':'展开'}}</text></view>
+    ><ui-icon name="{{decorTrayOpen?'collapse':'expand'}}" size="32" tone="light" decorative></ui-icon><text>{{decorTrayOpen?'收起':'展开'}}</text></view>
 
     <view wx:if="{{decorTrayOpen}}" class="decor-panel-grid">
       <view class="decor-library-panel">
@@ -405,7 +405,7 @@
     </view>
 
     <view class="decor-bottom">
-      <button class="decor-previous" bindtap="returnToShaping"><view>←</view><text>上一步</text></button>
+      <button class="decor-previous" disabled="{{confirmingReturn}}" aria-disabled="{{confirmingReturn}}" bindtap="returnToShaping"><ui-icon name="back" size="32" decorative></ui-icon><text>{{confirmingReturn?'等待确认':'上一步'}}</text></button>
       <text>{{decorationCount}} 层 · {{stampCount}} 枚落印{{sealApplied?' · 1 处题款':''}}</text>
       <button class="decor-complete" bindtap="completeStage">完成装饰 <view>→</view></button>
     </view>

@@ -4,6 +4,7 @@ import { PotteryEngine } from "../../core/pottery-engine";
 import { PotteryWork } from "../../core/model";
 import { duplicateWork, loadWork, removeWork, saveWork } from "../../services/storage";
 import { track } from "../../services/analytics";
+import { runConfirmedAction } from "../../utils/destructive-actions";
 
 const ART_SIZE = 1080;
 
@@ -38,6 +39,7 @@ Page({
     navTop:88,
     infoOpen:false,
     exporting:false,
+    removing:false,
     preview:"",
     previewType:""
   },
@@ -172,18 +174,22 @@ Page({
   },
 
   remove() {
-    if (!this.work) return;
+    if (!this.work || this.data.removing) return;
+    this.setData({ removing:true });
     wx.showModal({
       title:"移到回收站？",
       content:"当前版本会从本机作品集中移除这件作品。",
       confirmText:"删除",
       confirmColor:"#b64f38",
       success:(result: any) => {
-        if (result.confirm) {
+        const committed = runConfirmedAction(result, () => {
+          this.setData({ removing:false });
           removeWork(this.work!.workId);
           wx.reLaunch({ url:"/pages/gallery/gallery" });
-        }
-      }
+        });
+        if (!committed) this.setData({ removing:false });
+      },
+      fail:() => this.setData({ removing:false })
     });
   },
 

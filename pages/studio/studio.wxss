@@ -2966,7 +2966,7 @@
   z-index: 16;
   top: 98rpx;
   right: 18rpx;
-  width: 166rpx;
+  width: 244rpx;
   padding: 0;
   box-sizing: border-box;
   border: 0;
@@ -2976,18 +2976,18 @@
   animation: decor-tool-arrive 0.3s ease-out both;
 }
 .decor-tool-panel.collapsed {
-  width: 160rpx;
+  width: 244rpx;
 }
 .decor-tool-head {
-  min-height: 56rpx;
-  padding: 2rpx 3rpx 2rpx 9rpx;
+  min-height: 80rpx;
+  padding: 0 4rpx 0 12rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6rpx;
   border: 1rpx solid rgba(227, 236, 228, 0.55);
   border-radius: 20rpx;
-  background: rgba(226, 235, 226, 0.72);
+  background: rgba(245, 248, 243, 0.94);
   box-shadow:
     0 8rpx 22rpx rgba(3, 16, 14, 0.15),
     inset 0 1rpx rgba(255, 255, 255, 0.58);
@@ -3021,10 +3021,10 @@
   white-space: nowrap;
 }
 .decor-tool-title text {
-  font-family: "Songti SC", "STSong", serif;
-  font-size: 16rpx;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 24rpx;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 .decor-tool-title small {
   margin-top: 1rpx;
@@ -3032,8 +3032,8 @@
   font-size: 11rpx;
 }
 .decor-tool-fold {
-  width: 44rpx;
-  height: 44rpx;
+  width: 80rpx;
+  height: 80rpx;
   flex: none;
   border-radius: 50%;
   color: #f4f5eb;
@@ -3042,25 +3042,11 @@
   align-items: center;
   justify-content: center;
 }
-.decor-tool-chevron {
-  width: 13rpx;
-  height: 13rpx;
-  box-sizing: border-box;
-  border-right: 3rpx solid currentColor;
-  border-bottom: 3rpx solid currentColor;
-  transition: transform 0.2s ease;
-}
-.decor-tool-chevron.up {
-  transform: translateY(3rpx) rotate(225deg);
-}
-.decor-tool-chevron.down {
-  transform: translateY(-3rpx) rotate(45deg);
-}
 .decor-tool-actions {
   max-height: 420rpx;
   padding-top: 8rpx;
   display: grid;
-  gap: 7rpx;
+  gap: 8rpx;
   overflow: hidden;
   opacity: 1;
   transition:
@@ -3076,10 +3062,10 @@
 }
 .decor-tool-command,
 .decor-axis-command {
-  min-height: 54rpx;
+  min-height: 80rpx;
   border: 1rpx solid rgba(224, 236, 226, 0.48);
   border-radius: 18rpx;
-  background: rgba(228, 237, 228, 0.64);
+  background: rgba(245, 248, 243, 0.92);
   box-shadow:
     0 7rpx 18rpx rgba(3, 16, 14, 0.13),
     inset 0 1rpx rgba(255, 255, 255, 0.5);
@@ -3090,25 +3076,14 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-}
-.decor-tool-command > text {
   color: #38675d;
-  font-family: "Songti SC", serif;
-  font-size: 31rpx;
-  line-height: 1;
-  text-align: center;
 }
-.decor-tool-command > small {
-  font-size: 15rpx;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-.decor-tool-command.danger > text,
-.decor-tool-command.danger > small {
+.decor-tool-command.danger {
   color: #9b4f42;
 }
 .decor-tool-command.disabled {
   opacity: 0.38;
+  pointer-events: none;
 }
 .decor-tool-command:active,
 .decor-axis-command > view:active,
@@ -3116,89 +3091,23 @@
   opacity: 0.7;
   transform: scale(0.95);
 }
-.decor-delete-icon {
-  position: relative;
-  width: 29rpx;
-  height: 32rpx;
-  color: #9b4f42;
-}
-.decor-delete-icon::before {
-  content: "";
-  position: absolute;
-  left: 6rpx;
-  right: 4rpx;
-  top: 9rpx;
-  bottom: 1rpx;
-  border: 3rpx solid currentColor;
-  border-top: 0;
-  border-radius: 2rpx 2rpx 5rpx 5rpx;
-}
-.decor-delete-icon::after {
-  content: "";
-  position: absolute;
-  left: 3rpx;
-  right: 1rpx;
-  top: 5rpx;
-  height: 3rpx;
-  border-radius: 3rpx;
-  background: currentColor;
-}
-.decor-delete-icon > view {
-  position: absolute;
-  left: 11rpx;
-  top: 0;
-  width: 10rpx;
-  height: 5rpx;
-  border: 3rpx solid currentColor;
-  border-bottom: 0;
-  border-radius: 4rpx 4rpx 0 0;
-}
-.decor-copy-icon {
-  position: relative;
-  width: 32rpx;
-  height: 32rpx;
-  color: #38675d;
-}
-.decor-copy-icon > view {
-  position: absolute;
-  width: 20rpx;
-  height: 20rpx;
-  box-sizing: border-box;
-  border: 3rpx solid currentColor;
-  border-radius: 4rpx;
-}
-.decor-copy-icon > view:first-child {
-  left: 2rpx;
-  top: 2rpx;
-  opacity: 0.58;
-}
-.decor-copy-icon > view:last-child {
-  right: 2rpx;
-  bottom: 2rpx;
-  background: rgba(232, 240, 232, 0.8);
-}
 .decor-axis-command {
-  height: 58rpx;
-  padding: 0 6rpx;
+  height: 88rpx;
+  padding: 0 4rpx;
   display: grid;
-  grid-template-columns: 43rpx 1fr 43rpx;
+  grid-template-columns: 80rpx minmax(0, 1fr) 80rpx;
   align-items: center;
-  gap: 4rpx;
+  gap: 2rpx;
+  color: #40665d;
 }
 .decor-axis-command > view {
-  width: 42rpx;
-  height: 42rpx;
+  width: 80rpx;
+  height: 80rpx;
   border-radius: 50%;
   color: #f3f5ec;
   background: #4e766c;
   font-size: 30rpx;
-  line-height: 40rpx;
-  text-align: center;
-}
-.decor-axis-command > text {
-  color: #40665d;
-  font-size: 29rpx;
-  line-height: 1;
+  line-height: 78rpx;
   text-align: center;
 }
 @keyframes decor-tool-arrive {
@@ -3219,9 +3128,9 @@
   height: auto;
   width: calc(100% - 24rpx);
   min-height: 0;
-  max-height: 44vh;
+  max-height: 49vh;
   margin: 0 12rpx;
-  padding: 12rpx 12rpx calc(92rpx + env(safe-area-inset-bottom));
+  padding: 12rpx 12rpx calc(108rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   overflow: visible;
   color: #263b37;
@@ -3234,9 +3143,9 @@
   animation: decor-drawer-rise 0.34s cubic-bezier(0.2, 0.75, 0.2, 1) both;
 }
 .decor-stage .decor-tray.collapsed {
-  flex: 0 0 calc(100rpx + env(safe-area-inset-bottom));
-  height: calc(100rpx + env(safe-area-inset-bottom));
-  min-height: calc(100rpx + env(safe-area-inset-bottom));
+  flex: 0 0 calc(112rpx + env(safe-area-inset-bottom));
+  height: calc(112rpx + env(safe-area-inset-bottom));
+  min-height: calc(112rpx + env(safe-area-inset-bottom));
   padding: 0;
   background: transparent;
   border: 0;
@@ -3245,11 +3154,11 @@
 }
 .decor-tray-toggle {
   position: absolute;
-  z-index: 0;
+  z-index: 3;
   left: 12rpx;
-  top: -40rpx;
-  width: 88rpx;
-  height: 50rpx;
+  top: -68rpx;
+  width: 120rpx;
+  height: 80rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3263,10 +3172,10 @@
   backdrop-filter: blur(12rpx);
 }
 .decor-tray.collapsed .decor-tray-toggle {
-  top: -31rpx;
+  top: -60rpx;
   left: 4rpx;
-  width: 74rpx;
-  opacity: 0.5;
+  width: 112rpx;
+  opacity: 0.88;
   background: rgba(27, 50, 47, 0.52);
   box-shadow: none;
 }
@@ -3275,8 +3184,8 @@
   line-height: 1;
 }
 .decor-tray-toggle text {
-  font-size: 13rpx;
-  letter-spacing: 0.08em;
+  font-size: 22rpx;
+  letter-spacing: 0;
 }
 
 .decor-panel-grid {
@@ -3297,11 +3206,7 @@
   overflow: hidden;
   border: 1rpx solid rgba(58, 88, 80, 0.34);
   border-radius: 21rpx;
-  background: linear-gradient(
-    165deg,
-    rgba(250, 251, 243, 0.44),
-    rgba(234, 241, 236, 0.3)
-  );
+  background: linear-gradient(165deg, rgba(250, 251, 243, 0.96), rgba(234, 241, 236, 0.92));
   box-shadow:
     inset 0 1rpx rgba(255, 255, 255, 0.42),
     0 10rpx 26rpx rgba(6, 18, 15, 0.14);
@@ -3313,7 +3218,7 @@
   box-sizing: border-box;
 }
 .decor-catalog-tabs {
-  height: 70rpx;
+  height: 88rpx;
   flex: none;
   padding: 5rpx;
   display: grid;
@@ -3324,6 +3229,7 @@
 .decor-catalog-tabs > view {
   position: relative;
   min-width: 0;
+  min-height: 80rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3346,18 +3252,18 @@
   transform: scale(0.95);
 }
 .decor-catalog-tabs > view small {
-  width: 25rpx;
-  height: 25rpx;
+  width: 32rpx;
+  height: 32rpx;
   border: 1rpx solid currentColor;
   font-family: "Songti SC", serif;
-  font-size: 12rpx;
-  line-height: 25rpx;
+  font-size: 20rpx;
+  line-height: 32rpx;
   text-align: center;
 }
 .decor-catalog-tabs > view text {
-  font-family: "Songti SC", serif;
-  font-size: 15rpx;
-  font-weight: 700;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 22rpx;
+  font-weight: 600;
   white-space: nowrap;
 }
 .decor-catalog-tabs > view.active {
@@ -3671,7 +3577,7 @@
 }
 .motif-art {
   position: absolute;
-  inset: 5rpx 5rpx 22rpx;
+  inset: 5rpx 5rpx 34rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3749,11 +3655,11 @@
   position: absolute;
   left: 3rpx;
   right: 3rpx;
-  bottom: 5rpx;
+  bottom: 6rpx;
   overflow: hidden;
   color: #4d5d56;
-  font-size: 13rpx;
-  line-height: 18rpx;
+  font-size: 22rpx;
+  line-height: 28rpx;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3784,7 +3690,7 @@
 }
 /* 标题栏加大字号、加深字色，计数改为胶囊徽标，双位数也不拥挤。 */
 .decor-selected-head {
-  height: 66rpx;
+  height: 80rpx;
   flex: none;
   padding: 0 6rpx 9rpx;
   display: flex;
@@ -3799,32 +3705,32 @@
 .decor-selected-head > view small {
   color: #97744c;
   font-family: "Songti SC", serif;
-  font-size: 12rpx;
-  letter-spacing: 0.22em;
+  font-size: 22rpx;
+  letter-spacing: 0.08em;
 }
 .decor-selected-head > view text {
   margin-top: 2rpx;
   color: #2c4a41;
   font-family: "Songti SC", serif;
-  font-size: 19rpx;
-  font-weight: 700;
+  font-size: 26rpx;
+  font-weight: 600;
 }
 .decor-selected-head > text {
-  min-width: 42rpx;
-  height: 42rpx;
+  min-width: 48rpx;
+  height: 48rpx;
   padding: 0 12rpx;
   box-sizing: border-box;
   border-radius: 999rpx;
   color: #f8f6e7;
   background: linear-gradient(145deg, #4d7a6d, #38584d);
   box-shadow: 0 5rpx 12rpx rgba(23, 58, 50, 0.22);
-  font-size: 17rpx;
+  font-size: 22rpx;
   font-weight: 700;
-  line-height: 42rpx;
+  line-height: 48rpx;
   text-align: center;
 }
 .decor-selected-scroll {
-  height: calc(100% - 66rpx);
+  height: calc(100% - 80rpx);
   flex: 1;
   min-height: 0;
 }
@@ -3836,21 +3742,21 @@
 }
 .decor-selected-card {
   aspect-ratio: 1;
-  min-height: 98rpx;
+  min-height: 110rpx;
   border-radius: 15rpx;
 }
 .decor-selected-card .motif-art {
-  inset: 5rpx 5rpx 23rpx;
+  inset: 5rpx 5rpx 34rpx;
 }
 .decor-selected-card > text {
   position: absolute;
   left: 4rpx;
   right: 4rpx;
-  bottom: 5rpx;
+  bottom: 6rpx;
   overflow: hidden;
   color: #4d5d56;
-  font-size: 13rpx;
-  line-height: 18rpx;
+  font-size: 22rpx;
+  line-height: 28rpx;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3867,8 +3773,8 @@
   z-index: 6;
   top: 5rpx;
   right: 5rpx;
-  min-width: 29rpx;
-  height: 29rpx;
+  min-width: 36rpx;
+  height: 36rpx;
   padding: 0 7rpx;
   box-sizing: border-box;
   border: 2rpx solid rgba(255, 255, 255, 0.82);
@@ -3876,9 +3782,9 @@
   color: #fff;
   background: #9a654d;
   box-shadow: 0 3rpx 9rpx rgba(73, 42, 28, 0.2);
-  font-size: 15rpx;
+  font-size: 22rpx;
   font-weight: 700;
-  line-height: 27rpx;
+  line-height: 34rpx;
   text-align: center;
 }
 .decor-selected-empty {
@@ -3892,11 +3798,11 @@
 }
 .decor-selected-empty text {
   font-family: "Songti SC", serif;
-  font-size: 18rpx;
+  font-size: 24rpx;
 }
 .decor-selected-empty small {
   margin-top: 6rpx;
-  font-size: 12rpx;
+  font-size: 22rpx;
 }
 
 .decor-stage .decor-bottom {
@@ -3905,7 +3811,7 @@
   left: 12rpx;
   right: 12rpx;
   bottom: env(safe-area-inset-bottom);
-  height: 84rpx;
+  height: 100rpx;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -3914,12 +3820,12 @@
 .decor-stage .decor-bottom > text {
   flex: 1;
   color: #71817b;
-  font-size: 14rpx;
+  font-size: 24rpx;
   text-align: center;
 }
 .decor-stage .decor-bottom .decor-previous {
-  width: 154rpx;
-  height: 62rpx;
+  width: 184rpx;
+  height: 80rpx;
   margin: 0;
   padding: 0 17rpx;
   display: flex;
@@ -3930,9 +3836,9 @@
   border-radius: 999rpx;
   color: #45635c;
   background: rgba(247, 247, 238, 0.62);
-  font-family: "Songti SC", serif;
-  font-size: 17rpx;
-  line-height: 62rpx;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 28rpx;
+  line-height: 80rpx;
   transition:
     transform 0.15s ease,
     background 0.15s ease;
@@ -3949,8 +3855,8 @@
   line-height: 1;
 }
 .decor-stage .decor-bottom .decor-complete {
-  width: 218rpx;
-  height: 66rpx;
+  width: 244rpx;
+  height: 80rpx;
   padding: 0 10rpx 0 22rpx;
   display: flex;
   align-items: center;
@@ -3961,10 +3867,10 @@
   box-shadow:
     0 9rpx 24rpx rgba(14, 48, 41, 0.22),
     inset 0 1rpx 0 rgba(255, 255, 255, 0.12);
-  font-family: "Songti SC", serif;
-  font-size: 19rpx;
-  line-height: 66rpx;
-  letter-spacing: 0.1em;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 28rpx;
+  line-height: 80rpx;
+  letter-spacing: 0;
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease;
@@ -4038,18 +3944,18 @@
 
 @media (max-height: 700px) {
   .decor-stage .decor-tray {
-    max-height: 46vh;
-    padding-bottom: calc(78rpx + env(safe-area-inset-bottom));
+    max-height: 49vh;
+    padding-bottom: calc(104rpx + env(safe-area-inset-bottom));
   }
   .decor-stage .decor-bottom {
-    height: 72rpx;
+    height: 96rpx;
   }
   .decor-stage .decor-bottom .decor-complete {
-    height: 58rpx;
-    line-height: 58rpx;
+    height: 80rpx;
+    line-height: 80rpx;
   }
   .decor-catalog-tabs {
-    height: 60rpx;
+    height: 88rpx;
   }
   .seal-panel {
     gap: 4rpx;

@@ -1,0 +1,30 @@
+.u-page-gutter { padding-left: var(--page-gutter); padding-right: var(--page-gutter); box-sizing: border-box; }
+.u-safe-top { padding-top: env(safe-area-inset-top); }
+.u-safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.u-touch-target { min-width: 88rpx; min-height: 88rpx; }
+.u-touch-target--dense { min-width: 80rpx; min-height: 80rpx; }
+.u-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.u-line-clamp-2 { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.u-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+.reduce-motion .ui-motion,
+.reduce-motion .ui-button,
+.reduce-motion .ui-tab,
+.reduce-motion .ui-choice {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (max-width: 340px) {
+  page { --page-gutter: 24rpx; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-motion,
+  .ui-button,
+  .ui-tab,
+  .ui-choice {
+    animation: none !important;
+    transition: none !important;
+  }
+}

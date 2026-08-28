@@ -2,6 +2,7 @@ import { CLAYS, SHAPES } from "../../core/catalog";
 import { createWork, PotteryWork } from "../../core/model";
 import { track } from "../../services/analytics";
 import { listWorks, removeWork, saveWork } from "../../services/storage";
+import { runConfirmedAction } from "../../utils/destructive-actions";
 
 interface GalleryItem extends PotteryWork {
   selected: boolean;
@@ -147,23 +148,22 @@ Page({
       confirmText: "继续",
       confirmColor: "#b04a3a",
       success: (result: any) => {
-        if (!result.confirm) return;
-        wx.showModal({
+        runConfirmedAction(result, () => wx.showModal({
           title: "再确认一次",
           content: "删除后无法恢复，仍要移除这些作品吗？",
           confirmText: "确认删除",
           confirmColor: "#b04a3a",
           success: (second: any) => {
-            if (!second.confirm) return;
-            this.performDelete();
+            runConfirmedAction(second, () => this.performDelete());
           }
-        });
+        }));
       }
     });
   },
 
   performDelete() {
     const targets = this.data.filtered.filter((item) => item.selected);
+    if (!targets.length) return;
     targets.forEach((item) => removeWork(item.workId));
     track("works_delete", { count: targets.length });
     this.selection.clear();

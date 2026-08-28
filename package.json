@@ -5,7 +5,8 @@
   "description": "泥火青花微信陶艺小程序 v1",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node tests/profile.test.cjs && node tests/shaping-input.test.cjs && node tests/pottery-engine.test.cjs && node tests/glaze.test.cjs && node tests/decoration.test.cjs"
+    "test": "node tests/profile.test.cjs && node tests/shaping-input.test.cjs && node tests/pottery-engine.test.cjs && node tests/glaze.test.cjs && node tests/decoration.test.cjs && node tests/ui-foundation.test.cjs",
+    "check:ui": "node scripts/check-ui-tokens.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.2"

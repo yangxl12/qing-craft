@@ -1,6 +1,7 @@
 {
   "pages": [
-    "pages/index/index"
+    "pages/index/index",
+    "pages/ui-preview/ui-preview"
   ],
   "subPackages": [
     {
@@ -28,6 +29,10 @@
     "navigationStyle": "custom",
     "backgroundColor": "#E9EEE9",
     "backgroundTextStyle": "dark"
+  },
+  "usingComponents": {
+    "ui-icon": "/components/ui-icon/ui-icon",
+    "app-nav": "/components/app-nav/app-nav"
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json"

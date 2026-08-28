@@ -1,0 +1,8 @@
+:host { display: inline-flex; flex: none; color: inherit; }
+.ui-icon { display: inline-flex; align-items: center; justify-content: center; color: inherit; }
+.ui-icon__image {
+  display: block;
+  opacity: 0.86;
+}
+.ui-icon__image--light { filter: brightness(0) invert(1); opacity: 0.94; }
+.ui-icon__image--muted { opacity: 0.56; }

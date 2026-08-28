@@ -60,8 +60,8 @@
 }
 .nav-btn {
   flex: none;
-  width: 64rpx;
-  height: 64rpx;
+  width: 80rpx;
+  height: 80rpx;
   border-radius: 50%;
   background: rgba(10, 20, 19, 0.52);
   border: 1rpx solid rgba(213, 228, 219, 0.24);
@@ -74,24 +74,6 @@
   transition: transform 120ms ease;
 }
 .nav-btn:active { transform: scale(0.92); }
-.nav-btn text {
-  font-size: 42rpx;
-  line-height: 1;
-  color: #f2f1e9;
-  margin-top: -6rpx;
-  font-weight: 300;
-}
-.nav-dots {
-  display: flex;
-  align-items: center;
-  gap: 7rpx;
-}
-.nav-dots view {
-  width: 7rpx;
-  height: 7rpx;
-  border-radius: 50%;
-  background: rgba(242, 241, 233, 0.9);
-}
 .nav-center {
   flex: 1;
   min-width: 0;
@@ -322,10 +304,12 @@
   right: 28rpx;
   bottom: calc(30rpx + env(safe-area-inset-bottom));
   display: grid;
-  grid-template-columns: 1.35fr 1fr 96rpx;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) 88rpx;
   gap: 14rpx;
 }
 .actions button {
+  width: 100%;
+  min-width: 0;
   height: 92rpx;
   line-height: 92rpx;
   border-radius: 999rpx;
@@ -354,12 +338,21 @@
 }
 .action-share {
   padding: 0;
-  font-size: 32rpx;
   letter-spacing: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .actions button:active {
   transform: translateY(2rpx) scale(0.985);
   box-shadow: 0 6rpx 16rpx rgba(4, 10, 9, 0.42);
+}
+
+@media (max-width: 340px) {
+  .actions {
+    grid-template-columns: minmax(0, 1fr) 88rpx;
+  }
+  .action-primary { grid-column: 1 / -1; }
 }
 
 /* 作品信息弹窗：遮罩点外部关闭，宣纸质面板 + 朱印 + 菱形饰线。 */

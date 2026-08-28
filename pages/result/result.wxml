@@ -5,14 +5,14 @@
  </view>
  <view class="safe-top" style="height:{{navTop}}px"></view>
  <view class="top">
-  <view class="nav-btn" role="button" aria-label="返回首页" bindtap="backHome"><text>‹</text></view>
+  <view class="nav-btn" role="button" aria-label="返回首页" bindtap="backHome"><ui-icon name="back" size="40" tone="light" decorative></ui-icon></view>
   <view class="nav-center">
    <view class="nav-rule" aria-hidden="true"></view>
    <view class="top-title display">成品展台</view>
    <view class="nav-rule" aria-hidden="true"></view>
   </view>
   <view class="nav-btn" role="button" aria-label="查看作品信息" bindtap="toggleInfo">
-   <view class="nav-dots" aria-hidden="true"><view></view><view></view><view></view></view>
+   <ui-icon name="more" size="40" tone="light" decorative></ui-icon>
   </view>
  </view>
  <view class="reveal">
@@ -46,9 +46,9 @@
  <view class="scene-spacer"></view>
  <canvas id="posterCanvas" type="2d" class="poster-canvas"></canvas>
  <view class="actions">
-  <button class="action-primary" bindtap="exportWork" loading="{{exporting}}">生成作品图</button>
-  <button class="action-secondary" bindtap="exportPoster">纪念海报</button>
-  <button class="action-share" open-type="share" aria-label="分享这件作品">↗</button>
+  <button class="action-primary" bindtap="exportWork" loading="{{exporting}}" disabled="{{exporting}}" aria-disabled="{{exporting}}">{{exporting?'正在生成':'生成作品图'}}</button>
+  <button class="action-secondary" bindtap="exportPoster" disabled="{{exporting}}" aria-disabled="{{exporting}}">纪念海报</button>
+  <button class="action-share" open-type="share" aria-label="分享这件作品"><ui-icon name="share" size="40" tone="light" decorative></ui-icon></button>
  </view>
  <block wx:if="{{infoOpen}}">
   <view class="info-mask" bindtap="toggleInfo" aria-label="关闭作品信息"></view>
@@ -69,7 +69,7 @@
    <button class="sheet-cta" bindtap="copy">沿用纹样再做一件</button>
    <view class="sheet-mini-row">
     <button class="sheet-mini" bindtap="rename">修改名称</button>
-    <button class="sheet-mini danger" bindtap="remove">删除作品</button>
+    <button class="sheet-mini danger" bindtap="remove" disabled="{{removing}}" aria-disabled="{{removing}}">{{removing?'等待确认':'删除作品'}}</button>
    </view>
   </view>
  </block>

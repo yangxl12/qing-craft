@@ -1,0 +1,30 @@
+<view class="app-nav-host">
+  <view
+    class="app-nav app-nav--{{theme}} {{fixed?'is-fixed':''}}"
+    style="padding-top:{{embedded?0:navigationTop}}px"
+  >
+    <view
+      class="app-nav__row"
+      style="height:{{navigationBarHeight}}px;padding-right:{{avoidCapsule&&!embedded?capsulePadding:16}}px"
+    >
+      <button
+        wx:if="{{back}}"
+        class="app-nav__action"
+        aria-label="{{backLabel}}"
+        bindtap="onBack"
+      ><ui-icon name="back" size="40" tone="{{theme==='dark'?'light':'dark'}}" decorative></ui-icon></button>
+      <view wx:else class="app-nav__action-placeholder"></view>
+      <view class="app-nav__title display">{{title}}</view>
+      <button
+        wx:if="{{rightIcon || rightLabel}}"
+        class="app-nav__action"
+        aria-label="{{rightLabel}}"
+        bindtap="onRight"
+      >
+        <ui-icon wx:if="{{rightIcon}}" name="{{rightIcon}}" size="40" tone="{{theme==='dark'?'light':'dark'}}" decorative></ui-icon>
+        <text wx:if="{{!rightIcon}}">{{rightLabel}}</text>
+      </button>
+    </view>
+  </view>
+  <view wx:if="{{fixed}}" style="height:{{embedded?navigationBarHeight:contentTop}}px"></view>
+</view>

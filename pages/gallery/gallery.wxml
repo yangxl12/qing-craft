@@ -66,6 +66,6 @@
 
   <view wx:if="{{selectMode}}" class="action-bar">
     <view class="action-info">已选 <text class="count">{{selectedCount}}</text> / {{filtered.length}} 件</view>
-    <button class="btn-delete {{selectedCount ? '' : 'off'}}" bindtap="deleteSelected">删除所选</button>
+    <button class="btn-delete {{selectedCount ? '' : 'off'}}" disabled="{{!selectedCount}}" aria-disabled="{{!selectedCount}}" bindtap="deleteSelected">删除所选</button>
   </view>
 </view>

@@ -80,6 +80,13 @@ import {
   saveWork
 } from "../../services/storage";
 import { track } from "../../services/analytics";
+import { runConfirmedAction } from "../../utils/destructive-actions";
+import {
+  GuidanceHintKind,
+  GuidanceLevel,
+  loadSettings,
+  shouldShowGuidance
+} from "../../utils/settings";
 
 interface CanvasRect {
   left: number;
@@ -409,6 +416,8 @@ Page({
     kilnHeatClass: "original",
     showHelp: false,
     reduceMotion: false,
+    guidance: "relaxed" as GuidanceLevel,
+    confirmingReturn: false,
     baseScreenY: 0.74,
     baseScreenPercent: 74,
     wheelRpm: 38,
@@ -432,6 +441,7 @@ Page({
   future: [] as PotteryWork[],
   gesture: null as StudioGesture | null,
   saveTimer: null as any,
+  guidanceTimer: null as any,
   kilnTimer: null as any,
   kilnStartedAt: 0,
   firstDeformTracked: false,
@@ -503,12 +513,15 @@ Page({
     this.persist();
     this.previewFiredEnd();
     this.engine?.setAutoRotate(false);
+    this.clearGuidanceTimer();
   },
 
   onShow() {
-    const reduceMotion = !!(wx.getStorageSync("palm-kiln-settings") || {}).reduceMotion;
-    this.setData({ reduceMotion });
+    const settings = loadSettings();
+    const reduceMotion = settings.reduceMotion;
+    this.setData({ reduceMotion, guidance:settings.guidance });
     this.setWheelState("idle", reduceMotion);
+    this.scheduleIdleGuidance();
   },
 
   onUnload() {
@@ -517,6 +530,7 @@ Page({
     this.persist();
     this.engine?.destroy();
     if (this.saveTimer) clearTimeout(this.saveTimer);
+    this.clearGuidanceTimer();
     if (this.kilnTimer) clearInterval(this.kilnTimer);
   },
 
@@ -554,7 +568,7 @@ Page({
         try {
           this.engine = new PotteryEngine(info.node, this.work!);
           const dpr = Math.min(system.pixelRatio || 2, 2);
-          const reduceMotion = !!(wx.getStorageSync("palm-kiln-settings") || {}).reduceMotion;
+          const reduceMotion = loadSettings().reduceMotion;
           this.engine.resize(info.width, info.height, dpr);
           this.engine.setBaseScreenY(baseScreenY);
           this.engine.setPotteryCentered(!!this.data.kiln);
@@ -568,6 +582,7 @@ Page({
           });
           this.setWheelState("idle", reduceMotion);
           this.maybeTutorial();
+          this.scheduleIdleGuidance();
         } catch (error) {
           console.error(error);
           this.setData({
@@ -576,7 +591,7 @@ Page({
             baseScreenY,
             baseScreenPercent: Math.round(baseScreenY * 1000) / 10,
             hint: "已进入轻量模式，作品仍可完成",
-            showHint: true
+            showHint: shouldShowGuidance(this.data.guidance, "error")
           });
         }
     });
@@ -584,7 +599,40 @@ Page({
 
   maybeTutorial() {
     const seen = wx.getStorageSync("palm-kiln-tutorial-seen");
-    if (!seen && this.work?.mode === "relaxed") this.setData({ showHint: true });
+    if (!seen && this.work?.mode === "relaxed") {
+      this.setGuidanceHint("按住器身向外推；需要观察时用双指环看和缩放", "teaching");
+    }
+  },
+
+  setGuidanceHint(message: string, kind: GuidanceHintKind = "teaching") {
+    this.clearGuidanceTimer();
+    const showHint = shouldShowGuidance(this.data.guidance, kind);
+    this.setData({ hint:showHint ? message : "", showHint });
+  },
+
+  clearGuidanceTimer() {
+    if (!this.guidanceTimer) return;
+    clearTimeout(this.guidanceTimer);
+    this.guidanceTimer = null;
+  },
+
+  scheduleIdleGuidance() {
+    this.clearGuidanceTimer();
+    if (!this.work || this.data.guidance !== "relaxed" || this.data.kiln) return;
+    this.guidanceTimer = setTimeout(() => {
+      this.guidanceTimer = null;
+      if (!this.work || this.data.showHelp || this.data.showHint || this.data.kiln) return;
+      const messages = [
+        "可以先轻推器腹找轮廓，再用泥壁厚度微调手感",
+        "可从左侧挑一枚纹样；右侧只管理已经放上器物的图层",
+        "先选一种釉色，器物会立即预览完整施釉效果",
+        "烧制会自动完成，也可使用右下角的跳过",
+        "可先选图案或颜料，再在器身上调整位置",
+        "低温烤花会让釉上彩稳定显色",
+        "七道工序已经完成，可以查看成品"
+      ];
+      this.setGuidanceHint(messages[this.work.stageIndex] || messages[0], "teaching");
+    }, 14_000);
   },
 
   syncData() {
@@ -934,6 +982,7 @@ Page({
   hideHint() {
     this.setData({ showHint: false, showHelp: false });
     wx.setStorageSync("palm-kiln-tutorial-seen", true);
+    this.scheduleIdleGuidance();
   },
 
   chooseShapingForm(event: WechatMiniprogramTouchEvent) {
@@ -1237,7 +1286,8 @@ Page({
   },
 
   returnToShaping() {
-    if (!this.work || this.work.currentStage !== "decorate") return;
+    if (!this.work || this.work.currentStage !== "decorate" || this.data.confirmingReturn) return;
+    this.setData({ confirmingReturn:true });
     wx.showModal({
       title:"返回上一步？",
       content:"返回制坯后，当前所有装饰效果都会丢失。是否确认返回？",
@@ -1245,28 +1295,36 @@ Page({
       cancelText:"继续装饰",
       confirmColor:"#9b4f42",
       success:(result: any) => {
-        if (!result.confirm || !this.work || this.work.currentStage !== "decorate") return;
-        this.commitGestureChange();
-        this.gesture = null;
-        this.pushHistory();
-        this.work.decorationComposition = createDecorationComposition(this.work.workId);
-        this.work.stageIndex = 0;
-        this.work.currentStage = STAGES[0].id;
-        this.engine?.setPotteryCentered(false);
-        this.setData({
-          selectedDecorationId:"",
-          pendingStampMotifId:"",
-          decorTrayOpen:true,
-          decorFullscreen:false,
-          decorToolsCollapsed:false,
-          decorToolStyle:""
+        const committed = runConfirmedAction(result, () => {
+          if (!this.work || this.work.currentStage !== "decorate") {
+            this.setData({ confirmingReturn:false });
+            return;
+          }
+          this.commitGestureChange();
+          this.gesture = null;
+          this.pushHistory();
+          this.work.decorationComposition = createDecorationComposition(this.work.workId);
+          this.work.stageIndex = 0;
+          this.work.currentStage = STAGES[0].id;
+          this.engine?.setPotteryCentered(false);
+          this.setData({
+            selectedDecorationId:"",
+            pendingStampMotifId:"",
+            decorTrayOpen:true,
+            decorFullscreen:false,
+            decorToolsCollapsed:false,
+            decorToolStyle:"",
+            confirmingReturn:false
+          });
+          this.changed();
+          this.syncData();
+          this.persist();
+          this.setWheelState("idle");
+          this.vibrate("medium");
         });
-        this.changed();
-        this.syncData();
-        this.persist();
-        this.setWheelState("idle");
-        this.vibrate("medium");
-      }
+        if (!committed) this.setData({ confirmingReturn:false });
+      },
+      fail:() => this.setData({ confirmingReturn:false })
     });
   },
 
@@ -1320,10 +1378,7 @@ Page({
     this.changed();
     this.syncData();
     if (incompatible) {
-      this.setData({
-        hint:"有一枚纹样不属于这个风格，已保留原工艺",
-        showHint:true
-      });
+      this.setGuidanceHint("有一枚纹样不属于这个风格，已保留原工艺", "risk");
     }
     this.vibrate();
   },
@@ -1379,11 +1434,8 @@ Page({
         wx.showToast({ title:"落印已经有八枚了", icon:"none" });
         return;
       }
-      this.setData({
-        pendingStampMotifId:motifId,
-        hint:`已拿起${motif.name}，点在器身上落印`,
-        showHint:true
-      });
+      this.setData({ pendingStampMotifId:motifId });
+      this.setGuidanceHint(`已拿起${motif.name}，点在器身上落印`, "teaching");
       return;
     }
 
@@ -1639,12 +1691,8 @@ Page({
     const entry = (this.data.tools as { id: string; name: string; hint: string }[]).find(
       (value) => value.id === id
     );
-    this.setData({
-      tool: id,
-      toolName: entry?.name || "",
-      hint: entry?.hint || "",
-      showHint: true
-    });
+    this.setData({ tool:id, toolName:entry?.name || "" });
+    this.setGuidanceHint(entry?.hint || "", "teaching");
     this.vibrate();
 
   },
@@ -2191,10 +2239,7 @@ Page({
       this.firstDeformTracked = true;
     }
     if (gesture.type === "edit") {
-      this.setData({
-        hint:MOTION_LABELS[gesture.motion],
-        showHint:true
-      });
+      this.setGuidanceHint(MOTION_LABELS[gesture.motion], "teaching");
       wx.setStorageSync("palm-kiln-tutorial-seen", true);
     } else if (gesture.type === "seal") {
       track("seal_mark_move", {});
@@ -2357,6 +2402,7 @@ Page({
     });
     if (this.saveTimer) clearTimeout(this.saveTimer);
     this.saveTimer = setTimeout(() => this.persist(), 500);
+    this.scheduleIdleGuidance();
   },
 
   persist() {
@@ -2365,11 +2411,8 @@ Page({
       saveWork(this.work);
       this.setData({ saveState:"已保存", work:this.work });
     } catch (_error) {
-      this.setData({
-        saveState:"保存失败",
-        hint:"这次修改还没落盘，请再试一次",
-        showHint:true
-      });
+      this.setData({ saveState:"保存失败" });
+      this.setGuidanceHint("这次修改还没落盘，请再试一次", "error");
     }
   },
 
@@ -2439,11 +2482,9 @@ Page({
     if (this.work.currentStage === "decorate") this.trackDecorEnter();
     if (this.work.currentStage === "paint") this.enterPaintStage();
     this.setWheelState("idle");
-    const showStageHint = this.work.currentStage !== "decorate";
-    this.setData({
-      hint: showStageHint ? `现在开始${STAGES[this.work.stageIndex].name}` : "",
-      showHint: showStageHint
-    });
+    if (this.work.currentStage !== "decorate") {
+      this.setGuidanceHint(`现在开始${STAGES[this.work.stageIndex].name}`, "teaching");
+    }
     this.vibrate("medium");
   },
 
@@ -2554,7 +2595,7 @@ Page({
   },
 
   vibrate(type = "light") {
-    const settings = wx.getStorageSync("palm-kiln-settings") || {};
+    const settings = loadSettings();
     if (settings.haptics) wx.vibrateShort({ type });
   }
 });

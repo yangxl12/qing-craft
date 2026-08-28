@@ -31,7 +31,6 @@ import {
   INSCRIPTION_STYLES,
   INSCRIPTION_TYPEFACES,
   Inscription,
-  MAX_DECORATION_LAYERS,
   MAX_DECORATION_STAMPS,
   MAX_SEAL_MARK_CHARACTERS,
   MOTIFS,
@@ -158,9 +157,47 @@ const WALL_SLIDER_MAX = Math.round(MAX_POTTERY_WALL * WALL_SLIDER_SCALE);
 // can flip the piece completely over.
 const TWO_FINGER_ORBIT_GAIN = 1.5;
 const SEAL_MARK_SELECTION_ID = "seal_mark";
+const KILN_DURATION_MS = 20_000;
+const KILN_TICK_MS = 100;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function kilnVisualState(refire: boolean, progress: number) {
+  const safeProgress = clamp(progress, 0, 100);
+  const ratio = safeProgress / 100;
+  const startTemperature = refire ? 40 : 80;
+  const targetTemperature = refire ? 820 : 1300;
+  const temperature = Math.round(
+    (startTemperature + (targetTemperature - startTemperature) * ratio) / 10
+  ) * 10;
+  const phaseIndex = safeProgress < 24 ? 0 : safeProgress < 52 ? 1 : safeProgress < 80 ? 2 : 3;
+  const phases = refire
+    ? ["温窑 · 彩面回暖", "升温 · 颜料定色", "恒火 · 花色入釉", "烤花 · 色泽安定"]
+    : ["封窑 · 炉火初醒", "升焰 · 坯体转暖", "正烧 · 釉色熔融", "满火 · 器身通红"];
+  const heatClass = safeProgress < 10
+    ? "original"
+    : safeProgress < 36
+      ? "yellow"
+      : safeProgress < 64
+        ? "orange"
+        : safeProgress < 86
+          ? "red"
+          : "hot";
+  return {
+    kilnProgress:Math.round(safeProgress * 10) / 10,
+    kilnText:phases[phaseIndex],
+    kilnType:refire ? "low" : "high",
+    kilnTitle:refire ? "低温烤花" : "高温烧制",
+    kilnSeal:refire ? "彩" : "火",
+    kilnBackground: refire
+      ? "/pages/studio/assets/lowBg.jpg"
+      : "/pages/studio/assets/highBg.jpg",
+    kilnTemperature:temperature,
+    kilnTargetTemperature:targetTemperature,
+    kilnHeatClass:heatClass
+  };
 }
 
 function wallThicknessLabel(thickness: number): string {
@@ -363,6 +400,13 @@ Page({
     kiln: false,
     kilnProgress: 0,
     kilnText: "入窑预热",
+    kilnType: "high",
+    kilnTitle: "高温烧制",
+    kilnSeal: "火",
+    kilnBackground: "/pages/studio/assets/highBg.jpg",
+    kilnTemperature: 80,
+    kilnTargetTemperature: 1300,
+    kilnHeatClass: "original",
     showHelp: false,
     reduceMotion: false,
     baseScreenY: 0.74,
@@ -389,6 +433,7 @@ Page({
   gesture: null as StudioGesture | null,
   saveTimer: null as any,
   kilnTimer: null as any,
+  kilnStartedAt: 0,
   firstDeformTracked: false,
   layoutStageIndex: -1,
   wallThicknessSnapshot: null as PotteryWork | null,
@@ -512,6 +557,8 @@ Page({
           const reduceMotion = !!(wx.getStorageSync("palm-kiln-settings") || {}).reduceMotion;
           this.engine.resize(info.width, info.height, dpr);
           this.engine.setBaseScreenY(baseScreenY);
+          this.engine.setPotteryCentered(!!this.data.kiln);
+          this.engine.setKilnHeat(this.data.kiln ? this.data.kilnProgress / 100 : 0);
           this.engine.setFrameProcessor(() => this.flushShapingFrame(false));
           this.setData({
             ready: true,
@@ -1012,11 +1059,6 @@ Page({
       return;
     }
 
-    if (composition.layers.length >= MAX_DECORATION_LAYERS) {
-      wx.showToast({ title:"器身已有五层图样，先移除一层再上彩", icon:"none" });
-      return;
-    }
-
     const selected = this.selectedDecoration();
     const paintTarget = selected?.technique === "overglaze"
       ? selected
@@ -1093,11 +1135,6 @@ Page({
       composition.stamps.push(stamp);
       this.setData({ selectedDecorationId:stamp.layerId });
     } else {
-      if (composition.layers.length >= MAX_DECORATION_LAYERS) {
-        this.history.pop();
-        wx.showToast({ title:"器身图层最多五层，可先移除一枚", icon:"none" });
-        return;
-      }
       const layer = createDecorationLayer(motifId, role, this.work.shapeId, composition.stylePackId, {
         catalogKey:key,
         technique,
@@ -1351,14 +1388,6 @@ Page({
     }
 
     const role = section === "border" ? "border" : "main";
-    const sameRole = this.work.decorationComposition.layers.filter((layer) => layer.role === role);
-    if (sameRole.length >= 2 || this.work.decorationComposition.layers.length >= MAX_DECORATION_LAYERS) {
-      wx.showToast({
-        title:role === "main" ? "主纹已经够丰富了" : "边饰已经有两条了",
-        icon:"none"
-      });
-      return;
-    }
     const layer = createDecorationLayer(
       motifId,
       role,
@@ -1523,14 +1552,6 @@ Page({
         wx.showToast({ title:"落印已经有八枚了", icon:"none" });
         return;
       }
-    } else if (composition.layers.length >= MAX_DECORATION_LAYERS) {
-      wx.showToast({
-        title:this.work.currentStage === "paint"
-          ? "器身已有五层图样，先移除一层再复制"
-          : "器身图层最多五层，可先移除一枚",
-        icon:"none"
-      });
-      return;
     }
     this.pushHistory();
     const duplicate = duplicateDecorationLayer(
@@ -1655,10 +1676,6 @@ Page({
       : composition.layers.find((layer) => layer.technique === "overglaze");
     if (accent?.colorId === colorId) {
       this.setData({ selectedDecorationId:accent.layerId }, () => this.setData(this.decorationData()));
-      return;
-    }
-    if (!accent && composition.layers.length >= MAX_DECORATION_LAYERS) {
-      wx.showToast({ title:"器身已有五层图样，先移除一层再涂色", icon:"none" });
       return;
     }
     this.pushHistory();
@@ -2356,21 +2373,21 @@ Page({
     }
   },
 
-  /** 彩釉页右下角按钮：完成上釉后直接入窑点火，不再经过高温烧制的待机过渡页。 */
+  /** 彩釉页右下角按钮：完成上釉后直接进入高温烧制全屏过程。 */
   startFiring() {
     if (!this.work || this.work.currentStage !== "glaze") return;
     this.completeStage();
     this.igniteKilnIfPending();
   },
 
-  /** 彩绘页右下角按钮：完成彩绘后直接合窑烤花，不再经过低温烤花的待机过渡页。 */
+  /** 彩绘页右下角按钮：完成彩绘后直接进入低温烤花全屏过程。 */
   startRefire() {
     if (!this.work || this.work.currentStage !== "paint") return;
     this.completeStage();
     this.igniteKilnIfPending();
   },
 
-  /** 工序只要停在窑烧（高温烧制/低温烤花）就立即点火：窑烧工序不再有独立待机页面。 */
+  /** 工序只要停在窑烧（高温烧制/低温烤花）就立即开始二十秒烧制过程。 */
   igniteKilnIfPending() {
     const stage = this.work?.currentStage;
     if ((stage === "firing" || stage === "refire") && !this.data.kiln) {
@@ -2435,14 +2452,14 @@ Page({
     if (!this.work) return;
     if (this.work.stageIndex === 0) {
       wx.showModal({
-        title: "返回前置设置？",
+        title: "返回首页？",
         content: "当前草稿已保存在本机，可随时从首页继续；重新练泥会开始一件新作品。",
-        confirmText: "去选泥料",
+        confirmText: "返回首页",
         cancelText: "继续制坯",
         success: (result: any) => {
           if (!result.confirm) return;
           this.persist();
-          wx.redirectTo({ url: "/pages/setup/setup" });
+          wx.redirectTo({ url: "/pages/index/index" });
         }
       });
       return;
@@ -2497,21 +2514,24 @@ Page({
   startKiln(refire: boolean) {
     if (this.data.kiln) return;
     this.persist();
+    this.kilnStartedAt = Date.now();
+    const initial = kilnVisualState(refire, 0);
+    this.engine?.setKilnHeat(0);
+    this.engine?.setPotteryCentered(true);
     this.setData({
       kiln: true,
-      kilnProgress: 0,
-      kilnText: refire ? "彩绘正在定色" : "窑温缓缓升高"
+      ...initial
+    }, () => {
+      setTimeout(() => this.refreshCanvasLayout(false, true), 0);
     });
-    let progress = 0;
     this.kilnTimer = setInterval(() => {
-      progress += 4;
-      this.setData({
-        kilnProgress: progress,
-        kilnText:
-          progress < 34 ? "窑温缓缓升高" : progress < 70 ? "釉面正在熔融" : "慢慢冷却显色"
-      });
+      const elapsed = Date.now() - this.kilnStartedAt;
+      const progress = Math.min(100, elapsed / KILN_DURATION_MS * 100);
+      const visual = kilnVisualState(refire, progress);
+      this.engine?.setKilnHeat(progress / 100);
+      this.setData(visual);
       if (progress >= 100) this.finishKiln();
-    }, 120);
+    }, KILN_TICK_MS);
   },
 
   skipKiln() {
@@ -2519,12 +2539,18 @@ Page({
   },
 
   finishKiln() {
+    if (!this.data.kiln) return;
     if (this.kilnTimer) {
       clearInterval(this.kilnTimer);
       this.kilnTimer = null;
     }
-    this.setData({ kiln: false, kilnProgress: 100 });
-    this.advance();
+    this.kilnStartedAt = 0;
+    this.engine?.setKilnHeat(0);
+    this.engine?.setPotteryCentered(false);
+    this.setData({ kiln: false, kilnProgress: 100 }, () => {
+      this.advance();
+      setTimeout(() => this.refreshCanvasLayout(false, false), 0);
+    });
   },
 
   vibrate(type = "light") {

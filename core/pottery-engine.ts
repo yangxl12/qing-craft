@@ -252,6 +252,15 @@ uniform mediump float uHeight;
 }
 `;
 
+/**
+ * WebGL 1 uses fixed-size uniform arrays. Thirty-two visible entries leave
+ * room for the eight seal/stamp slots and twenty-four body motifs while
+ * keeping the shader within the uniform budget of mainstream mobile GPUs.
+ * The work model itself is intentionally uncapped, so saving/restoring never
+ * discards later layers.
+ */
+export const MAX_RENDERED_DECORATIONS = 32;
+
 const FS = `
 precision mediump float;
   varying vec3 vNormal;
@@ -274,6 +283,7 @@ uniform vec3 uAmbient;
 uniform float uKeyIntensity;
 uniform float uFillIntensity;
 uniform float uExposure;
+uniform float uKilnHeat;
   uniform float uGlazeMix;
   uniform vec4 uGlazeMaterial;
   uniform float uPattern;
@@ -281,9 +291,9 @@ uniform float uExposure;
 uniform float uClayWetness;
 uniform float uClayGrain;
 uniform float uPorcelainFinish;
-uniform vec4 uLayerA[13];
-uniform vec4 uLayerB[13];
-uniform vec4 uLayerC[13];
+uniform vec4 uLayerA[${MAX_RENDERED_DECORATIONS}];
+uniform vec4 uLayerB[${MAX_RENDERED_DECORATIONS}];
+uniform vec4 uLayerC[${MAX_RENDERED_DECORATIONS}];
 uniform float uFiredPreview;
 uniform float uKilnSeed;
 uniform float uMaxRadius;
@@ -620,7 +630,7 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     porcelainBody *= mix(vec3(0.965, 1.018, 0.988), vec3(1.022, 0.986, 1.008), vY);
     material = mix(material, porcelainBody, porcelainFinish);
     float reliefShade = 0.0;
-    for (int layerIndex = 0; layerIndex < 13; layerIndex++) {
+    for (int layerIndex = 0; layerIndex < ${MAX_RENDERED_DECORATIONS}; layerIndex++) {
       vec4 layerA = uLayerA[layerIndex];
       vec4 layerB = uLayerB[layerIndex];
       vec4 layerC = uLayerC[layerIndex];
@@ -799,6 +809,25 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
       0.018 *
       (1.0 - vCavity * 0.7);
     linearColor += uKeyColor * smoothstep(0.9, 1.0, vY) * wetClay * 0.018;
+
+    // 入窑时让真实器物沿“原色 → 金黄 → 橙红 → 通红”的火候色阶变化。
+    // 保留原来的明暗塑形，因此即使满火时也仍能辨认器形、刻纹和釉面起伏。
+    float kilnHeat = clamp(uKilnHeat, 0.0, 1.0);
+    vec3 kilnYellow = vec3(1.0, 0.58, 0.09);
+    vec3 kilnOrange = vec3(1.0, 0.24, 0.025);
+    vec3 kilnRed = vec3(0.96, 0.045, 0.012);
+    vec3 kilnHot = vec3(1.0, 0.24, 0.09);
+    vec3 kilnTone = mix(kilnYellow, kilnOrange, smoothstep(0.18, 0.5, kilnHeat));
+    kilnTone = mix(kilnTone, kilnRed, smoothstep(0.48, 0.78, kilnHeat));
+    kilnTone = mix(kilnTone, kilnHot, smoothstep(0.82, 1.0, kilnHeat));
+    float kilnForm = clamp(
+      dot(linearColor, vec3(0.2126, 0.7152, 0.0722)) * 1.22 + diffuseKey * 0.2,
+      0.12,
+      1.18
+    );
+    vec3 kilnColor = kilnTone * (0.22 + kilnForm * 0.88);
+    linearColor = mix(linearColor, kilnColor, smoothstep(0.015, 0.88, kilnHeat));
+    linearColor += kilnTone * pow(max(facing, 0.0), 2.0) * kilnHeat * 0.08;
     vec3 exposed = max(linearColor * uExposure, vec3(0.0));
   vec3 mapped = exposed / (vec3(1.0) + exposed);
   gl_FragColor = vec4(pow(mapped, vec3(1.0 / 2.2)), 1.0);
@@ -850,6 +879,7 @@ export class PotteryEngine {
   private sealKey = "";
   private sealTextureReady = false;
   private firedPreview = false;
+  private kilnHeat = 0;
 
   constructor(canvas: any, work: PotteryWork) {
     this.canvas = canvas;
@@ -982,6 +1012,11 @@ export class PotteryEngine {
 
   setFiredPreview(value: boolean) {
     this.firedPreview = value;
+    this.render();
+  }
+
+  setKilnHeat(value: number) {
+    this.kilnHeat = clamp(value, 0, 1);
     this.render();
   }
 
@@ -1691,6 +1726,7 @@ export class PotteryEngine {
     gl.uniform1f(gl.getUniformLocation(program, "uKeyIntensity"), lighting.keyIntensity);
     gl.uniform1f(gl.getUniformLocation(program, "uFillIntensity"), lighting.fillIntensity);
     gl.uniform1f(gl.getUniformLocation(program, "uExposure"), lighting.exposure);
+    gl.uniform1f(gl.getUniformLocation(program, "uKilnHeat"), this.kilnHeat);
     gl.uniform1f(
       gl.getUniformLocation(program, "uShowcase"),
       this.lighting === "showcase" ? 1 : 0
@@ -1732,13 +1768,13 @@ export class PotteryEngine {
       well:5,
       base:6
     };
-    const layerA = new Float32Array(13 * 4);
-    const layerB = new Float32Array(13 * 4);
-    const layerC = new Float32Array(13 * 4);
+    const layerA = new Float32Array(MAX_RENDERED_DECORATIONS * 4);
+    const layerB = new Float32Array(MAX_RENDERED_DECORATIONS * 4);
+    const layerC = new Float32Array(MAX_RENDERED_DECORATIONS * 4);
     const layers = [
       ...this.work.decorationComposition.layers,
       ...this.work.decorationComposition.stamps
-    ].slice(0, 13);
+    ].slice(-MAX_RENDERED_DECORATIONS);
     layers.forEach((layer, index) => {
       const offset = index * 4;
       const color = hexRgb(decorationColorHex(layer.colorId));

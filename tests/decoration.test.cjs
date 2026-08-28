@@ -21,11 +21,11 @@ const {
   clampDecorationLayer,
   clampSealMark,
   createDecorationComposition,
+  createDecorationLayer,
   createSealMark,
   createDecorationStamp,
   duplicateDecorationLayer,
   DECORATION_TEMPLATES,
-  MAX_DECORATION_LAYERS,
   MAX_DECORATION_STAMPS,
   MAX_SEAL_MARK_CHARACTERS,
   MIN_DECORATION_SURFACE_V,
@@ -44,6 +44,15 @@ assert.equal(DECORATION_TEMPLATES.length, 6, "MVP 必须提供六套一键构图
 
 const studioMarkup = fs.readFileSync("pages/studio/studio.wxml", "utf8");
 const studioSource = fs.readFileSync("pages/studio/studio.ts", "utf8");
+assert.doesNotMatch(studioSource, /MAX_DECORATION_LAYERS|五层图样|图层最多五层/, "器身图样不能再保留五层上限");
+assert.match(studioSource, /const KILN_DURATION_MS = 20_000/, "高温与低温烧制都必须完整持续二十秒");
+assert.match(studioSource, /\/pages\/studio\/assets\/highBg\.jpg/, "高温烧制必须使用工作室分包背景");
+assert.match(studioSource, /\/pages\/studio\/assets\/lowBg\.jpg/, "低温烤花必须使用工作室分包背景");
+assert.match(studioSource, /confirmText: "返回首页"/, "制坯上一步弹窗必须提供返回首页按钮");
+assert.match(studioSource, /wx\.redirectTo\(\{ url: "\/pages\/index\/index" \}\)/, "制坯上一步确认后必须回到首页");
+assert.match(studioMarkup, /class="kiln-backdrop"/, "窑烧页必须有独立背景层");
+assert.match(studioMarkup, /class="kiln-status-panel"/, "窑烧页底部必须展示温度进度");
+assert.match(studioMarkup, /class="kiln-skip"[^>]+bindtap="skipKiln"/, "窑烧页右下角必须提供跳过按钮");
 assert.doesNotMatch(
   studioMarkup,
   /bindlongpress="deleteSelectedDecoration"/,
@@ -132,10 +141,7 @@ for (const shapeId of ["cup", "bowl", "vase", "jar", "plate"]) {
       first.layers.length > 0,
       `${shapeId}/${template.id} 必须能自动构图`,
     );
-    assert.ok(
-      first.layers.length <= MAX_DECORATION_LAYERS,
-      "一键套版不能突破五层上限",
-    );
+    assert.equal(first.layers.length, template.components.length, "一键套版必须完整保留全部构图层");
     assert.ok(
       first.layers.every((layer) => anchors.includes(layer.anchor)),
       "套版只能使用当前器形开放的语义分区",
@@ -159,6 +165,19 @@ for (const density of [0.65, 0.8, 1, 1.35, 1.8]) {
   );
   assert.ok(repeats >= 6 && repeats <= 18, "连续边饰重复数必须留在安全范围");
 }
+
+const manyLayerWork = createWork("vase");
+manyLayerWork.decorationComposition.layers = Array.from({ length: 20 }, (_, index) =>
+  createDecorationLayer(index % 2 ? "cloud" : "lotus", "main", "vase", "yuan_blue", {
+    u:index / 20,
+    v:0.15 + index / 30,
+  }),
+);
+assert.equal(
+  validateWork(manyLayerWork).decorationComposition.layers.length,
+  20,
+  "作品保存与恢复必须完整保留大量器身图样",
+);
 
 const stampWork = createWork("jar");
 stampWork.decorationComposition.stamps = Array.from(
@@ -455,5 +474,5 @@ assert.ok(
 );
 
 console.log(
-  "decoration tests passed: schema migration, 5 layers, 8 stamps, templates, inscriptions and deterministic kiln seed",
+  "decoration tests passed: unlimited saved body layers, 8 stamps, templates, inscriptions and deterministic kiln seed",
 );

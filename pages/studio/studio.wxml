@@ -1,8 +1,8 @@
-<view class="studio {{reduceMotion?'reduce-motion':''}} {{stageIndex===1||stageIndex===4?'decor-stage':''}} {{stageIndex===4?'paint-stage':''}} {{stageIndex===2?'glaze-stage':''}} {{decorTrayOpen?'decor-menu-open':'decor-menu-closed'}} {{decorFullscreen?'decor-fullscreen':''}}">
+<view class="studio {{reduceMotion?'reduce-motion':''}} {{kiln?'kiln-active kiln-'+kilnType:''}} {{stageIndex===1||stageIndex===4?'decor-stage':''}} {{stageIndex===4?'paint-stage':''}} {{stageIndex===2?'glaze-stage':''}} {{decorTrayOpen?'decor-menu-open':'decor-menu-closed'}} {{decorFullscreen?'decor-fullscreen':''}}">
   <view wx:if="{{stageIndex===0}}" class="shaping-workshop-bg" aria-hidden="true">
     <image
       class="shaping-workshop-image"
-      src="/assets/studio-shaping-workshop-day.jpg"
+      src="/pages/studio/assets/studio-shaping-workshop-day.jpg"
       mode="aspectFill"
     ></image>
     <view class="shaping-workshop-grade"></view>
@@ -40,6 +40,16 @@
     </view>
     <view class="stage-floor-shadow"></view>
     <view class="vignette"></view>
+  </view>
+
+  <view wx:if="{{kiln}}" class="kiln-backdrop" aria-hidden="true">
+    <image class="kiln-background-image" src="{{kilnBackground}}" mode="aspectFill"></image>
+    <view class="kiln-background-grade"></view>
+    <view class="kiln-heat-haze" style="opacity:{{0.16+kilnProgress/180}}"></view>
+    <view class="kiln-vessel-aura heat-{{kilnHeatClass}}"></view>
+    <view class="kiln-embers">
+      <view></view><view></view><view></view><view></view><view></view>
+    </view>
   </view>
 
   <view class="safe-top" style="height:{{statusBarHeight}}px"></view>
@@ -86,7 +96,7 @@
       catchtouchend="touchEnd"
       catchtouchcancel="touchEnd"
     >
-      <view class="fallback-pot shape-{{work.shapeId}} stage-{{stageIndex}} {{stageIndex>=2?'glazed':''}} glaze-{{glazeId}}"></view>
+      <view class="fallback-pot shape-{{work.shapeId}} stage-{{stageIndex}} {{stageIndex>=2?'glazed':''}} glaze-{{glazeId}} kiln-{{kilnHeatClass}}"></view>
       <view wx:if="{{decorationCount||stampCount||sealApplied}}" class="fallback-decor fired-{{firedPreview}}">
         <text>{{selectedDecorationName||'纹'}}</text>
         <small>{{decorationCount}} 层 · {{stampCount}} 印{{sealApplied?' · 题款':''}}</small>
@@ -561,13 +571,36 @@
     </view>
   </view>
 
-  <view wx:if="{{kiln}}" class="kiln-overlay">
-    <view class="kiln-door">
-      <view class="kiln-glow" style="opacity:{{.25+kilnProgress/130}}"></view>
-      <view class="temperature">{{700+kilnProgress*6}}<text>℃</text></view>
-      <view class="kiln-copy display">{{kilnText}}</view>
-      <view class="kiln-progress"><view style="width:{{kilnProgress}}%"></view></view>
-      <button bindtap="skipKiln">跳过等待</button>
+  <view wx:if="{{kiln}}" class="kiln-hud">
+    <view class="kiln-heading" style="top:{{statusBarHeight+18}}px">
+      <view class="kiln-title-rule"></view>
+      <view class="kiln-title-copy">
+        <small>{{kilnType==='low'?'釉上彩 · 定色':'釉火 · 烧成'}}</small>
+        <text>{{kilnTitle}}</text>
+      </view>
+      <view class="kiln-seal">{{kilnSeal}}</view>
     </view>
+
+    <view class="kiln-status-panel">
+      <view class="kiln-status-line">
+        <view>
+          <small>火候</small>
+          <text>{{kilnText}}</text>
+        </view>
+        <view class="kiln-temperature">
+          <text>{{kilnTemperature}}</text><small> / {{kilnTargetTemperature}}℃</small>
+        </view>
+      </view>
+      <view class="kiln-progress" aria-label="烧制进度 {{kilnProgress}}%">
+        <view class="kiln-progress-fill" style="width:{{kilnProgress}}%">
+          <view class="kiln-progress-ember"></view>
+        </view>
+      </view>
+      <view class="kiln-scale"><text>入窑</text><text>升焰</text><text>满火</text></view>
+    </view>
+
+    <button class="kiln-skip" aria-label="跳过烧制等待，直接进入下一步" bindtap="skipKiln">
+      <text>跳过</text><view>→</view>
+    </button>
   </view>
 </view>

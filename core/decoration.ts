@@ -124,7 +124,6 @@ export interface InscriptionChoice {
   note?: string;
 }
 
-export const MAX_DECORATION_LAYERS = 5;
 export const MAX_DECORATION_STAMPS = 8;
 export const MAX_SEAL_MARK_CHARACTERS = 6;
 /** 0 是器身与器底交界，-1 是器底中心，1 是器身口沿。 */
@@ -472,7 +471,7 @@ export function applyDecorationTemplate(
   const template = DECORATION_TEMPLATES.find((item) => item.id === templateId) || DECORATION_TEMPLATES[0];
   const stylePackId = template.stylePackId;
   const pack = STYLE_PACKS.find((item) => item.id === stylePackId)!;
-  const layers = template.components.slice(0, MAX_DECORATION_LAYERS).map((component, index) => {
+  const layers = template.components.map((component, index) => {
     const anchor = preferredAnchor(shapeId, component.anchor, component.role);
     const range = anchorRange(shapeId, anchor);
     return createDecorationLayer(component.motifId, component.role, shapeId, stylePackId, {
@@ -648,7 +647,6 @@ export function validateDecorationComposition(
       : layer;
   };
   const layers = (Array.isArray(raw.layers) ? raw.layers : [])
-    .slice(0, MAX_DECORATION_LAYERS)
     .map((value: any) => parseLayer(value, ["main","border","accent"].includes(value?.role) ? value.role : "main")) as DecorationLayer[];
   const stamps = (Array.isArray(raw.stamps) ? raw.stamps : [])
     .slice(0, MAX_DECORATION_STAMPS)
@@ -701,7 +699,6 @@ export function migrateLegacyDecoration(raw: any, shapeId: ShapeId, workId: stri
       { technique:"overglaze", colorId:"seal_red", anchor:"belly", repeatMode:"four", scale:.72 }
     ));
   }
-  composition.layers = composition.layers.slice(0, MAX_DECORATION_LAYERS);
   return composition;
 }
 

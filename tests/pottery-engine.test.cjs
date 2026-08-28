@@ -25,6 +25,7 @@ const { createWork, validateWork } = require("../core/model.ts");
 const { profileDeltaFromDrag } = require("../core/profile.ts");
 const {
   DECORATION_PORCELAIN_COLOR,
+  MAX_RENDERED_DECORATIONS,
   PotteryEngine,
   potterySurfaceState,
 } = require("../core/pottery-engine.ts");
@@ -68,6 +69,7 @@ assert.equal(
 );
 
 assert.equal(DECORATION_PORCELAIN_COLOR, "#c6d8ce", "装饰素坯应固定为青白玉色");
+assert.equal(MAX_RENDERED_DECORATIONS, 32, "WebGL 必须为大量图样与落印预留足够渲染槽位");
 assert.deepEqual(
   potterySurfaceState(1),
   { clayWetness: 0.12, porcelainFinish: 1 },

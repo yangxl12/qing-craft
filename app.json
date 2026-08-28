@@ -1,10 +1,28 @@
 {
   "pages": [
-    "pages/index/index",
-    "pages/studio/studio",
-    "pages/gallery/gallery",
-    "pages/result/result",
-    "pages/settings/settings"
+    "pages/index/index"
+  ],
+  "subPackages": [
+    {
+      "name": "studio",
+      "root": "pages/studio",
+      "pages": ["studio"]
+    },
+    {
+      "name": "gallery",
+      "root": "pages/gallery",
+      "pages": ["gallery"]
+    },
+    {
+      "name": "result",
+      "root": "pages/result",
+      "pages": ["result"]
+    },
+    {
+      "name": "settings",
+      "root": "pages/settings",
+      "pages": ["settings"]
+    }
   ],
   "window": {
     "navigationStyle": "custom",

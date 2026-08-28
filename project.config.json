@@ -1,8 +1,23 @@
 {
   "description": "泥火青花 · 微信陶艺创作小程序 v1",
   "packOptions": {
-    "ignore": [],
-    "include": []
+    "ignore": [
+      { "type": "folder", "value": "node_modules" },
+      { "type": "folder", "value": "docs" },
+      { "type": "folder", "value": "tests" },
+      { "type": "folder", "value": "tmp" },
+      { "type": "folder", "value": "types" },
+      { "type": "folder", "value": "screenshots" },
+      { "type": "file", "value": "package.json" },
+      { "type": "file", "value": "package-lock.json" },
+      { "type": "file", "value": "tsconfig.json" },
+      { "type": "suffix", "value": ".md" },
+      { "type": "suffix", "value": ".map" }
+    ],
+    "include": [
+      { "type": "file", "value": "pages/studio/assets/highBg.jpg" },
+      { "type": "file", "value": "pages/studio/assets/lowBg.jpg" }
+    ]
   },
   "setting": {
     "useCompilerPlugins": [

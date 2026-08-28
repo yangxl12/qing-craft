@@ -1349,72 +1349,343 @@
   color: #fff;
   font-size: 22rpx;
 }
-.kiln-overlay {
+/* 窑烧全屏：背景、真实 WebGL 器物、信息层三层分离，器物始终是视觉中心。 */
+.kiln-backdrop {
   position: absolute;
   z-index: 20;
   inset: 0;
-  background: rgba(24, 22, 20, 0.91);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.kiln-door {
-  width: 590rpx;
-  height: 780rpx;
-  border-radius: 300rpx 300rpx 40rpx 40rpx;
-  background: #382d29;
-  border: 22rpx solid #5b514b;
-  position: relative;
   overflow: hidden;
-  text-align: center;
-  color: #fff;
-  box-shadow: inset 0 0 100rpx #0d0c0b;
+  background: #1c0b05;
 }
-.kiln-glow {
+.kiln-background-image {
   position: absolute;
   inset: 0;
-  background: radial-gradient(
-    circle at 50% 70%,
-    #ffb04f,
-    #e44c23 44%,
-    transparent 76%
-  );
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform: scale(1.015);
+  animation: kiln-breathe 8s ease-in-out infinite alternate;
 }
-.temperature {
-  position: relative;
-  font-family: monospace;
-  font-size: 80rpx;
-  margin-top: 180rpx;
+.kiln-background-grade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(8, 3, 1, 0.28), transparent 24%, transparent 65%, rgba(8, 2, 0, 0.58)),
+    radial-gradient(ellipse at 50% 48%, transparent 12%, rgba(13, 4, 1, 0.12) 54%, rgba(6, 2, 0, 0.48) 100%);
 }
-.temperature text {
-  font-size: 28rpx;
+.kiln-low .kiln-background-grade {
+  background:
+    linear-gradient(180deg, rgba(25, 12, 5, 0.2), transparent 28%, transparent 65%, rgba(19, 7, 2, 0.55)),
+    radial-gradient(ellipse at 50% 45%, rgba(255, 169, 85, 0.08), transparent 40%, rgba(18, 7, 2, 0.35) 100%);
 }
-.kiln-copy {
-  position: relative;
+.kiln-heat-haze {
+  position: absolute;
+  left: 50%;
+  top: 39%;
+  width: 560rpx;
+  height: 620rpx;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 121, 36, 0.45), rgba(214, 47, 13, 0.12) 46%, transparent 74%);
+  filter: blur(32rpx);
+  animation: kiln-haze 2.8s ease-in-out infinite alternate;
+}
+.kiln-low .kiln-heat-haze {
+  background: radial-gradient(ellipse, rgba(255, 179, 91, 0.34), rgba(207, 88, 31, 0.08) 48%, transparent 74%);
+}
+.kiln-vessel-aura {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 440rpx;
+  height: 560rpx;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  opacity: 0.46;
+  background: radial-gradient(ellipse, rgba(255, 206, 132, 0.34), rgba(244, 77, 24, 0.08) 48%, transparent 72%);
+  filter: blur(18rpx);
+  transition: opacity 0.45s ease, background 0.45s ease;
+}
+.kiln-vessel-aura.heat-red,
+.kiln-vessel-aura.heat-hot {
+  opacity: 0.88;
+  background: radial-gradient(ellipse, rgba(255, 224, 167, 0.54), rgba(255, 62, 17, 0.22) 48%, transparent 74%);
+}
+.kiln-embers {
+  position: absolute;
+  inset: 16% 8% 24%;
+  opacity: 0.8;
+}
+.kiln-low .kiln-embers { opacity: 0.28; }
+.kiln-embers view {
+  position: absolute;
+  left: 18%;
+  bottom: 4%;
+  width: 5rpx;
+  height: 9rpx;
+  border-radius: 50%;
+  background: #ffd28a;
+  box-shadow: 0 0 14rpx rgba(255, 88, 22, 0.95);
+  animation: kiln-ember-rise 4.8s linear infinite;
+}
+.kiln-embers view:nth-child(2) { left: 34%; bottom: 1%; animation-delay: -1.4s; animation-duration: 5.6s; }
+.kiln-embers view:nth-child(3) { left: 66%; bottom: 8%; animation-delay: -3.2s; animation-duration: 4.2s; }
+.kiln-embers view:nth-child(4) { left: 79%; bottom: 2%; animation-delay: -2.1s; animation-duration: 6.2s; }
+.kiln-embers view:nth-child(5) { left: 52%; bottom: 0; animation-delay: -4.4s; animation-duration: 5.1s; }
+
+.kiln-active .safe-top,
+.kiln-active .topbar,
+.kiln-active > .tray,
+.kiln-active > .stage-footer,
+.kiln-active > .decor-tray,
+.kiln-active > .glaze-tray {
+  visibility: hidden;
+  pointer-events: none;
+}
+.kiln-active .stage-area {
+  position: absolute;
+  z-index: 22;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.kiln-active .canvas,
+.kiln-active .fallback { pointer-events: none; }
+.kiln-active .wheel-root,
+.kiln-active .decor-tool-panel,
+.kiln-active .fallback-note,
+.kiln-active .fallback-decor,
+.kiln-active .fallback-inscription { display: none; }
+.kiln-active .pottery-spotlight {
+  left: 50%;
+  top: 16%;
+  width: 560rpx;
+  height: 720rpx;
+  opacity: 0.62;
+  background: radial-gradient(ellipse, rgba(255, 191, 107, 0.24), rgba(255, 73, 20, 0.07) 52%, transparent 74%);
+}
+.kiln-active .fallback-pot {
+  top: 47%;
+  bottom: auto;
+  width: 270rpx;
+  height: 350rpx;
+  transform: translate(-50%, -50%);
+  transition: filter 0.55s ease, box-shadow 0.55s ease;
+}
+.kiln-active .fallback-pot.kiln-yellow { filter: sepia(0.8) saturate(1.7) brightness(1.15); }
+.kiln-active .fallback-pot.kiln-orange { filter: sepia(1) saturate(2.7) hue-rotate(-12deg) brightness(1.12); }
+.kiln-active .fallback-pot.kiln-red { filter: sepia(1) saturate(4.4) hue-rotate(-24deg) brightness(0.98); }
+.kiln-active .fallback-pot.kiln-hot {
+  filter: sepia(1) saturate(5) hue-rotate(-22deg) brightness(1.24);
+  box-shadow: inset 30rpx 0 30rpx rgba(255, 240, 190, 0.36), 0 0 65rpx rgba(255, 58, 14, 0.7);
+}
+
+.kiln-hud {
+  position: absolute;
+  z-index: 24;
+  inset: 0;
+  color: #fff4df;
+  pointer-events: none;
+}
+.kiln-heading {
+  position: absolute;
+  left: 28rpx;
+  display: grid;
+  grid-template-columns: 42rpx auto 54rpx;
+  align-items: center;
+  gap: 17rpx;
+  text-shadow: 0 3rpx 14rpx rgba(20, 3, 0, 0.7);
+}
+.kiln-title-rule {
+  width: 42rpx;
+  height: 1rpx;
+  background: linear-gradient(90deg, transparent, rgba(255, 225, 180, 0.74));
+}
+.kiln-title-copy small,
+.kiln-title-copy text { display: block; }
+.kiln-title-copy small {
+  margin-bottom: 5rpx;
+  color: rgba(255, 224, 181, 0.68);
+  font-size: 17rpx;
+  letter-spacing: 0.28em;
+}
+.kiln-title-copy text {
+  font-family: "STKaiti", "KaiTi", "Songti SC", serif;
   font-size: 36rpx;
-  margin-top: 40rpx;
+  font-weight: 600;
+  letter-spacing: 0.18em;
 }
+.kiln-seal {
+  width: 50rpx;
+  height: 50rpx;
+  box-sizing: border-box;
+  border: 2rpx solid rgba(255, 224, 187, 0.72);
+  color: #fff0d2;
+  background: rgba(128, 28, 13, 0.58);
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 25rpx;
+  line-height: 46rpx;
+  text-align: center;
+  box-shadow: inset 0 0 0 3rpx rgba(79, 13, 6, 0.25), 0 5rpx 18rpx rgba(35, 4, 0, 0.32);
+}
+.kiln-low .kiln-seal { background: rgba(139, 66, 35, 0.48); }
+
+.kiln-status-panel {
+  position: absolute;
+  left: 24rpx;
+  right: 24rpx;
+  bottom: calc(105rpx + env(safe-area-inset-bottom));
+  padding: 20rpx 22rpx 17rpx;
+  border: 1rpx solid rgba(255, 222, 179, 0.22);
+  border-radius: 22rpx;
+  background: linear-gradient(135deg, rgba(42, 10, 4, 0.7), rgba(22, 5, 2, 0.48));
+  box-shadow: inset 0 1rpx rgba(255, 239, 213, 0.1), 0 12rpx 36rpx rgba(12, 2, 0, 0.32);
+  backdrop-filter: blur(14rpx);
+}
+.kiln-low .kiln-status-panel {
+  background: linear-gradient(135deg, rgba(65, 28, 12, 0.62), rgba(31, 12, 5, 0.44));
+}
+.kiln-status-line {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+.kiln-status-line > view:first-child { min-width: 0; }
+.kiln-status-line > view:first-child small,
+.kiln-status-line > view:first-child text { display: block; }
+.kiln-status-line > view:first-child small {
+  margin-bottom: 5rpx;
+  color: rgba(255, 220, 171, 0.58);
+  font-size: 15rpx;
+  letter-spacing: 0.24em;
+}
+.kiln-status-line > view:first-child text {
+  overflow: hidden;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 24rpx;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kiln-temperature {
+  flex: none;
+  color: #ffdca7;
+  font-family: "DIN Alternate", "Arial Narrow", sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.kiln-temperature text { font-size: 42rpx; line-height: 1; }
+.kiln-temperature small { color: rgba(255, 226, 187, 0.6); font-size: 17rpx; }
 .kiln-progress {
   position: relative;
-  width: 400rpx;
   height: 8rpx;
-  background: rgba(255, 255, 255, 0.25);
-  margin: 54rpx auto;
-  border-radius: 5rpx;
-  overflow: hidden;
+  margin-top: 19rpx;
+  overflow: visible;
+  border-radius: 999rpx;
+  background: rgba(255, 224, 184, 0.16);
+  box-shadow: inset 0 1rpx 3rpx rgba(14, 2, 0, 0.4);
 }
-.kiln-progress view {
-  height: 100%;
-  background: #ffd18e;
-}
-.kiln-door button {
+.kiln-progress-fill {
   position: relative;
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
-  width: 210rpx;
-  height: 72rpx;
-  line-height: 72rpx;
-  font-size: 22rpx;
+  height: 100%;
+  min-width: 2rpx;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #a83a1c, #f0782e 54%, #ffd18a);
+  box-shadow: 0 0 15rpx rgba(255, 92, 24, 0.65);
+  transition: width 0.14s linear;
+}
+.kiln-low .kiln-progress-fill {
+  background: linear-gradient(90deg, #9d512f, #e68b4a 58%, #ffe0a6);
+}
+.kiln-progress-ember {
+  position: absolute;
+  right: -7rpx;
+  top: 50%;
+  width: 14rpx;
+  height: 14rpx;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: #fff1c9;
+  box-shadow: 0 0 0 5rpx rgba(255, 134, 53, 0.18), 0 0 20rpx #ff6927;
+}
+.kiln-scale {
+  margin-top: 10rpx;
+  display: flex;
+  justify-content: space-between;
+  color: rgba(255, 226, 187, 0.48);
+  font-size: 14rpx;
+  letter-spacing: 0.12em;
+}
+.kiln-skip {
+  position: absolute;
+  right: 24rpx;
+  bottom: calc(23rpx + env(safe-area-inset-bottom));
+  width: 148rpx;
+  height: 62rpx;
+  margin: 0;
+  padding: 0 9rpx 0 24rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1rpx solid rgba(255, 229, 194, 0.42);
+  border-radius: 999rpx;
+  color: #fff1d8;
+  background: rgba(47, 11, 5, 0.56);
+  box-shadow: inset 0 1rpx rgba(255, 242, 218, 0.12), 0 8rpx 24rpx rgba(18, 3, 0, 0.32);
+  backdrop-filter: blur(12rpx);
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 21rpx;
+  letter-spacing: 0.16em;
+  line-height: 60rpx;
+  pointer-events: auto;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.kiln-skip::after { border: 0; }
+.kiln-skip:active { transform: scale(0.96); background: rgba(92, 26, 11, 0.72); }
+.kiln-skip view {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  color: #6f2818;
+  background: #f6d5a8;
+  font-family: sans-serif;
+  font-size: 19rpx;
+  line-height: 36rpx;
+  text-align: center;
+  text-indent: 0;
+}
+
+@keyframes kiln-breathe {
+  from { transform: scale(1.015); filter: brightness(0.94) saturate(0.96); }
+  to { transform: scale(1.04); filter: brightness(1.08) saturate(1.08); }
+}
+@keyframes kiln-haze {
+  from { transform: translate(-50%, -50%) scale(0.94); }
+  to { transform: translate(-50%, -50%) scale(1.05); }
+}
+@keyframes kiln-ember-rise {
+  0% { opacity: 0; transform: translate3d(0, 30rpx, 0) scale(0.6); }
+  16% { opacity: 0.95; }
+  100% { opacity: 0; transform: translate3d(34rpx, -500rpx, 0) scale(0.15); }
+}
+.reduce-motion .kiln-background-image,
+.reduce-motion .kiln-heat-haze,
+.reduce-motion .kiln-embers view { animation: none; }
+.reduce-motion .kiln-vessel-aura,
+.reduce-motion .kiln-progress-fill,
+.reduce-motion .kiln-active .fallback-pot,
+.reduce-motion .kiln-skip { transition: none; }
+
+@media (max-height: 700px) {
+  .kiln-active .pottery-spotlight { top: 11%; height: 600rpx; }
+  .kiln-vessel-aura { top: 43%; height: 470rpx; }
+  .kiln-status-panel { bottom: calc(91rpx + env(safe-area-inset-bottom)); padding-top: 15rpx; }
+  .kiln-temperature text { font-size: 36rpx; }
+  .kiln-title-copy text { font-size: 31rpx; }
+  .kiln-skip { bottom: calc(16rpx + env(safe-area-inset-bottom)); height: 56rpx; line-height: 54rpx; }
 }
 
 /* 制坯工作台：把操作收进四角，让陶坯成为视觉中心。 */

@@ -87,6 +87,7 @@ import {
   loadSettings,
   shouldShowGuidance
 } from "../../utils/settings";
+import { resolveRenderDpr } from "../../utils/render-quality";
 
 interface CanvasRect {
   left: number;
@@ -253,13 +254,21 @@ function paintCatalogPool(tab: PaintCatalogTabId, shapeId: ShapeId) {
   return source.filter((motif) => motif.anchors.some((anchor) => available.includes(anchor)));
 }
 
-const DECOR_SIDE_ICONS = ["✦", "◫", "❋", "⌁"];
-const DECOR_SIDE_MENUS = Array.from({ length:4 }, (_, index) => ({
-  id:`menu_${index + 1}`,
-  name:`菜单 ${index + 1}`,
-  icon:DECOR_SIDE_ICONS[index],
-  index
-}));
+const DECOR_SIDE_MENUS = [
+  { id:"flora", name:"花卉", icon:"flower", index:0 },
+  { id:"animal", name:"瑞兽", icon:"animal", index:1 },
+  { id:"water", name:"云水", icon:"wave", index:2 },
+  { id:"geometry", name:"几何", icon:"geometry", index:3 }
+] as const;
+
+function stageProgressSteps(currentIndex: number) {
+  return STAGES.map((stage, index) => ({
+    id:stage.id,
+    short:stage.short,
+    name:stage.name,
+    state:index < currentIndex ? "done" : index === currentIndex ? "current" : "future"
+  }));
+}
 
 function rotateOptions<T>(values: T[], offset: number, count = 6): T[] {
   if (!values.length) return [];
@@ -313,6 +322,7 @@ Page({
     stageIndex: 0,
     stageName: "制坯",
     nextStageName: "装饰",
+    stageSteps: stageProgressSteps(0),
     tools: TOOLS.shaping,
     tool: "",
     toolName: "手势塑形",
@@ -567,8 +577,9 @@ Page({
         };
         try {
           this.engine = new PotteryEngine(info.node, this.work!);
-          const dpr = Math.min(system.pixelRatio || 2, 2);
-          const reduceMotion = loadSettings().reduceMotion;
+          const settings = loadSettings();
+          const dpr = resolveRenderDpr(system.pixelRatio || 2, settings.quality);
+          const reduceMotion = settings.reduceMotion;
           this.engine.resize(info.width, info.height, dpr);
           this.engine.setBaseScreenY(baseScreenY);
           this.engine.setPotteryCentered(!!this.data.kiln);
@@ -648,6 +659,7 @@ Page({
         stageIndex: this.work.stageIndex,
         stageName: stage.name,
         nextStageName: STAGES[this.work.stageIndex + 1]?.name || "查看成品",
+        stageSteps:stageProgressSteps(this.work.stageIndex),
         tools,
         tool: selected?.id || "",
         toolName: selected?.name || "",
@@ -946,7 +958,7 @@ Page({
         height: info.height
       };
       const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
-      const dpr = Math.min(system.pixelRatio || 2, 2);
+      const dpr = resolveRenderDpr(system.pixelRatio || 2, loadSettings().quality);
       const baseScreenY = calculatePotteryBaseScreenYFromLayout(
         info.top || 0,
         info.height,

@@ -1,84 +1,147 @@
-<view class="result">
- <view class="result-bg" aria-hidden="true">
-  <image class="result-bg-image" src="/assets/studio-decoration-workshop.jpg" mode="aspectFill"></image>
-  <view class="result-bg-grade"></view>
- </view>
- <view class="safe-top" style="height:{{navTop}}px"></view>
- <view class="top">
-  <view class="nav-btn" role="button" aria-label="返回首页" bindtap="backHome"><ui-icon name="back" size="40" tone="light" decorative></ui-icon></view>
-  <view class="nav-center">
-   <view class="nav-rule" aria-hidden="true"></view>
-   <view class="top-title display">成品展台</view>
-   <view class="nav-rule" aria-hidden="true"></view>
+<view class="result tone-dark {{reduceMotion?'reduce-motion':''}} {{infoOpen?'has-modal':''}}">
+  <view class="result-bg" aria-hidden="true">
+    <image class="result-bg-image" src="/assets/studio-decoration-workshop.jpg" mode="aspectFill"></image>
+    <view class="result-bg-grade"></view>
   </view>
-  <view class="nav-btn" role="button" aria-label="查看作品信息" bindtap="toggleInfo">
-   <ui-icon name="more" size="40" tone="light" decorative></ui-icon>
+
+  <app-nav
+    title="成品展台"
+    theme="dark"
+    back-label="返回首页"
+    auto-back="{{false}}"
+    right-icon="info"
+    right-label="查看作品信息"
+    bindback="backHome"
+    bindright="openInfo"
+  ></app-nav>
+
+  <view class="reveal">
+    <view class="eyebrow">七道工序 · 已完成</view>
+    <view class="display name">{{work.title}}</view>
+    <view class="note">拖动细看，釉色已在光里定住。</view>
   </view>
- </view>
- <view class="reveal">
-  <view class="eyebrow">七道工序 · 已完成</view>
-  <view class="display name">{{work.title}}</view>
-  <view class="note">拖动细看，釉色已在光里定住。</view>
- </view>
- <view class="scene">
-  <view class="spotlight" aria-hidden="true"></view>
-  <canvas wx:if="{{!fallback}}" id="resultCanvas" type="webgl" class="result-canvas" disable-scroll="true" bindtouchstart="touchStart" bindtouchmove="touchMove" bindtouchend="touchEnd" bindtouchcancel="touchEnd"></canvas>
-  <view wx:else class="result-pot">
-   <view class="result-fallback-pattern">{{workInfo.primaryGlyph}}</view>
-   <view wx:if="{{work.decorationComposition.inscription}}" class="result-fallback-mark">{{work.decorationComposition.inscription.text}}</view>
+
+  <view class="scene">
+    <view class="spotlight" aria-hidden="true"></view>
+    <canvas
+      wx:if="{{!fallback}}"
+      id="resultCanvas"
+      type="webgl"
+      class="result-canvas"
+      hidden="{{infoOpen||!!preview}}"
+      aria-role="img"
+      aria-label="成品预览，单指拖动旋转，双指缩放和环看"
+      disable-scroll="true"
+      bindtouchstart="touchStart"
+      bindtouchmove="touchMove"
+      bindtouchend="touchEnd"
+      bindtouchcancel="touchEnd"
+    ></canvas>
+    <view wx:else class="result-pot" aria-role="img" aria-label="轻量模式成品预览">
+      <view class="result-fallback-pattern">{{workInfo.primaryGlyph}}</view>
+      <view wx:if="{{work.decorationComposition.inscription}}" class="result-fallback-mark">{{work.decorationComposition.inscription.text}}</view>
+    </view>
+    <view class="plinth" aria-hidden="true">
+      <view class="plinth-shadow"></view>
+      <view class="plinth-feet">
+        <view class="plinth-foot plinth-foot-left"></view>
+        <view class="plinth-foot plinth-foot-right"></view>
+      </view>
+      <view class="plinth-apron">
+        <view class="plinth-cloud plinth-cloud-left"></view>
+        <view class="plinth-cloud-pearl"></view>
+        <view class="plinth-cloud plinth-cloud-right"></view>
+      </view>
+      <view class="plinth-rim"></view>
+      <view class="plinth-top"></view>
+      <view class="plinth-contact"></view>
+    </view>
   </view>
-  <view class="plinth" aria-hidden="true">
-   <view class="plinth-shadow"></view>
-   <view class="plinth-feet">
-    <view class="plinth-foot plinth-foot-left"></view>
-    <view class="plinth-foot plinth-foot-right"></view>
-   </view>
-   <view class="plinth-apron">
-    <view class="plinth-cloud plinth-cloud-left"></view>
-    <view class="plinth-cloud-pearl"></view>
-    <view class="plinth-cloud plinth-cloud-right"></view>
-   </view>
-   <view class="plinth-rim"></view>
-   <view class="plinth-top"></view>
-   <view class="plinth-contact"></view>
+
+  <canvas id="posterCanvas" type="2d" class="poster-canvas" aria-hidden="true"></canvas>
+
+  <view class="result-actions-wrap">
+    <view class="actions">
+      <button
+        class="action-primary"
+        bindtap="exportWork"
+        loading="{{exportTask==='art'}}"
+        disabled="{{!!exportTask||sharing}}"
+        aria-disabled="{{!!exportTask||sharing}}"
+      ><ui-icon wx:if="{{exportTask!=='art'}}" name="download" size="36" decorative></ui-icon><text>{{exportTask==='art'?'正在生成':'生成作品图'}}</text></button>
+      <button
+        class="action-secondary"
+        bindtap="exportPoster"
+        loading="{{exportTask==='poster'}}"
+        disabled="{{!!exportTask||sharing}}"
+        aria-disabled="{{!!exportTask||sharing}}"
+      ><ui-icon wx:if="{{exportTask!=='poster'}}" name="poster" size="36" tone="light" decorative></ui-icon><text>{{exportTask==='poster'?'正在生成':'纪念海报'}}</text></button>
+      <button
+        class="action-share"
+        open-type="share"
+        bindtap="startShare"
+        disabled="{{!!exportTask||sharing}}"
+        aria-disabled="{{!!exportTask||sharing}}"
+        aria-label="{{sharing?'正在打开分享':'分享这件作品'}}"
+      ><ui-icon name="share" size="38" tone="light" decorative></ui-icon></button>
+    </view>
+    <view wx:if="{{exportError}}" class="action-feedback" aria-role="alert">
+      <ui-icon name="warning" size="28" tone="light" decorative></ui-icon><text>{{exportError}}</text>
+    </view>
   </view>
- </view>
- <view class="scene-spacer"></view>
- <canvas id="posterCanvas" type="2d" class="poster-canvas"></canvas>
- <view class="actions">
-  <button class="action-primary" bindtap="exportWork" loading="{{exporting}}" disabled="{{exporting}}" aria-disabled="{{exporting}}">{{exporting?'正在生成':'生成作品图'}}</button>
-  <button class="action-secondary" bindtap="exportPoster" disabled="{{exporting}}" aria-disabled="{{exporting}}">纪念海报</button>
-  <button class="action-share" open-type="share" aria-label="分享这件作品"><ui-icon name="share" size="40" tone="light" decorative></ui-icon></button>
- </view>
- <block wx:if="{{infoOpen}}">
-  <view class="info-mask" bindtap="toggleInfo" aria-label="关闭作品信息"></view>
-  <view class="info-sheet" catchtap="noop">
-   <view class="sheet-handle" aria-hidden="true"></view>
-   <view class="sheet-head">
-    <view class="sheet-seal display" aria-hidden="true">器</view>
-    <view class="display sheet-title">这件作品</view>
-   </view>
-   <view class="sheet-divider" aria-hidden="true"><view class="sheet-diamond"></view></view>
-   <view class="info-row"><text>名称</text><text>{{work.title}}</text></view>
-   <view class="info-row"><text>器物</text><text>{{workInfo.shape}} · {{workInfo.clay}} · {{workInfo.glaze}}</text></view>
-   <view class="info-row"><text>风格</text><text>{{workInfo.style}}</text></view>
-   <view class="info-row"><text>纹样</text><text>{{workInfo.motifs}}</text></view>
-   <view class="info-row"><text>工艺</text><text>{{workInfo.techniques}}</text></view>
-   <view class="meaning-card"><text>纹样小记</text><view>{{workInfo.meaning}}</view></view>
-   <view class="info-row inscription-row"><text>款识</text><text>{{workInfo.inscription}}</text></view>
-   <button class="sheet-cta" bindtap="copy">沿用纹样再做一件</button>
-   <view class="sheet-mini-row">
-    <button class="sheet-mini" bindtap="rename">修改名称</button>
-    <button class="sheet-mini danger" bindtap="remove" disabled="{{removing}}" aria-disabled="{{removing}}">{{removing?'等待确认':'删除作品'}}</button>
-   </view>
+
+  <block wx:if="{{infoOpen}}">
+    <view class="info-mask" aria-role="button" aria-label="关闭作品信息" bindtap="closeInfo"></view>
+    <view class="info-sheet tone-light ui-motion" aria-role="dialog" aria-label="作品信息" catchtap="noop">
+      <view class="sheet-handle" aria-hidden="true"></view>
+      <view class="sheet-head">
+        <view class="sheet-heading-copy">
+          <view class="sheet-seal display" aria-hidden="true">器</view>
+          <view class="display sheet-title">这件作品</view>
+        </view>
+        <button class="sheet-close" aria-label="关闭作品信息" bindtap="closeInfo"><ui-icon name="close" size="36" decorative></ui-icon></button>
+      </view>
+      <view class="sheet-divider" aria-hidden="true"></view>
+      <scroll-view class="info-scroll" scroll-y enhanced show-scrollbar="false">
+        <view class="info-row"><text>名称</text><text>{{work.title}}</text></view>
+        <view class="info-row"><text>器物</text><text>{{workInfo.shape}} · {{workInfo.clay}} · {{workInfo.glaze}}</text></view>
+        <view class="info-row"><text>风格</text><text>{{workInfo.style}}</text></view>
+        <view class="info-row"><text>纹样</text><text>{{workInfo.motifs}}</text></view>
+        <view class="info-row"><text>工艺</text><text>{{workInfo.techniques}}</text></view>
+        <view class="meaning-card"><text>纹样小记</text><view>{{workInfo.meaning}}</view></view>
+        <view class="info-row inscription-row"><text>款识</text><text>{{workInfo.inscription}}</text></view>
+        <button class="sheet-cta" bindtap="copy" disabled="{{copying}}" aria-disabled="{{copying}}">{{copying?'正在建立新作品':'沿用纹样再做一件'}}</button>
+        <view class="sheet-mini-row">
+          <button class="sheet-mini" bindtap="rename"><ui-icon name="rename" size="30" decorative></ui-icon><text>修改名称</text></button>
+          <button class="sheet-mini danger" bindtap="remove" disabled="{{removing}}" aria-disabled="{{removing}}"><ui-icon name="delete" size="30" decorative></ui-icon><text>{{removing?'等待确认':'删除作品'}}</text></button>
+        </view>
+        <view class="sheet-safe-space" aria-hidden="true"></view>
+      </scroll-view>
+    </view>
+  </block>
+
+  <view wx:if="{{preview}}" class="preview tone-light ui-motion {{reduceMotion?'reduce-motion':''}}">
+    <app-nav
+      title="{{previewType}}"
+      theme="light"
+      fixed="{{false}}"
+      auto-back="{{false}}"
+      back-label="返回成品展台"
+      bindback="closePreview"
+    ></app-nav>
+    <scroll-view class="preview-body" scroll-y enhanced show-scrollbar="false">
+      <view class="preview-frame"><image src="{{preview}}" mode="aspectFit"></image></view>
+      <view class="preview-copy">
+        <view class="preview-title display">{{previewType}}已生成</view>
+        <text>确认画面后保存到相册；若权限未开启，预览会保留供你重试。</text>
+      </view>
+      <view wx:if="{{previewSaveState}}" class="preview-status {{previewSaveState==='已保存到相册'?'is-success':''}}" aria-role="status">
+        <ui-icon name="{{previewSaveState==='已保存到相册'?'check':'info'}}" size="28" decorative></ui-icon><text>{{previewSaveState}}</text>
+      </view>
+      <button class="save" bindtap="saveImage" loading="{{savingPreview}}" disabled="{{savingPreview}}" aria-disabled="{{savingPreview}}">
+        <ui-icon wx:if="{{!savingPreview}}" name="download" size="36" tone="light" decorative></ui-icon><text>{{savingPreview?'正在保存':'保存到相册'}}</text>
+      </button>
+      <view class="preview-safe-space" aria-hidden="true"></view>
+    </scroll-view>
   </view>
- </block>
- <view wx:if="{{preview}}" class="preview" style="padding-top:{{navTop}}px">
-  <view class="preview-top">
-   <view class="preview-back" role="button" aria-label="返回成品展台" bindtap="closePreview"><text>‹</text><text>返回</text></view>
-   <view class="preview-type display">{{previewType}}</view>
-  </view>
-  <image src="{{preview}}" mode="aspectFit"></image>
-  <button class="save" bindtap="saveImage">保存到相册</button>
- </view>
 </view>

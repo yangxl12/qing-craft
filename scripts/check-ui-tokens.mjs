@@ -46,7 +46,13 @@ const tokenOnlyFiles = [
   "styles/utilities.wxss",
   "components/ui-icon/ui-icon.wxss",
   "components/app-nav/app-nav.wxss",
-  "pages/ui-preview/ui-preview.wxss"
+  "pages/ui-preview/ui-preview.wxss",
+  "pages/result/result.wxss",
+  "pages/studio/studio.wxss",
+  "pages/studio/styles/base.wxss",
+  "pages/studio/styles/shaping.wxss",
+  "pages/studio/styles/decoration.wxss",
+  "pages/studio/styles/firing.wxss"
 ];
 for (const file of tokenOnlyFiles) {
   const literals = [...normalizedLiterals(read(file))];
@@ -57,8 +63,8 @@ const legacyBudgets = {
   "pages/index/index.wxss":0,
   "pages/gallery/gallery.wxss":0,
   "pages/settings/settings.wxss":0,
-  "pages/result/result.wxss":108,
-  "pages/studio/studio.wxss":603
+  "pages/result/result.wxss":0,
+  "pages/studio/studio.wxss":0
 };
 for (const [file, budget] of Object.entries(legacyBudgets)) {
   const count = normalizedLiterals(read(file)).size;
@@ -68,7 +74,13 @@ for (const [file, budget] of Object.entries(legacyBudgets)) {
 const migratedContentFiles = [
   "pages/index/index.wxss",
   "pages/gallery/gallery.wxss",
-  "pages/settings/settings.wxss"
+  "pages/settings/settings.wxss",
+  "pages/result/result.wxss",
+  "pages/studio/styles/base.wxss",
+  "pages/studio/styles/shaping.wxss",
+  "pages/studio/styles/decoration.wxss",
+  "pages/studio/styles/glazing.wxss",
+  "pages/studio/styles/firing.wxss"
 ];
 for (const file of migratedContentFiles) {
   const source = read(file);
@@ -81,9 +93,66 @@ for (const file of migratedContentFiles) {
   }
 }
 
-for (const file of migratedContentFiles.map((file) => file.replace(/\.wxss$/, ".wxml"))) {
+for (const file of [
+  "pages/index/index.wxml",
+  "pages/gallery/gallery.wxml",
+  "pages/settings/settings.wxml",
+  "pages/result/result.wxml",
+  "pages/studio/studio.wxml"
+]) {
   const literals = [...normalizedLiterals(read(file))];
   if (literals.length) failures.push(`${file} 原生组件颜色也必须引用 Token：${literals.join(", ")}`);
+}
+
+const glazeFallbackColors = new Set([
+  "#587d74", "#eef5ed", "#83a9a1", "#294d41", "#dbe9d7", "#527b68",
+  "#070908", "#765a32", "#121512", "#c7bfaf", "#ffffff", "#e8e0d1",
+  "#09284d", "#a7cbe1", "#16477b", "#91aaa4", "#bfd6d0"
+]);
+for (const literal of normalizedLiterals(read("pages/studio/styles/glazing.wxss"))) {
+  if (!glazeFallbackColors.has(literal)) failures.push(`上釉样式出现未登记的 UI 色值：${literal}`);
+}
+
+for (const file of [
+  "pages/index/index.wxml",
+  "pages/gallery/gallery.wxml",
+  "pages/settings/settings.wxml",
+  "pages/studio/studio.wxml",
+  "pages/result/result.wxml"
+]) {
+  const markup = read(file);
+  for (const match of markup.matchAll(/<view\b[\s\S]*?>/g)) {
+    const tag = match[0];
+    if (!/(?:bindtap|catchtap|bindlongpress)=/.test(tag)) continue;
+    if (!/aria-role=/.test(tag) || !/aria-label=/.test(tag)) {
+      failures.push(`${file} 可点击 view 缺少 aria-role 或 aria-label：${tag.replace(/\s+/g, " ").slice(0, 120)}`);
+    }
+  }
+}
+
+const studioMarkup = read("pages/studio/studio.wxml");
+const resultMarkup = read("pages/result/result.wxml");
+for (const [file, markup] of [["pages/studio/studio.wxml", studioMarkup], ["pages/result/result.wxml", resultMarkup]]) {
+  if (/[‹↶↷⛶⌄⌃]/.test(markup)) failures.push(`${file} 正式操作仍包含临时 Unicode 图标`);
+}
+
+const studioEntry = read("pages/studio/studio.wxss");
+for (const name of ["base", "shaping", "decoration", "glazing", "firing"]) {
+  if (!studioEntry.includes(`./styles/${name}.wxss`)) failures.push(`创作台缺少 ${name}.wxss 样式入口`);
+}
+
+for (const file of [
+  "pages/result/result.wxss",
+  "pages/studio/styles/base.wxss",
+  "pages/studio/styles/shaping.wxss",
+  "pages/studio/styles/decoration.wxss",
+  "pages/studio/styles/glazing.wxss",
+  "pages/studio/styles/firing.wxss"
+]) {
+  const source = read(file);
+  if (/\*\s*::(?:before|after)/.test(source)) {
+    failures.push(`${file} 不得使用微信 WXSS 编译器不支持的通配符伪元素选择器`);
+  }
 }
 
 const primitives = read("styles/primitives.wxss");
@@ -108,7 +177,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`UI checks passed: ${contrastPairs.length} contrast pairs, ${new Set(iconNames).size} local icons, stage 2 content pages use tokens only`);
+console.log(`UI checks passed: ${contrastPairs.length} contrast pairs, ${new Set(iconNames).size} local icons, stages 0-5 migrated UI stays tokenized and WXSS-compatible`);
 
 function contrast(first, second) {
   const light = luminance(first);

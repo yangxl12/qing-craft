@@ -1,4 +1,4 @@
-<view class="studio {{reduceMotion?'reduce-motion':''}} {{kiln?'kiln-active kiln-'+kilnType:''}} {{stageIndex===1||stageIndex===4?'decor-stage':''}} {{stageIndex===4?'paint-stage':''}} {{stageIndex===2?'glaze-stage':''}} {{decorTrayOpen?'decor-menu-open':'decor-menu-closed'}} {{decorFullscreen?'decor-fullscreen':''}}">
+<view class="studio tone-dark {{reduceMotion?'reduce-motion':''}} {{showHelp?'show-help':''}} {{kiln?'kiln-active kiln-'+kilnType:''}} {{stageIndex===1||stageIndex===4?'decor-stage':''}} {{stageIndex===4?'paint-stage':''}} {{stageIndex===2?'glaze-stage':''}} {{decorTrayOpen?'decor-menu-open':'decor-menu-closed'}} {{decorFullscreen?'decor-fullscreen':''}}">
   <view wx:if="{{stageIndex===0}}" class="shaping-workshop-bg" aria-hidden="true">
     <image
       class="shaping-workshop-image"
@@ -11,7 +11,7 @@
     <image class="decor-workshop-image" src="/assets/studio-decoration-workshop.jpg" mode="aspectFill"></image>
     <view class="decor-workshop-grade"></view>
   </view>
-  <view wx:else class="workshop-bg">
+  <view wx:else class="workshop-bg" aria-hidden="true">
     <view class="wall-plaster"></view>
     <view class="wall-glow"></view>
     <view class="window-bloom"></view>
@@ -45,42 +45,55 @@
   <view wx:if="{{kiln}}" class="kiln-backdrop" aria-hidden="true">
     <image class="kiln-background-image" src="{{kilnBackground}}" mode="aspectFill"></image>
     <view class="kiln-background-grade"></view>
-    <view class="kiln-heat-haze" style="opacity:{{0.16+kilnProgress/180}}"></view>
-    <view class="kiln-vessel-aura heat-{{kilnHeatClass}}"></view>
-    <view class="kiln-embers">
+    <view class="kiln-heat-haze ui-motion" style="opacity:{{0.16+kilnProgress/180}}"></view>
+    <view class="kiln-vessel-aura heat-{{kilnHeatClass}} ui-motion"></view>
+    <view class="kiln-embers ui-motion">
       <view></view><view></view><view></view><view></view><view></view>
     </view>
   </view>
 
   <view class="safe-top" style="height:{{statusBarHeight}}px"></view>
   <view class="topbar">
-    <view
-      wx:if="{{stageIndex===1||stageIndex===4}}"
-      class="decor-fullscreen-trigger"
-      role="button"
-      aria-label="{{decorFullscreen?'退出全屏视图':'进入瓷器全屏视图'}}"
-      bindtap="toggleDecorFullscreen"
-    ><text>{{decorFullscreen?'退出':'全屏'}}</text><view>{{decorFullscreen?'↙':'⛶'}}</view></view>
-    <view class="top-actions">
-      <view class="top-action top-exit" role="button" aria-label="退出创作台" bindtap="close">退出</view>
-      <view class="top-action top-reset" role="button" aria-label="视角回正" bindtap="resetCamera">回正</view>
-      <view class="circle {{!canUndo?'disabled':''}}" role="button" aria-label="撤销" bindtap="undo">↶</view>
-      <view class="circle {{!canRedo?'disabled':''}}" role="button" aria-label="重做" bindtap="redo">↷</view>
-      <view class="circle" role="button" aria-label="查看手势帮助" bindtap="help">?</view>
-    </view>
+    <button class="top-exit" aria-label="退出创作台" bindtap="close">
+      <ui-icon name="back" size="36" tone="light" decorative></ui-icon><text>退出</text>
+    </button>
     <view class="work-title">
-      <view>{{stageName}} · {{stageIndex+1}} / 7</view>
-      <text class="{{saveState==='已保存'?'saved':''}}">{{saveState}}</text>
+      <view class="work-title-main"><text>{{stageName}}</text><small>{{stageIndex+1}} / 7</small></view>
+      <text class="save-state {{saveState==='已保存'?'saved':''}}" aria-role="status">{{saveState}}</text>
     </view>
+    <view class="topbar-balance" aria-hidden="true"></view>
+  </view>
+  <view class="stage-progress" aria-label="七道工序，当前{{stageName}}，第{{stageIndex+1}}道">
+    <view class="stage-progress-line" aria-hidden="true"></view>
+    <view
+      wx:for="{{stageSteps}}"
+      wx:key="id"
+      class="stage-progress-step is-{{item.state}}"
+      aria-label="{{item.name}}，{{item.state==='done'?'已完成':item.state==='current'?'当前工序':'未开始'}}"
+    ><view class="stage-progress-mark">{{item.short}}</view></view>
   </view>
 
   <view class="stage-area">
     <view class="pottery-spotlight"></view>
+    <view class="stage-tool-rail">
+      <button class="stage-tool" aria-label="视角回正" bindtap="resetCamera"><ui-icon name="reset-view" size="38" tone="light" decorative></ui-icon></button>
+      <button class="stage-tool" disabled="{{!canUndo}}" aria-disabled="{{!canUndo}}" aria-label="撤销" bindtap="undo"><ui-icon name="undo" size="38" tone="light" decorative></ui-icon></button>
+      <button class="stage-tool" disabled="{{!canRedo}}" aria-disabled="{{!canRedo}}" aria-label="重做" bindtap="redo"><ui-icon name="redo" size="38" tone="light" decorative></ui-icon></button>
+      <button wx:if="{{stageIndex===0}}" class="stage-tool {{showHelp?'is-active':''}}" aria-label="{{showHelp?'收起手势帮助':'查看手势帮助'}}" bindtap="help"><ui-icon name="help" size="38" tone="light" decorative></ui-icon></button>
+    </view>
+    <button
+      wx:if="{{stageIndex===1||stageIndex===4}}"
+      class="decor-fullscreen-trigger"
+      aria-label="{{decorFullscreen?'退出全屏视图':'进入瓷器全屏视图'}}"
+      bindtap="toggleDecorFullscreen"
+    ><ui-icon name="{{decorFullscreen?'exit-fullscreen':'fullscreen'}}" size="38" tone="light" decorative></ui-icon><text>{{decorFullscreen?'退出全屏':'全屏查看'}}</text></button>
     <canvas
       wx:if="{{!fallback}}"
       id="potteryCanvas"
       class="canvas"
       type="webgl"
+      aria-role="img"
+      aria-label="{{stageName}}器物舞台，按当前工序手势直接操作器物"
       disable-scroll="true"
       bindtouchstart="touchStart"
       bindtouchmove="touchMove"
@@ -91,6 +104,8 @@
       wx:else
       class="fallback"
       style="--base-screen-percent:{{baseScreenPercent}}%;"
+      aria-role="img"
+      aria-label="{{stageName}}轻量器物舞台，按当前工序手势直接操作器物"
       catchtouchstart="touchStart"
       catchtouchmove="touchMove"
       catchtouchend="touchEnd"
@@ -132,6 +147,8 @@
       <view class="decor-tool-head">
         <view
           class="decor-tool-drag"
+          aria-role="button"
+          aria-label="拖动纹样调校面板"
           catchtouchstart="startDecorToolDrag"
           catchtouchmove="moveDecorToolPanel"
           catchtouchend="endDecorToolDrag"
@@ -140,40 +157,40 @@
           <view class="decor-drag-icon" aria-hidden="true"><view></view><view></view><view></view><view></view><view></view><view></view></view>
            <view class="decor-tool-title"><text>{{stageIndex===4?'彩绘调校':(selectedDecorationIsSeal?'题款调校':'纹样调校')}}</text></view>
         </view>
-        <view
+        <button
           class="decor-tool-fold"
-          role="button"
           aria-label="{{decorToolsCollapsed?'展开操作按钮':'收起操作按钮'}}"
           catchtap="toggleDecorTools"
-        ><ui-icon name="{{decorToolsCollapsed?'expand':'collapse'}}" size="36" tone="light" decorative></ui-icon></view>
+        ><ui-icon name="{{decorToolsCollapsed?'expand':'collapse'}}" size="36" tone="light" decorative></ui-icon></button>
       </view>
       <view
         class="decor-tool-actions {{decorToolsCollapsed?'is-collapsed':''}}"
         aria-hidden="{{decorToolsCollapsed}}"
       >
-        <view class="decor-tool-command danger" role="button" aria-label="删除当前{{selectedDecorationLabel}}" bindtap="deleteSelectedDecoration"><ui-icon name="delete" size="40" decorative></ui-icon></view>
-        <view class="decor-tool-command {{!canUndo?'disabled':''}}" role="button" aria-label="撤回上一步" aria-disabled="{{!canUndo}}" bindtap="undo"><ui-icon name="undo" size="40" decorative></ui-icon></view>
-        <view wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command" role="button" aria-label="复制当前图案" bindtap="copySelectedDecoration"><ui-icon name="copy" size="40" decorative></ui-icon></view>
+        <button class="decor-tool-command danger" aria-label="删除当前{{selectedDecorationLabel}}" bindtap="deleteSelectedDecoration"><ui-icon name="delete" size="40" decorative></ui-icon></button>
+        <button class="decor-tool-command" disabled="{{!canUndo}}" aria-label="撤回上一步" aria-disabled="{{!canUndo}}" bindtap="undo"><ui-icon name="undo" size="40" decorative></ui-icon></button>
+        <button wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command" aria-label="复制当前图案" bindtap="copySelectedDecoration"><ui-icon name="copy" size="40" decorative></ui-icon></button>
         <view class="decor-axis-command">
-          <view role="button" aria-label="减小当前{{selectedDecorationLabel}}横向尺寸" data-axis="x" data-direction="-1" bindtap="adjustDecorAxis">−</view>
+          <button aria-label="减小当前{{selectedDecorationLabel}}横向尺寸" data-axis="x" data-direction="-1" bindtap="adjustDecorAxis">−</button>
           <ui-icon name="scale-horizontal" size="36" decorative></ui-icon>
-          <view role="button" aria-label="增大当前{{selectedDecorationLabel}}横向尺寸" data-axis="x" data-direction="1" bindtap="adjustDecorAxis">＋</view>
+          <button aria-label="增大当前{{selectedDecorationLabel}}横向尺寸" data-axis="x" data-direction="1" bindtap="adjustDecorAxis">＋</button>
         </view>
         <view class="decor-axis-command">
-          <view role="button" aria-label="减小当前{{selectedDecorationLabel}}纵向尺寸" data-axis="y" data-direction="-1" bindtap="adjustDecorAxis">−</view>
+          <button aria-label="减小当前{{selectedDecorationLabel}}纵向尺寸" data-axis="y" data-direction="-1" bindtap="adjustDecorAxis">−</button>
           <ui-icon name="scale-vertical" size="36" decorative></ui-icon>
-          <view role="button" aria-label="增大当前{{selectedDecorationLabel}}纵向尺寸" data-axis="y" data-direction="1" bindtap="adjustDecorAxis">＋</view>
+          <button aria-label="增大当前{{selectedDecorationLabel}}纵向尺寸" data-axis="y" data-direction="1" bindtap="adjustDecorAxis">＋</button>
         </view>
-        <view wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command flip" role="button" aria-label="上下翻转当前图案" bindtap="flipSelectedDecoration"><ui-icon name="flip-vertical" size="40" decorative></ui-icon></view>
+        <button wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command flip" aria-label="上下翻转当前图案" bindtap="flipSelectedDecoration"><ui-icon name="flip-vertical" size="40" decorative></ui-icon></button>
       </view>
     </view>
 
-    <view wx:if="{{stageIndex===0}}" class="gesture-map">
-      <view class="gesture-map-title">手势塑形</view>
+    <view wx:if="{{stageIndex===0&&showHelp}}" class="gesture-map" aria-role="dialog" aria-label="制坯手势帮助">
+      <view class="gesture-map-head"><view class="gesture-map-title">手势塑形</view><button aria-label="关闭手势帮助" bindtap="help"><ui-icon name="close" size="32" tone="light" decorative></ui-icon></button></view>
       <view class="gesture-row"><view class="arrow-pair">←　→</view><text>拉伸</text></view>
       <view class="gesture-row"><view class="arrow-pair">→　←</view><text>压缩</text></view>
       <view class="gesture-row"><view class="arrow-single">↕</view><text>抹平高低</text></view>
       <view class="gesture-camera"><view class="finger-pair"><view></view><view></view></view><text>双指环看</text></view>
+      <text class="gesture-map-note">双指环看与缩放；回正可重新完整查看器形。</text>
     </view>
 
     <view wx:if="{{stageIndex===0}}" class="wall-caliper {{wallAdjusting?'active':''}}">
@@ -191,9 +208,9 @@
           max="{{wallThicknessMax}}"
           step="1"
           value="{{wallThicknessValue}}"
-          activeColor="#a8ccb8"
-          backgroundColor="rgba(218,232,223,.22)"
-          block-color="#eef4ef"
+          activeColor="var(--color-celadon-300)"
+          backgroundColor="var(--ui-workshop-border)"
+          block-color="var(--color-on-dark)"
           block-size="16"
           aria-label="调整泥壁厚度，当前{{wallThicknessText}}"
           bindchanging="changeWallThickness"
@@ -205,99 +222,92 @@
     </view>
 
     <view wx:if="{{stageIndex===0}}" class="form-switcher" aria-label="受力形态">
-      <view
+      <button
         wx:for="{{shapingForms}}"
         wx:key="id"
         class="form-chip {{shapingForm===item.id?'active':''}}"
-        role="button"
         aria-label="选择{{item.name}}塑形"
         data-id="{{item.id}}"
         bindtap="chooseShapingForm"
-      >{{item.name}}</view>
+      >{{item.name}}</button>
     </view>
 
     <view wx:if="{{stageIndex===0}}" class="material-dock">
       <view wx:if="{{shapeMenuOpen}}" class="choice-popover shape-popover">
         <view class="choice-title">器形</view>
         <view class="choice-grid">
-          <view
+          <button
             wx:for="{{shapeOptions}}"
             wx:key="id"
             class="choice-item {{work.shapeId===item.id?'active':''}}"
-            role="button"
             aria-label="选择{{item.glyph}}"
             data-id="{{item.id}}"
             bindtap="chooseBaseShape"
-          >{{item.glyph}}</view>
+          >{{item.glyph}}</button>
         </view>
       </view>
       <view wx:if="{{clayMenuOpen}}" class="choice-popover clay-popover">
         <view class="choice-title">泥料</view>
-        <view
+        <button
           wx:for="{{clayOptions}}"
           wx:key="id"
           class="clay-choice {{work.clayId===item.id?'active':''}}"
-          role="button"
           aria-label="选择{{item.name}}"
           data-id="{{item.id}}"
           bindtap="chooseClay"
         >
           <view class="clay-dot" style="background:{{item.wet}}"></view>
           <text>{{item.name}}</text>
-        </view>
+        </button>
       </view>
       <view class="dock-row">
-        <view class="dock-trigger {{shapeMenuOpen?'open':''}}" role="button" aria-label="展开器形选择" bindtap="toggleShapeMenu">
+        <button class="dock-trigger {{shapeMenuOpen?'open':''}}" aria-label="{{shapeMenuOpen?'收起':'展开'}}器形选择" bindtap="toggleShapeMenu">
           <text>器形</text><view>{{shapeName}}</view><small>{{shapeMenuOpen?'−':'+'}}</small>
-        </view>
-        <view class="dock-trigger {{clayMenuOpen?'open':''}}" role="button" aria-label="展开泥料选择" bindtap="toggleClayMenu">
+        </button>
+        <button class="dock-trigger {{clayMenuOpen?'open':''}}" aria-label="{{clayMenuOpen?'收起':'展开'}}泥料选择" bindtap="toggleClayMenu">
           <text>泥料</text><view>{{clayName}}</view><small>{{clayMenuOpen?'−':'+'}}</small>
-        </view>
+        </button>
       </view>
     </view>
 
-    <view class="hint panel" wx:if="{{showHelp||showHint}}" bindtap="hideHint">
+    <view class="hint panel" wx:if="{{showHint}}" aria-role="status">
       <text>{{showHelp?cameraHelp:hint}}</text>
-      <small>轻触收起</small>
+      <button aria-label="收起提示" bindtap="hideHint"><ui-icon name="close" size="28" tone="light" decorative></ui-icon></button>
     </view>
   </view>
 
   <view wx:if="{{stageIndex===0}}" class="stage-footer stagebar">
-    <view
+    <button
       class="stagebar-prev"
-      role="button"
       aria-label="返回前置设置"
       bindtap="goPreviousStage"
-    ><view>←</view><text>上一步</text></view>
+    ><ui-icon name="back" size="32" tone="light" decorative></ui-icon><text>上一步</text></button>
     <view class="stage-footer-title">{{stageName}}</view>
-    <view
+    <button
       class="stagebar-next"
-      role="button"
       aria-label="进入下一道工序：{{nextStageName}}"
       bindtap="completeStage"
-    ><text>{{nextStageName}}</text><view>→</view></view>
+    ><text>{{nextStageName}}</text><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
   </view>
 
   <view wx:elif="{{stageIndex===1}}" class="decor-tray {{decorTrayOpen?'expanded':'collapsed'}}">
-    <view
+    <button
       class="decor-tray-toggle"
-      role="button"
       aria-label="{{decorTrayOpen?'收起全部装饰菜单':'展开全部装饰菜单'}}"
       bindtap="toggleDecorTray"
-    ><ui-icon name="{{decorTrayOpen?'collapse':'expand'}}" size="32" tone="light" decorative></ui-icon><text>{{decorTrayOpen?'收起':'展开'}}</text></view>
+    ><ui-icon name="{{decorTrayOpen?'collapse':'expand'}}" size="32" tone="light" decorative></ui-icon><text>{{decorTrayOpen?'收起':'展开'}}</text></button>
 
     <view wx:if="{{decorTrayOpen}}" class="decor-panel-grid">
       <view class="decor-library-panel">
         <view class="decor-catalog-tabs">
-          <view
+          <button
             wx:for="{{decorTabs}}"
             wx:key="id"
             class="{{decorTab===item.id?'active':''}}"
-            role="button"
             aria-label="切换到{{item.name}}"
             data-id="{{item.id}}"
             bindtap="selectDecorTab"
-          ><small>{{item.seal}}</small><text>{{item.name}}</text></view>
+          ><small>{{item.seal}}</small><text>{{item.name}}</text></button>
         </view>
         <view class="decor-library-body">
           <view wx:if="{{decorTab==='inscription'}}" class="seal-panel">
@@ -321,12 +331,12 @@
               <view class="seal-block-head">
                 <view class="seal-block-title"><small aria-hidden="true">色</small><text>款色</text></view>
               </view>
-              <view class="seal-color-row" role="radiogroup" aria-label="选择题款款色">
-                <view
+              <view class="seal-color-row" role="radiogroup" aria-role="radiogroup" aria-label="选择题款款色">
+                <button
                   wx:for="{{sealColors}}"
                   wx:key="id"
                   class="seal-color {{sealColorId===item.id?'active':''}}"
-                  role="radio"
+                  aria-role="radio"
                   aria-checked="{{sealColorId===item.id}}"
                   aria-label="选择{{item.name}}"
                   data-id="{{item.id}}"
@@ -334,7 +344,7 @@
                 >
                   <view class="seal-color-chip" style="background:{{item.color}}"></view>
                   <text class="seal-color-name">{{item.name}}</text>
-                </view>
+                </button>
               </view>
             </view>
 
@@ -346,23 +356,22 @@
 
           <block wx:else>
             <scroll-view class="decor-side-menu" scroll-y enhanced show-scrollbar="false">
-              <view
+              <button
                 wx:for="{{decorSideMenus}}"
                 wx:key="id"
                 class="decor-side-menu-item {{decorMenuId===item.id?'active':''}}"
-                role="button"
-                aria-label="选择{{item.name}}"
+                aria-label="选择{{item.name}}类别，{{decorMenuId===item.id?'已选中':'未选中'}}"
                 data-id="{{item.id}}"
                 bindtap="selectDecorMenu"
-              ><view class="decor-side-menu-icon" aria-hidden="true">{{item.icon}}</view></view>
+              ><view class="decor-side-menu-icon" aria-hidden="true"><ui-icon name="{{item.icon}}" size="34" tone="{{decorMenuId===item.id?'light':'dark'}}" decorative></ui-icon></view><text>{{item.name}}</text></button>
             </scroll-view>
             <scroll-view class="decor-grid-scroll" scroll-y enhanced show-scrollbar="false">
               <view class="decor-grid">
-                <view
+                <button
                   wx:for="{{decorCatalogItems}}"
                   wx:key="key"
                   class="decor-grid-card {{item.checked?'checked':''}}"
-                  role="checkbox"
+                  aria-role="checkbox"
                   aria-checked="{{item.checked}}"
                   aria-label="{{item.checked?'取消':'选择'}}{{item.name}}"
                   data-id="{{item.id}}"
@@ -370,9 +379,9 @@
                   bindtap="toggleDecorCatalogItem"
                 >
                   <view class="motif-art {{item.patternClass}}"><view></view><text>{{item.glyph}}</text><view></view></view>
-                  <view wx:if="{{item.checked}}" class="decor-check">✓</view>
+                  <view wx:if="{{item.checked}}" class="decor-check"><ui-icon name="check" size="24" tone="light" decorative></ui-icon></view>
                   <text class="decor-grid-name">{{item.name}}</text>
-                </view>
+                </button>
               </view>
             </scroll-view>
           </block>
@@ -383,21 +392,21 @@
         <view class="decor-selected-head"><view><small>已入画</small><text>被选图菜单</text></view><text>{{selectedItemCount}}</text></view>
         <scroll-view class="decor-selected-scroll" scroll-y enhanced show-scrollbar="false">
           <view wx:if="{{decorationLayers.length}}" class="decor-selected-grid">
-            <view
+            <button
               wx:for="{{decorationLayers}}"
               wx:key="id"
               class="decor-selected-card {{item.selected?'active':''}} {{item.visible?'':'hidden'}}"
-              role="radio"
+              aria-role="radio"
               aria-checked="{{item.selected}}"
               aria-label="{{item.ariaLabel}}"
               data-id="{{item.id}}"
               bindtap="selectDecoration"
             >
               <view class="motif-art {{item.patternClass}}"><view></view><text>{{item.glyph}}</text><view></view></view>
-              <view wx:if="{{item.selected}}" class="decor-check">✓</view>
+              <view wx:if="{{item.selected}}" class="decor-check"><ui-icon name="check" size="24" tone="light" decorative></ui-icon></view>
               <view wx:if="{{item.copyNumber}}" class="decor-copy-badge">{{item.copyNumber}}</view>
               <text>{{item.name}}</text>
-            </view>
+            </button>
           </view>
           <view wx:else class="decor-selected-empty"><text>尚未入画</text><small>从左侧轻点图案</small></view>
         </scroll-view>
@@ -405,21 +414,21 @@
     </view>
 
     <view class="decor-bottom">
-      <button class="decor-previous" disabled="{{confirmingReturn}}" aria-disabled="{{confirmingReturn}}" bindtap="returnToShaping"><ui-icon name="back" size="32" decorative></ui-icon><text>{{confirmingReturn?'等待确认':'上一步'}}</text></button>
+      <button class="decor-previous" disabled="{{confirmingReturn}}" aria-disabled="{{confirmingReturn}}" bindtap="returnToShaping"><ui-icon name="back" size="32" tone="light" decorative></ui-icon><text>{{confirmingReturn?'等待确认':'上一步'}}</text></button>
       <text>{{decorationCount}} 层 · {{stampCount}} 枚落印{{sealApplied?' · 1 处题款':''}}</text>
-      <button class="decor-complete" bindtap="completeStage">完成装饰 <view>→</view></button>
+      <button class="decor-complete" bindtap="completeStage"><text>完成装饰</text><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
     </view>
   </view>
 
   <view wx:elif="{{stageIndex===2}}" class="glaze-tray">
     <view class="glaze-panel">
       <view class="glaze-title"><text>彩釉</text></view>
-      <view class="glaze-grid" role="radiogroup" aria-label="选择彩釉">
-        <view
+      <view class="glaze-grid" role="radiogroup" aria-role="radiogroup" aria-label="选择彩釉">
+        <button
           wx:for="{{glazes}}"
           wx:key="id"
           class="glaze-choice {{glazeId===item.id?'active':''}}"
-          role="radio"
+          aria-role="radio"
           aria-checked="{{glazeId===item.id}}"
           aria-label="选择{{item.name}}"
           data-id="{{item.id}}"
@@ -430,66 +439,61 @@
             <view class="glaze-sample-pool"></view>
           </view>
           <text>{{item.name}}</text>
-          <view wx:if="{{glazeId===item.id}}" class="glaze-check" aria-hidden="true">✓</view>
-        </view>
+          <view wx:if="{{glazeId===item.id}}" class="glaze-check" aria-hidden="true"><ui-icon name="check" size="24" decorative></ui-icon></view>
+        </button>
       </view>
     </view>
     <view class="glaze-bottom stagebar">
-      <view
+      <button
         class="stagebar-prev"
-        role="button"
         aria-label="返回装饰工序"
         bindtap="goPreviousStage"
-      ><view>←</view><text>上一步</text></view>
+      ><ui-icon name="back" size="32" tone="light" decorative></ui-icon><text>上一步</text></button>
       <text class="stagebar-info">{{glazeName}} · 完整施釉</text>
-      <view
+      <button
         class="stagebar-next"
-        role="button"
         aria-label="完成上釉，直接进入高温烤制"
         bindtap="startFiring"
-      ><text>高温烤制</text><view>→</view></view>
+      ><text>高温烧制</text><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
     </view>
   </view>
 
   <view wx:elif="{{stageIndex===4}}" class="decor-tray paint-tray {{decorTrayOpen?'expanded':'collapsed'}}">
-    <view
+    <button
       class="decor-tray-toggle"
-      role="button"
       aria-label="{{decorTrayOpen?'收起全部彩绘菜单':'展开全部彩绘菜单'}}"
       bindtap="toggleDecorTray"
-    ><view>{{decorTrayOpen?'⌄':'⌃'}}</view><text>{{decorTrayOpen?'收起':'展开'}}</text></view>
+    ><ui-icon name="{{decorTrayOpen?'collapse':'expand'}}" size="32" tone="light" decorative></ui-icon><text>{{decorTrayOpen?'收起':'展开'}}</text></button>
 
-    <view
+    <button
       class="paint-fired-peek {{firedPreview?'active':''}}"
-      role="button"
       aria-label="按住查看低温烤花后的定色效果"
       bindtouchstart="previewFiredStart"
       bindtouchend="previewFiredEnd"
       bindtouchcancel="previewFiredEnd"
-    ><view aria-hidden="true">焰</view><text>{{firedPreview?'烤后定色':'按住看烤后'}}</text></view>
+    ><ui-icon name="kiln" size="32" tone="light" decorative></ui-icon><text>{{firedPreview?'烤后定色':'按住看烤后'}}</text></button>
 
     <view wx:if="{{decorTrayOpen}}" class="decor-panel-grid paint-panel-grid">
       <view class="decor-library-panel paint-library-panel">
         <view class="decor-catalog-tabs paint-catalog-tabs">
-          <view
+          <button
             wx:for="{{paintTabs}}"
             wx:key="id"
             class="{{paintTab===item.id?'active':''}}"
-            role="button"
             aria-label="切换到{{item.name}}"
             data-id="{{item.id}}"
             bindtap="selectPaintTab"
-          ><small>{{item.seal}}</small><text>{{item.name}}</text></view>
+          ><small>{{item.seal}}</small><text>{{item.name}}</text></button>
         </view>
 
         <view class="decor-library-body paint-library-body">
           <scroll-view class="decor-grid-scroll paint-grid-scroll" scroll-y enhanced show-scrollbar="false">
             <view class="decor-grid paint-grid">
-              <view
+              <button
                 wx:for="{{paintCatalogItems}}"
                 wx:key="key"
                 class="decor-grid-card paint-grid-card {{item.kind==='color'?'pigment-card':''}} {{item.checked?'checked':''}}"
-                role="button"
+                aria-role="button"
                 aria-pressed="{{item.checked}}"
                 aria-label="{{item.ariaLabel}}"
                 data-id="{{item.id}}"
@@ -501,9 +505,9 @@
                   <text>{{item.glyph}}</text>
                 </view>
                 <view wx:else class="motif-art paint-motif-art {{item.patternClass}}" style="color:{{item.color}}"><view></view><text>{{item.glyph}}</text><view></view></view>
-                <view wx:if="{{item.checked}}" class="decor-check">✓</view>
+                <view wx:if="{{item.checked}}" class="decor-check"><ui-icon name="check" size="24" tone="light" decorative></ui-icon></view>
                 <text class="decor-grid-name">{{item.name}}</text>
-              </view>
+              </button>
             </view>
           </scroll-view>
         </view>
@@ -513,11 +517,11 @@
         <view class="decor-selected-head"><view><small>釉上设色</small><text>彩绘图层</text></view><text>{{paintLayerCount}}</text></view>
         <scroll-view class="decor-selected-scroll" scroll-y enhanced show-scrollbar="false">
           <view wx:if="{{paintLayers.length}}" class="decor-selected-grid">
-            <view
+            <button
               wx:for="{{paintLayers}}"
               wx:key="id"
               class="decor-selected-card paint-selected-card {{item.selected?'active':''}} {{item.visible?'':'hidden'}}"
-              role="radio"
+              aria-role="radio"
               aria-checked="{{item.selected}}"
               aria-label="{{item.ariaLabel}}"
               data-id="{{item.id}}"
@@ -525,10 +529,10 @@
             >
               <view class="motif-art paint-motif-art {{item.patternClass}}" style="color:{{item.color}}"><view></view><text>{{item.glyph}}</text><view></view></view>
               <view class="paint-layer-swatch" style="background:{{item.color}}"></view>
-              <view wx:if="{{item.selected}}" class="decor-check">✓</view>
+              <view wx:if="{{item.selected}}" class="decor-check"><ui-icon name="check" size="24" tone="light" decorative></ui-icon></view>
               <view wx:if="{{item.copyNumber}}" class="decor-copy-badge">{{item.copyNumber}}</view>
               <text>{{item.name}}</text>
-            </view>
+            </button>
           </view>
           <view wx:else class="decor-selected-empty paint-selected-empty"><text>尚未上彩</text><small>从左侧挑一枚图案，或直接涂色</small></view>
         </scroll-view>
@@ -540,34 +544,32 @@
         class="decor-previous"
         aria-label="返回上釉工序"
         bindtap="goPreviousStage"
-      ><view>←</view><text>上一步</text></button>
+      ><ui-icon name="back" size="32" tone="light" decorative></ui-icon><text>上一步</text></button>
       <text>{{paintLayerCount?paintLayerCount+' 层釉上彩':'可保留烧后素面'}}</text>
-      <button class="decor-complete" aria-label="完成彩绘，直接进入低温烤花" bindtap="startRefire">低温烤花 <view>→</view></button>
+      <button class="decor-complete" aria-label="完成彩绘，直接进入低温烤花" bindtap="startRefire"><text>低温烤花</text><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
     </view>
   </view>
 
   <view wx:else class="tray">
     <scroll-view wx:if="{{tools.length}}" class="tool-scroll" scroll-x show-scrollbar="false">
       <view class="tool-row">
-        <view wx:for="{{tools}}" wx:key="id" data-id="{{item.id}}" bindtap="chooseTool" class="tool {{tool===item.id?'active':''}}">
-          <view>{{item.name}}</view><text>{{item.name}}</text>
-        </view>
+        <button wx:for="{{tools}}" wx:key="id" data-id="{{item.id}}" bindtap="chooseTool" class="tool {{tool===item.id?'active':''}}" aria-label="选择{{item.name}}，{{tool===item.id?'已选中':'未选中'}}">
+          <ui-icon name="{{stageIndex===3||stageIndex===5?'kiln':'paint'}}" size="36" tone="light" decorative></ui-icon><text>{{item.name}}</text>
+        </button>
       </view>
     </scroll-view>
     <view class="tray-bottom stagebar">
-      <view
+      <button
         class="stagebar-prev"
-        role="button"
         aria-label="返回上一道工序"
         bindtap="goPreviousStage"
-      ><view>←</view><text>上一步</text></view>
+      ><ui-icon name="back" size="32" tone="light" decorative></ui-icon><text>上一步</text></button>
       <view class="tool-hint">{{stageIndex===6?'七道工序已完成':toolName}}</view>
-      <view
+      <button
         class="stagebar-next"
-        role="button"
         aria-label="进入下一道工序"
         bindtap="completeStage"
-      ><text>{{stageIndex===6?'查看成品':'完成'+stageName}}</text><view>→</view></view>
+      ><text>{{stageIndex===6?'查看成品':'完成'+stageName}}</text><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
     </view>
   </view>
 
@@ -592,7 +594,7 @@
         </view>
       </view>
       <view class="kiln-progress" aria-label="烧制进度 {{kilnProgress}}%">
-        <view class="kiln-progress-fill" style="width:{{kilnProgress}}%">
+        <view class="kiln-progress-fill ui-motion" style="width:{{kilnProgress}}%">
           <view class="kiln-progress-ember"></view>
         </view>
       </view>
@@ -600,7 +602,7 @@
     </view>
 
     <button class="kiln-skip" aria-label="跳过烧制等待，直接进入下一步" bindtap="skipKiln">
-      <text>跳过</text><view>→</view>
+      <text>跳过</text><ui-icon name="forward" size="30" tone="light" decorative></ui-icon>
     </button>
   </view>
 </view>

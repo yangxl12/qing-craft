@@ -2,7 +2,9 @@ const ICON_NAMES = [
   "back", "close", "more", "help", "undo", "redo", "fullscreen",
   "exit-fullscreen", "reset-view", "expand", "collapse", "delete", "copy",
   "flip-vertical", "scale-horizontal", "scale-vertical", "check", "info",
-  "warning", "saving", "shape", "clay", "pattern", "share"
+  "warning", "saving", "shape", "clay", "pattern", "share", "forward",
+  "flower", "animal", "wave", "geometry", "glaze", "kiln",
+  "paint", "download", "poster", "rename"
 ] as const;
 
 const ICON_NAME_SET = new Set<string>(ICON_NAMES);

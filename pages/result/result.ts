@@ -5,6 +5,8 @@ import { PotteryWork } from "../../core/model";
 import { duplicateWork, loadWork, removeWork, saveWork } from "../../services/storage";
 import { track } from "../../services/analytics";
 import { runConfirmedAction } from "../../utils/destructive-actions";
+import { loadSettings } from "../../utils/settings";
+import { resolveRenderDpr } from "../../utils/render-quality";
 
 const ART_SIZE = 1080;
 
@@ -36,16 +38,22 @@ Page({
     workInfo:null as any,
     ready:false,
     fallback:false,
-    navTop:88,
     infoOpen:false,
-    exporting:false,
+    exportTask:"" as "" | "art" | "poster",
+    exportError:"",
+    sharing:false,
+    savingPreview:false,
+    previewSaveState:"",
     removing:false,
+    copying:false,
+    reduceMotion:false,
     preview:"",
     previewType:""
   },
   work:null as PotteryWork | null,
   engine:null as PotteryEngine | null,
   gesture:null as any,
+  shareTimer:null as ReturnType<typeof setTimeout> | null,
 
   onLoad(query: any) {
     const work = loadWork(query.id);
@@ -60,7 +68,11 @@ Page({
     try { saveWork(this.work); } catch (_error) {
       wx.showToast({ title:"成品状态还没落盘", icon:"none" });
     }
-    this.setData({ work:this.work, workInfo:workInfo(this.work), navTop:resolveNavTop() });
+    this.setData({ work:this.work, workInfo:workInfo(this.work) });
+  },
+
+  onShow() {
+    this.setData({ reduceMotion:loadSettings().reduceMotion });
   },
 
   onReady() {
@@ -69,6 +81,7 @@ Page({
 
   onUnload() {
     this.engine?.destroy();
+    if (this.shareTimer) clearTimeout(this.shareTimer);
   },
 
   initCanvas() {
@@ -81,7 +94,11 @@ Page({
       try {
         this.engine = new PotteryEngine(info.node, this.work!);
         const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
-        this.engine.resize(info.width, info.height, Math.min(system.pixelRatio || 2, 2));
+        this.engine.resize(
+          info.width,
+          info.height,
+          resolveRenderDpr(system.pixelRatio || 2, loadSettings().quality)
+        );
         this.engine.setLighting("showcase");
         // 展台上的成品保持静止，只在用户拖动时改变视角。
         this.engine.setAutoRotate(false);
@@ -94,7 +111,9 @@ Page({
 
   backHome() { wx.reLaunch({ url:"/pages/index/index" }); },
 
-  toggleInfo() { this.setData({ infoOpen:!this.data.infoOpen }); },
+  openInfo() { this.setData({ infoOpen:true }); },
+
+  closeInfo() { this.setData({ infoOpen:false }); },
 
   /** 弹窗本体拦截点击冒泡，让遮罩层负责“点外部关闭”。 */
   noop() {},
@@ -153,23 +172,41 @@ Page({
       success:(result: any) => {
         if (result.confirm && result.content?.trim() && this.work) {
           this.work.title = result.content.trim().slice(0, 20);
-          saveWork(this.work);
-          this.setData({ work:this.work, workInfo:workInfo(this.work) });
+          try {
+            saveWork(this.work);
+            this.setData({ work:this.work, workInfo:workInfo(this.work) });
+            wx.showToast({ title:"作品名称已保存", icon:"none" });
+          } catch (_error) {
+            wx.showToast({ title:"名称没有保存，请重试", icon:"none" });
+          }
         }
       }
     });
   },
 
   copy() {
-    if (!this.work) return;
+    if (!this.work || this.data.copying) return;
+    this.setData({ copying:true });
     wx.showActionSheet({
       itemList:["只沿用纹样", "完整复制"],
       success:(result: any) => {
         const mode = result.tapIndex === 0 ? "decor" : "full";
-        const next = duplicateWork(this.work!, mode);
-        wx.showToast({ title:mode === "decor" ? "已沿用纹样" : "已完整复制", icon:"none" });
-        setTimeout(() => wx.redirectTo({ url:`/pages/studio/studio?id=${next.workId}` }), 450);
-      }
+        try {
+          const next = duplicateWork(this.work!, mode);
+          wx.showToast({ title:mode === "decor" ? "已沿用纹样" : "已完整复制", icon:"none" });
+          setTimeout(() => wx.redirectTo({
+            url:`/pages/studio/studio?id=${next.workId}`,
+            fail:() => {
+              this.setData({ copying:false });
+              wx.showToast({ title:"新作品已建立，请从首页继续", icon:"none" });
+            }
+          }), 450);
+        } catch (_error) {
+          this.setData({ copying:false });
+          wx.showToast({ title:"新作品没有建立，请重试", icon:"none" });
+        }
+      },
+      fail:() => this.setData({ copying:false })
     });
   },
 
@@ -180,12 +217,17 @@ Page({
       title:"移到回收站？",
       content:"当前版本会从本机作品集中移除这件作品。",
       confirmText:"删除",
-      confirmColor:"#b64f38",
+      confirmColor:"#9c3f38",
       success:(result: any) => {
         const committed = runConfirmedAction(result, () => {
-          this.setData({ removing:false });
-          removeWork(this.work!.workId);
-          wx.reLaunch({ url:"/pages/gallery/gallery" });
+          try {
+            removeWork(this.work!.workId);
+            this.setData({ removing:false });
+            wx.reLaunch({ url:"/pages/gallery/gallery" });
+          } catch (_error) {
+            this.setData({ removing:false });
+            wx.showToast({ title:"作品没有删除，请重试", icon:"none" });
+          }
         });
         if (!committed) this.setData({ removing:false });
       },
@@ -194,35 +236,37 @@ Page({
   },
 
   async exportWork() {
-    if (this.data.exporting || !this.work) return;
-    this.setData({ exporting:true });
+    if (this.data.exportTask || this.data.sharing || !this.work) return;
+    this.setData({ exportTask:"art", exportError:"" });
     const started = Date.now();
     try {
       const path = await this.renderShowcaseArt();
-      this.setData({ preview:path, previewType:"纯作品图" });
+      this.setData({ preview:path, previewType:"纯作品图", previewSaveState:"" });
       track("export_result", { format:"art", duration_ms:Date.now() - started, success:true });
     } catch (_error) {
       track("export_result", { format:"art", duration_ms:Date.now() - started, success:false });
-      wx.showToast({ title:"图片没有生成好，请再试一次", icon:"none" });
+      this.setData({ exportError:"作品图没有生成，请检查画面后重试。" });
+      wx.showToast({ title:"作品图没有生成，请重试", icon:"none" });
     } finally {
-      this.setData({ exporting:false });
+      this.setData({ exportTask:"" });
     }
   },
 
   async exportPoster() {
-    if (this.data.exporting || !this.work) return;
-    this.setData({ exporting:true });
+    if (this.data.exportTask || this.data.sharing || !this.work) return;
+    this.setData({ exportTask:"poster", exportError:"" });
     const started = Date.now();
     try {
       const art = await this.renderShowcaseArt();
       const poster = await this.composePoster(art);
-      this.setData({ preview:poster, previewType:"纪念海报" });
+      this.setData({ preview:poster, previewType:"纪念海报", previewSaveState:"" });
       track("export_result", { format:"poster", duration_ms:Date.now() - started, success:true });
     } catch (_error) {
       track("export_result", { format:"poster", duration_ms:Date.now() - started, success:false });
-      wx.showToast({ title:"海报没有生成好，请再试一次", icon:"none" });
+      this.setData({ exportError:"纪念海报没有生成，请重试。" });
+      wx.showToast({ title:"纪念海报没有生成，请重试", icon:"none" });
     } finally {
-      this.setData({ exporting:false });
+      this.setData({ exportTask:"" });
     }
   },
 
@@ -341,39 +385,64 @@ Page({
   },
 
   saveImage() {
-    if (!this.data.preview) return;
+    if (!this.data.preview || this.data.savingPreview) return;
+    this.setData({ savingPreview:true, previewSaveState:"正在保存到相册" });
     wx.saveImageToPhotosAlbum({
       filePath:this.data.preview,
-      success:() => wx.showToast({ title:"已保存到相册" }),
-      fail:() => wx.showModal({
-        title:"图片已生成",
-        content:"开启相册权限后即可保存，也可以先保留预览。",
-        confirmText:"去设置",
-        success:(result: any) => { if (result.confirm) wx.openSetting(); }
-      })
+      success:() => {
+        this.setData({ savingPreview:false, previewSaveState:"已保存到相册" });
+        wx.showToast({ title:"已保存到相册" });
+      },
+      fail:(error: any) => {
+        const permissionDenied = /auth|authorize|permission|deny/i.test(error?.errMsg || "");
+        this.setData({
+          savingPreview:false,
+          previewSaveState:permissionDenied
+            ? "没有保存，请开启相册权限后重试"
+            : "没有保存，预览已保留，请稍后重试"
+        });
+        if (!permissionDenied) {
+          wx.showToast({ title:"没有保存，预览已保留", icon:"none" });
+          return;
+        }
+        wx.showModal({
+          title:"相册权限未开启",
+          content:"作品图已经生成。开启相册权限后，返回这里再次点“保存到相册”即可。",
+          confirmText:"去设置",
+          cancelText:"保留预览",
+          success:(result: any) => { if (result.confirm) wx.openSetting(); }
+        });
+      }
     });
   },
 
-  closePreview() { this.setData({ preview:"", previewType:"" }); },
+  closePreview() {
+    if (this.data.savingPreview) return;
+    this.setData({ preview:"", previewType:"", previewSaveState:"" });
+  },
+
+  startShare() {
+    if (this.data.exportTask || this.data.sharing) return;
+    this.setData({ sharing:true, exportError:"" });
+    if (this.shareTimer) clearTimeout(this.shareTimer);
+    this.shareTimer = setTimeout(() => {
+      this.shareTimer = null;
+      this.setData({ sharing:false });
+    }, 800);
+  },
 
   onShareAppMessage() {
+    if (this.shareTimer) {
+      clearTimeout(this.shareTimer);
+      this.shareTimer = null;
+    }
+    this.setData({ sharing:false });
     return {
       title:`我在泥火青花做了「${this.work?.title || "一件陶器"}」`,
       path:`/pages/result/result?id=${this.work?.workId || ""}`
     };
   }
 });
-
-/** 顶栏避开右上角胶囊按钮：整体下移到胶囊下方。 */
-function resolveNavTop(): number {
-  try {
-    const rect = wx.getMenuButtonBoundingClientRect();
-    if (rect && rect.bottom > 0) return Math.round(rect.bottom + 10);
-  } catch (_error) {
-    // 拿不到胶囊位置时退回保守值。
-  }
-  return 88;
-}
 
 /**
  * 把 WebGL 快照合成到展台底景上：深青绿渐变 + 中央柔光 + 底部投影，

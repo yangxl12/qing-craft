@@ -5,6 +5,7 @@
 - 服务名：`wechat-devtools`
 - Codex 工具前缀：`mcp__wechat_devtools__`
 - Codex 配置：`C:\Users\Administrator\.codex\config.toml` 中的 `[mcp_servers.wechat-devtools]`
+- CodeBuddy 配置：`C:\Users\Administrator\.codebuddy\mcp.json` 中的 `mcpServers.wechat-devtools`（需重启或重载 MCP 后生效）
 - 启动命令：`uvx wechat-devtools-mcp`
 - 安装目录：`C:\Users\Administrator\AppData\Roaming\uv\tools\wechat-devtools-mcp`
 - 微信开发者工具 CLI：`D:\微信web开发者工具\cli.bat`

@@ -63,16 +63,6 @@
     </view>
     <view class="topbar-balance" aria-hidden="true"></view>
   </view>
-  <view class="stage-progress" aria-label="七道工序，当前{{stageName}}，第{{stageIndex+1}}道">
-    <view class="stage-progress-line" aria-hidden="true"></view>
-    <view
-      wx:for="{{stageSteps}}"
-      wx:key="id"
-      class="stage-progress-step is-{{item.state}}"
-      aria-label="{{item.name}}，{{item.state==='done'?'已完成':item.state==='current'?'当前工序':'未开始'}}"
-    ><view class="stage-progress-mark">{{item.short}}</view></view>
-  </view>
-
   <view class="stage-area">
     <view class="pottery-spotlight"></view>
     <view class="stage-tool-rail">
@@ -281,13 +271,13 @@
       class="stagebar-prev"
       aria-label="返回前置设置"
       bindtap="goPreviousStage"
-    ><ui-icon name="back" size="32" tone="light" decorative></ui-icon><text>上一步</text></button>
-    <view class="stage-footer-title">{{stageName}}</view>
+    ><ui-icon name="back" size="32" tone="light" decorative></ui-icon></button>
+    <template is="stageProgress" data="{{stageSteps: stageSteps, stageName: stageName, stageIndex: stageIndex}}"></template>
     <button
       class="stagebar-next"
       aria-label="进入下一道工序：{{nextStageName}}"
       bindtap="completeStage"
-    ><text>{{nextStageName}}</text><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
+    ><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
   </view>
 
   <view wx:elif="{{stageIndex===1}}" class="decor-tray {{decorTrayOpen?'expanded':'collapsed'}}">
@@ -414,9 +404,9 @@
     </view>
 
     <view class="decor-bottom">
-      <button class="decor-previous" disabled="{{confirmingReturn}}" aria-disabled="{{confirmingReturn}}" bindtap="returnToShaping"><ui-icon name="back" size="32" tone="light" decorative></ui-icon><text>{{confirmingReturn?'等待确认':'上一步'}}</text></button>
-      <text>{{decorationCount}} 层 · {{stampCount}} 枚落印{{sealApplied?' · 1 处题款':''}}</text>
-      <button class="decor-complete" bindtap="completeStage"><text>完成装饰</text><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
+      <button class="decor-previous" disabled="{{confirmingReturn}}" aria-disabled="{{confirmingReturn}}" aria-label="{{confirmingReturn?'等待确认':'返回制坯工序'}}" bindtap="returnToShaping"><ui-icon name="back" size="32" tone="light" decorative></ui-icon></button>
+      <template is="stageProgress" data="{{stageSteps: stageSteps, stageName: stageName, stageIndex: stageIndex}}"></template>
+      <button class="decor-complete" aria-label="完成装饰，进入上釉工序" bindtap="completeStage"><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
     </view>
   </view>
 
@@ -448,13 +438,13 @@
         class="stagebar-prev"
         aria-label="返回装饰工序"
         bindtap="goPreviousStage"
-      ><ui-icon name="back" size="32" tone="light" decorative></ui-icon><text>上一步</text></button>
-      <text class="stagebar-info">{{glazeName}} · 完整施釉</text>
+      ><ui-icon name="back" size="32" tone="light" decorative></ui-icon></button>
+      <template is="stageProgress" data="{{stageSteps: stageSteps, stageName: stageName, stageIndex: stageIndex}}"></template>
       <button
         class="stagebar-next"
         aria-label="完成上釉，直接进入高温烤制"
         bindtap="startFiring"
-      ><text>高温烧制</text><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
+      ><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
     </view>
   </view>
 
@@ -542,11 +532,27 @@
     <view class="decor-bottom paint-bottom">
       <button
         class="decor-previous"
-        aria-label="返回上釉工序"
+      aria-label="返回上釉工序"
+      bindtap="goPreviousStage"
+    ><ui-icon name="back" size="32" tone="light" decorative></ui-icon></button>
+      <template is="stageProgress" data="{{stageSteps: stageSteps, stageName: stageName, stageIndex: stageIndex}}"></template>
+      <button class="decor-complete" aria-label="完成彩绘，直接进入低温烤花" bindtap="startRefire"><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
+    </view>
+  </view>
+
+  <view wx:elif="{{stageIndex===6}}" class="tray">
+    <view class="tray-bottom stagebar">
+      <button
+        class="stagebar-prev"
+        aria-label="返回上一道工序"
         bindtap="goPreviousStage"
-      ><ui-icon name="back" size="32" tone="light" decorative></ui-icon><text>上一步</text></button>
-      <text>{{paintLayerCount?paintLayerCount+' 层釉上彩':'可保留烧后素面'}}</text>
-      <button class="decor-complete" aria-label="完成彩绘，直接进入低温烤花" bindtap="startRefire"><text>低温烤花</text><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
+      ><ui-icon name="back" size="32" tone="light" decorative></ui-icon></button>
+      <template is="stageProgress" data="{{stageSteps: stageSteps, stageName: stageName, stageIndex: stageIndex}}"></template>
+      <button
+        class="stagebar-next"
+        aria-label="查看成品"
+        bindtap="completeStage"
+      ><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
     </view>
   </view>
 
@@ -554,7 +560,7 @@
     <scroll-view wx:if="{{tools.length}}" class="tool-scroll" scroll-x show-scrollbar="false">
       <view class="tool-row">
         <button wx:for="{{tools}}" wx:key="id" data-id="{{item.id}}" bindtap="chooseTool" class="tool {{tool===item.id?'active':''}}" aria-label="选择{{item.name}}，{{tool===item.id?'已选中':'未选中'}}">
-          <ui-icon name="{{stageIndex===3||stageIndex===5?'kiln':'paint'}}" size="36" tone="light" decorative></ui-icon><text>{{item.name}}</text>
+          <ui-icon name="kiln" size="36" tone="light" decorative></ui-icon><text>{{item.name}}</text>
         </button>
       </view>
     </scroll-view>
@@ -564,12 +570,12 @@
         aria-label="返回上一道工序"
         bindtap="goPreviousStage"
       ><ui-icon name="back" size="32" tone="light" decorative></ui-icon><text>上一步</text></button>
-      <view class="tool-hint">{{stageIndex===6?'七道工序已完成':toolName}}</view>
+      <view class="tool-hint">{{toolName}}</view>
       <button
         class="stagebar-next"
         aria-label="进入下一道工序"
         bindtap="completeStage"
-      ><text>{{stageIndex===6?'查看成品':'完成'+stageName}}</text><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
+      ><text>完成{{stageName}}</text><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
     </view>
   </view>
 
@@ -605,4 +611,16 @@
       <text>跳过</text><ui-icon name="forward" size="30" tone="light" decorative></ui-icon>
     </button>
   </view>
+
+  <template name="stageProgress">
+    <view class="stage-progress" aria-label="七道工序，当前{{stageName}}，第{{stageIndex+1}}道">
+      <view class="stage-progress-line" aria-hidden="true"></view>
+      <view
+        wx:for="{{stageSteps}}"
+        wx:key="id"
+        class="stage-progress-step is-{{item.state}}"
+        aria-label="{{item.name}}，{{item.state==='done'?'已完成':item.state==='current'?'当前工序':'未开始'}}"
+      ><view class="stage-progress-mark">{{item.short}}</view></view>
+    </view>
+  </template>
 </view>

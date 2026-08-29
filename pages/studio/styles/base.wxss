@@ -158,23 +158,25 @@
 .save-state.saved { color: var(--color-celadon-300); }
 .topbar-balance { width: 112rpx; }
 
+/* 工序流程条：置于各工序底栏正中，宽度随七个字位自适应 */
 .stage-progress {
   position: relative;
   z-index: 39;
-  height: 60rpx;
-  padding: 0 var(--space-8);
+  height: 56rpx;
+  padding: 0 20rpx;
   box-sizing: border-box;
   flex: none;
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(7, 40rpx);
+  justify-content: center;
   align-items: center;
-  background: var(--ui-workshop-panel-muted);
+  gap: var(--space-1);
 }
 
 .stage-progress-line {
   position: absolute;
-  left: calc(var(--space-8) + 22rpx);
-  right: calc(var(--space-8) + 22rpx);
+  left: 40rpx;
+  right: 40rpx;
   top: 50%;
   height: 3rpx;
   border-radius: var(--radius-full);
@@ -400,18 +402,18 @@
   backdrop-filter: blur(18rpx);
 }
 
+/* 底栏左右按钮只留箭头图标 */
 .stagebar-prev,
 .stagebar-next {
-  min-height: 80rpx;
-  padding: 0 var(--space-4) !important;
-  gap: var(--space-2);
-  font-size: var(--type-body-size) !important;
+  width: 88rpx !important;
+  min-width: 88rpx !important;
+  min-height: 88rpx;
+  padding: 0 !important;
+  gap: 0;
 }
 
 .stagebar-prev { justify-self: start; color: var(--color-on-dark-muted) !important; border: 1rpx solid var(--ui-workshop-border) !important; }
-.stagebar-next { justify-self: end; color: var(--ui-action-text) !important; background: var(--color-celadon-300) !important; font-weight: 600; }
-.stage-footer-title { min-width: 120rpx; color: var(--color-on-dark); font-family: var(--font-display); font-size: var(--type-h3-size); line-height: var(--type-h3-line); text-align: center; }
-.stagebar-info,
+.stagebar-next { justify-self: end; color: var(--ui-action-text) !important; background: var(--color-celadon-300) !important; }
 .tool-hint { max-width: 260rpx; overflow: hidden; color: var(--color-on-dark-muted); font-size: var(--type-caption-size); line-height: var(--type-caption-line); text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 
 .tray { position: relative; z-index: 40; flex: none; background: var(--ui-workshop-panel); border-top: 1rpx solid var(--ui-workshop-border); }
@@ -462,15 +464,16 @@
   .top-exit { min-width: 88rpx !important; }
   .topbar-balance { width: 96rpx; }
   .save-state { display: none; }
-  .stage-progress { padding: 0 var(--space-4); }
-  .stage-progress-line { left: calc(var(--space-4) + 20rpx); right: calc(var(--space-4) + 20rpx); }
+  .stage-progress { grid-template-columns: repeat(7, 34rpx); gap: 0; padding: 0 17rpx; }
+  .stage-progress-line { left: 34rpx; right: 34rpx; }
+  .stage-progress-mark { width: 32rpx; height: 32rpx; }
   .stage-tool-rail { left: var(--space-3); }
   .decor-fullscreen-trigger { right: var(--space-3); }
   .stage-footer,
   .glaze-bottom,
   .tray-bottom { padding-left: var(--space-3); padding-right: var(--space-3); gap: var(--space-2); }
   .stagebar-prev,
-  .stagebar-next { padding: 0 var(--space-3) !important; }
+  .stagebar-next { width: 80rpx !important; min-width: 80rpx !important; min-height: 80rpx; }
 }
 
 @media (max-height: 700px) {

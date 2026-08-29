@@ -1,6 +1,5 @@
 .material-dock,
-.wall-caliper,
-.form-switcher,
+.shaping-controls,
 .gesture-map,
 .stage-tips {
   position: absolute;
@@ -67,6 +66,12 @@
 .dock-trigger.open > text,
 .dock-trigger.open > small { color: var(--ui-action-text); }
 
+.shaping-controls {
+  right: var(--space-4);
+  top: 112rpx;
+  width: 300rpx;
+}
+
 .choice-popover {
   position: absolute;
   left: 0;
@@ -118,9 +123,8 @@
 .clay-dot { width: 28rpx; height: 28rpx; flex: none; border: 2rpx solid var(--ui-workshop-highlight); border-radius: var(--radius-full); }
 
 .wall-caliper {
-  right: var(--space-4);
-  top: 112rpx;
-  width: 300rpx;
+  position: relative;
+  width: 100%;
   padding: var(--space-4);
   box-sizing: border-box;
   color: var(--color-on-dark);
@@ -149,25 +153,38 @@
 .wall-link { color: var(--color-on-dark-muted); font-size: var(--type-caption-size); line-height: var(--type-caption-line); text-align: center; }
 
 .form-switcher {
-  left: 50%;
-  bottom: var(--space-4);
+  position: relative;
+  width: 100%;
+  margin-top: var(--space-2);
   padding: var(--space-2);
+  box-sizing: border-box;
   display: flex;
-  gap: var(--space-2);
+  flex-direction: column;
+  gap: var(--space-1);
   background: var(--ui-workshop-panel-soft);
   border: 1rpx solid var(--ui-workshop-border);
   border-radius: var(--radius-md);
   box-shadow: var(--elevation-1);
   backdrop-filter: blur(14rpx);
-  transform: translateX(-50%);
+}
+
+.form-chip-hit {
+  width: 100%;
+  height: 80rpx;
+  min-height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .form-chip {
-  min-width: 104rpx !important;
-  min-height: 80rpx;
-  padding: 0 var(--space-3) !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  height: 72rpx;
+  min-height: 72rpx;
+  padding: 0 var(--space-2) !important;
   color: var(--color-on-dark-muted) !important;
-  font-size: var(--type-body-sm-size) !important;
+  font-size: var(--type-caption-size) !important;
 }
 
 .form-chip.active {
@@ -228,6 +245,10 @@
 .stage-tips-row { position: relative; margin-top: var(--space-3); padding-left: var(--space-3); color: var(--color-on-dark); font-size: var(--type-body-sm-size); line-height: var(--type-body-sm-line); }
 .stage-tips-row::before { content: ""; position: absolute; left: 0; top: 18rpx; width: 8rpx; height: 8rpx; border-radius: var(--radius-full); background: var(--color-celadon-300); }
 
+/* 两个制坯说明层使用同一块不透底的深色表面，文字不会被工坊背景干扰。 */
+.gesture-map,
+.stage-tips { background: var(--color-workshop-surface); }
+
 .show-help .material-dock,
 .show-help .wall-caliper,
 .show-help .form-switcher,
@@ -237,18 +258,17 @@
 
 @media (max-width: 340px) {
   .material-dock { left: var(--space-3); width: 268rpx; }
-  .wall-caliper { right: var(--space-3); width: 276rpx; }
+  .shaping-controls { right: var(--space-3); width: 276rpx; }
   .gesture-map { right: var(--space-3); width: 320rpx; }
   .stage-tips { left: var(--space-3); width: 292rpx; }
 }
 
 @media (max-height: 700px) {
   .material-dock,
-  .wall-caliper,
+  .shaping-controls,
   .gesture-map { top: 92rpx; }
   .stage-tips { top: 92rpx; }
   .wall-link { display: none; }
   .wall-caliper { padding: var(--space-3); }
   .choice-popover { max-height: 290rpx; overflow-y: auto; }
-  .form-switcher { bottom: var(--space-2); }
 }

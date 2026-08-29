@@ -83,6 +83,7 @@ import { track } from "../../services/analytics";
 import { runConfirmedAction } from "../../utils/destructive-actions";
 import { loadSettings } from "../../utils/settings";
 import { resolveRenderDpr } from "../../utils/render-quality";
+import { calculateBelowCapsuleTop, resolveUiMetrics } from "../../utils/ui-metrics";
 
 interface CanvasRect {
   left: number;
@@ -313,6 +314,8 @@ Page({
     ready: false,
     fallback: false,
     statusBarHeight: 20,
+    fullscreenButtonTop: 72,
+    fullscreenButtonStyle: "",
     work: null as PotteryWork | null,
     stageIndex: 0,
     stageName: "制坯",
@@ -463,8 +466,14 @@ Page({
   },
 
   onLoad(query: any) {
-    const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
-    this.setData({ statusBarHeight: Math.max(20, system.statusBarHeight || 20) });
+    const uiMetrics = resolveUiMetrics();
+    this.setData({
+      statusBarHeight: uiMetrics.statusBarHeight,
+      fullscreenButtonTop: calculateBelowCapsuleTop(
+        uiMetrics.statusBarHeight,
+        uiMetrics.capsuleBottom,
+      )
+    });
     const work = loadWork(query.id);
     if (!work) {
       wx.showToast({ title: "草稿没有找到", icon: "none" });
@@ -472,6 +481,10 @@ Page({
       return;
     }
     this.work = work;
+    if (work.status === "completed" || work.currentStage === "finished" || work.stageIndex === 6) {
+      wx.redirectTo({ url:`/pages/result/result?id=${work.workId}` });
+      return;
+    }
     // 旧版草稿可能停在半浸、刷涂或泼釉。新版上釉页只有完整施釉，
     // 进入该阶段时统一归一化，保证当前器身与六枚釉样的预期一致。
     if (work.currentStage === "glaze") {
@@ -540,7 +553,8 @@ Page({
         const info = results && results[0];
         const wheelInfo = results && results[1];
         const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
-        const baseScreenY = wheelInfo && info?.height
+        const hasWheelContact = Number.isFinite(wheelInfo?.top) && Number(wheelInfo?.height) > 0;
+        const baseScreenY = hasWheelContact && info?.height
           ? calculatePotteryBaseScreenYFromLayout(
               info.top || 0,
               info.height,
@@ -908,7 +922,7 @@ Page({
     query.exec((results: any[]) => {
       const info = results && results[0];
       const wheelInfo = results && results[1];
-      if (!info?.width || !info?.height || !wheelInfo) return;
+      if (!info?.width || !info?.height) return;
       this.rect = {
         left: info.left || 0,
         top: info.top || 0,
@@ -917,11 +931,14 @@ Page({
       };
       const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
       const dpr = resolveRenderDpr(system.pixelRatio || 2, loadSettings().quality);
-      const baseScreenY = calculatePotteryBaseScreenYFromLayout(
-        info.top || 0,
-        info.height,
-        wheelInfo.top
-      );
+      const hasWheelContact = Number.isFinite(wheelInfo?.top) && Number(wheelInfo?.height) > 0;
+      const baseScreenY = hasWheelContact
+        ? calculatePotteryBaseScreenYFromLayout(
+            info.top || 0,
+            info.height,
+            wheelInfo.top
+          )
+        : calculatePotteryBaseScreenY(info.height);
       this.engine?.resize(info.width, info.height, dpr, preserveVisualScale);
       this.engine?.setBaseScreenY(baseScreenY);
       this.engine?.setPotteryCentered(centerPottery);
@@ -1235,7 +1252,12 @@ Page({
   toggleDecorFullscreen() {
     if (!this.work || !["decorate", "paint"].includes(this.work.currentStage)) return;
     const decorFullscreen = !this.data.decorFullscreen;
-    this.setData({ decorFullscreen }, () => {
+    this.setData({
+      decorFullscreen,
+      fullscreenButtonStyle: decorFullscreen
+        ? `top:${this.data.fullscreenButtonTop}px;`
+        : ""
+    }, () => {
       setTimeout(
         () => this.refreshCanvasLayout(true, decorFullscreen || !this.data.decorTrayOpen),
         0
@@ -1274,6 +1296,7 @@ Page({
             pendingStampMotifId:"",
             decorTrayOpen:true,
             decorFullscreen:false,
+            fullscreenButtonStyle:"",
             decorToolsCollapsed:false,
             decorToolStyle:"",
             confirmingReturn:false
@@ -2468,6 +2491,7 @@ Page({
         pendingStampMotifId: "",
         decorTrayOpen: true,
         decorFullscreen: false,
+        fullscreenButtonStyle: "",
         decorToolsCollapsed: false,
         decorToolStyle: ""
       });
@@ -2494,6 +2518,7 @@ Page({
       paintTab: "pattern",
       decorTrayOpen: true,
       decorFullscreen: false,
+      fullscreenButtonStyle: "",
       decorToolsCollapsed: false,
       decorToolStyle: ""
     }, () => this.setData(this.decorationData()));
@@ -2535,7 +2560,21 @@ Page({
     this.kilnStartedAt = 0;
     this.engine?.setKilnHeat(0);
     this.engine?.setPotteryCentered(false);
+    const refire = this.data.kilnType === "low";
     this.setData({ kiln: false, kilnProgress: 100 }, () => {
+      if (refire && this.work) {
+        this.work.status = "completed";
+        this.work.currentStage = "finished";
+        this.work.stageIndex = 6;
+        track("stage_complete", { stage:"refire", next_stage:"finished" });
+        this.persist();
+        this.vibrate("medium");
+        wx.redirectTo({
+          url:`/pages/result/result?id=${this.work.workId}`,
+          fail:() => this.syncData()
+        });
+        return;
+      }
       this.advance();
       setTimeout(() => this.refreshCanvasLayout(false, false), 0);
     });

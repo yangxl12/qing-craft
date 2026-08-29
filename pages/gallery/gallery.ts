@@ -124,6 +124,19 @@ Page({
     });
   },
 
+  handleCoverError(event: WechatMiniprogramTouchEvent) {
+    const id = event.currentTarget.dataset.id;
+    if (!id) return;
+    const work = this.data.works.find((item) => item.workId === id);
+    if (!work?.coverImage) return;
+    work.coverImage = "";
+    try { saveWork(work); } catch (_error) {
+      // The generated fallback remains available even when storage is full.
+    }
+    this.setData({ works:this.data.works });
+    this.refresh();
+  },
+
   longpress(e: WechatMiniprogramTouchEvent) {
     const id = e.currentTarget.dataset.id;
     if (!id) return;

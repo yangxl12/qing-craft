@@ -2,11 +2,13 @@ import { CLAYS, GLAZES, SHAPES } from "../../core/catalog";
 import { decorationSummary, motifById, STYLE_PACKS } from "../../core/decoration";
 import { PotteryEngine } from "../../core/pottery-engine";
 import { PotteryWork } from "../../core/model";
+import { calculatePotteryBaseScreenYFromLayout } from "../../core/pottery-scene";
 import { duplicateWork, loadWork, removeWork, saveWork } from "../../services/storage";
 import { track } from "../../services/analytics";
 import { runConfirmedAction } from "../../utils/destructive-actions";
 import { loadSettings } from "../../utils/settings";
 import { resolveRenderDpr } from "../../utils/render-quality";
+import { calculateBelowCapsuleTop, resolveUiMetrics } from "../../utils/ui-metrics";
 
 const ART_SIZE = 1080;
 
@@ -36,6 +38,7 @@ Page({
   data: {
     work:null as PotteryWork | null,
     workInfo:null as any,
+    moreButtonTop:72,
     ready:false,
     fallback:false,
     infoOpen:false,
@@ -54,8 +57,16 @@ Page({
   engine:null as PotteryEngine | null,
   gesture:null as any,
   shareTimer:null as ReturnType<typeof setTimeout> | null,
+  coverTask:false,
 
   onLoad(query: any) {
+    const uiMetrics = resolveUiMetrics();
+    this.setData({
+      moreButtonTop:calculateBelowCapsuleTop(
+        uiMetrics.statusBarHeight,
+        uiMetrics.capsuleBottom,
+      )
+    });
     const work = loadWork(query.id);
     if (!work) {
       wx.reLaunch({ url:"/pages/index/index" });
@@ -85,26 +96,40 @@ Page({
   },
 
   initCanvas() {
-    wx.createSelectorQuery().in(this).select("#resultCanvas").fields({ node:true, size:true }).exec((results: any[]) => {
+    const query = wx.createSelectorQuery().in(this);
+    query.select("#resultCanvas").fields({ node:true, size:true });
+    query.select("#resultScene").boundingClientRect();
+    query.select("#plinthContact").boundingClientRect();
+    query.exec((results: any[]) => {
       const info = results?.[0];
       if (!info?.node) {
-        this.setData({ fallback:true, ready:true });
+        this.setData({ fallback:true, ready:true }, () => this.refreshCoverImage());
         return;
       }
       try {
         this.engine = new PotteryEngine(info.node, this.work!);
+        const scene = results?.[1];
+        const contact = results?.[2];
+        const contactLineY = Number.isFinite(contact?.top) && Number.isFinite(contact?.height)
+          ? contact.top + contact.height / 2
+          : NaN;
+        const baseScreenY = scene?.height && Number.isFinite(contactLineY)
+          ? calculatePotteryBaseScreenYFromLayout(scene.top, scene.height, contactLineY)
+          : 0.74;
         const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
         this.engine.resize(
           info.width,
           info.height,
           resolveRenderDpr(system.pixelRatio || 2, loadSettings().quality)
         );
+        this.engine.setBaseScreenY(baseScreenY);
+        this.engine.setPotteryCentered(false);
         this.engine.setLighting("showcase");
         // 展台上的成品保持静止，只在用户拖动时改变视角。
         this.engine.setAutoRotate(false);
-        this.setData({ ready:true });
+        this.setData({ ready:true }, () => this.refreshCoverImage());
       } catch (_error) {
-        this.setData({ fallback:true, ready:true });
+        this.setData({ fallback:true, ready:true }, () => this.refreshCoverImage());
       }
     });
   },
@@ -241,6 +266,7 @@ Page({
     const started = Date.now();
     try {
       const path = await this.renderShowcaseArt();
+      this.persistCoverImage(path);
       this.setData({ preview:path, previewType:"纯作品图", previewSaveState:"" });
       track("export_result", { format:"art", duration_ms:Date.now() - started, success:true });
     } catch (_error) {
@@ -258,6 +284,7 @@ Page({
     const started = Date.now();
     try {
       const art = await this.renderShowcaseArt();
+      this.persistCoverImage(art);
       const poster = await this.composePoster(art);
       this.setData({ preview:poster, previewType:"纪念海报", previewSaveState:"" });
       track("export_result", { format:"poster", duration_ms:Date.now() - started, success:true });
@@ -308,6 +335,52 @@ Page({
         this.canvasFile(canvas, ART_SIZE, ART_SIZE).then(resolve, reject);
       });
     });
+  },
+
+  /** 将最新的成品方图保存为稳定的本地封面，作品集可在下次启动后继续读取。 */
+  refreshCoverImage() {
+    if (this.coverTask || !this.work) return;
+    this.coverTask = true;
+    this.renderShowcaseArt()
+      .then((path) => this.persistCoverImage(path))
+      .catch(() => undefined)
+      .then(() => { this.coverTask = false; });
+  },
+
+  persistCoverImage(path: string) {
+    if (!path || !this.work) return;
+    const workId = this.work.workId;
+    const commit = (coverImage: string) => {
+      if (!this.work || this.work.workId !== workId) return;
+      this.work.coverImage = coverImage;
+      try {
+        saveWork(this.work);
+        this.setData({ work:this.work });
+      } catch (_error) {
+        // The current result page can still display the generated temp file.
+      }
+    };
+    const fileSystem = typeof wx.getFileSystemManager === "function"
+      ? wx.getFileSystemManager()
+      : null;
+    const userDataPath = wx.env?.USER_DATA_PATH;
+    if (!fileSystem || !userDataPath) {
+      commit(path);
+      return;
+    }
+    const safeId = workId.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const destination = `${userDataPath}/palm-kiln-cover-${safeId}.png`;
+    const copy = () => fileSystem.copyFile({
+      srcPath:path,
+      destPath:destination,
+      success:() => commit(destination),
+      fail:() => commit(path)
+    });
+    if (typeof fileSystem.unlink === "function") {
+      fileSystem.unlink({ filePath:destination, success:copy, fail:copy });
+    } else {
+      copy();
+    }
   },
 
   drawFallbackArt(context: any) {

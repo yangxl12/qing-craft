@@ -104,6 +104,7 @@ export function duplicateWork(
   next.createdAt = Date.now();
   next.updatedAt = next.createdAt;
   next.revision = 0;
+  delete next.coverImage;
   next.decorationComposition = {
     ...next.decorationComposition,
     kilnSeed:stableKilnSeed(next.workId),

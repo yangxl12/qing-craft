@@ -47,8 +47,17 @@
         hover-class="work-card--pressed"
         aria-label="{{item.accessibilityLabel}}"
       >
-        <view class="work-thumb {{item.status === 'completed' ? 'is-complete' : ''}}">
-          <view class="mini-work shape-{{item.shapeId}}" aria-hidden="true"></view>
+        <view class="work-thumb {{item.status === 'completed' ? 'is-complete' : ''}} {{item.coverImage ? 'has-cover' : ''}}">
+          <image
+            wx:if="{{item.coverImage}}"
+            class="work-cover-image"
+            src="{{item.coverImage}}"
+            mode="aspectFill"
+            data-id="{{item.workId}}"
+            binderror="handleCoverError"
+            aria-hidden="true"
+          ></image>
+          <view wx:else class="mini-work shape-{{item.shapeId}}" aria-hidden="true"></view>
           <view class="stage-chip">{{item.statusLabel}}</view>
           <view wx:if="{{selectMode}}" class="card-check {{item.selected ? 'is-checked' : ''}}" aria-hidden="true">
             <ui-icon wx:if="{{item.selected}}" name="check" size="30" tone="light" decorative></ui-icon>

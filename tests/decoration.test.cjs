@@ -53,6 +53,9 @@ assert.match(studioSource, /wx\.redirectTo\(\{ url: "\/pages\/index\/index" \}\)
 assert.match(studioMarkup, /class="kiln-backdrop"/, "窑烧页必须有独立背景层");
 assert.match(studioMarkup, /class="kiln-status-panel"/, "窑烧页底部必须展示温度进度");
 assert.match(studioMarkup, /class="kiln-skip"[^>]+bindtap="skipKiln"/, "窑烧页右下角必须提供跳过按钮");
+assert.doesNotMatch(studioMarkup, /wx:elif="\{\{stageIndex===6\}\}"/, "完成烧制后不应再保留独立成品工序页面");
+assert.match(studioSource, /const refire = this\.data\.kilnType === "low"/, "低温烤花完成必须识别为直接进入成品展台");
+assert.match(studioSource, /wx\.redirectTo\(\{\s*url:`\/pages\/result\/result\?id=\$\{this\.work\.workId\}`/, "低温烤花完成后必须直接跳转成品展台");
 assert.doesNotMatch(
   studioMarkup,
   /bindlongpress="deleteSelectedDecoration"/,

@@ -1640,7 +1640,10 @@ export class PotteryEngine {
       distance,
       this.pitch,
       this.baseScreenY,
-      this.work.outerRadius[0] || 0
+      // Anchor the rotation axis (the foot center) to the platform centerline.
+      // Offsetting to the front edge makes the vessel look embedded or
+      // displaced when the camera is close to the wheel.
+      0
     );
     // Deep zoom eases the focus from the wheel contact line to the body
     // center so a magnified patch anywhere on the piece can be orbited.

@@ -41,6 +41,8 @@ export interface PotteryWork {
   decorationComposition: DecorationComposition;
   glazeId: string;
   glazeMethod: string;
+  /** Stable local path to the latest finished showcase image, when available. */
+  coverImage?: string;
   createdAt: number;
   updatedAt: number;
   revision: number;
@@ -177,6 +179,7 @@ export function validateWork(raw: any): PotteryWork | null {
     glazeMethod:["full", "half", "brush", "splash"].includes(raw.glazeMethod)
       ? raw.glazeMethod
       : "full",
+    coverImage:typeof raw.coverImage === "string" ? raw.coverImage.slice(0, 512) : "",
     createdAt:finiteTime(raw.createdAt, now),
     updatedAt:finiteTime(raw.updatedAt, now),
     revision:Number.isFinite(raw.revision) && raw.revision > 0 ? Math.floor(raw.revision) : 1

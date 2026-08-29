@@ -76,6 +76,7 @@
       wx:if="{{stageIndex===1||stageIndex===4}}"
       class="decor-fullscreen-trigger"
       aria-label="{{decorFullscreen?'退出全屏视图':'进入瓷器全屏视图'}}"
+      style="{{decorFullscreen ? fullscreenButtonStyle : ''}}"
       bindtap="toggleDecorFullscreen"
     ><ui-icon name="{{decorFullscreen?'exit-fullscreen':'fullscreen'}}" size="38" tone="light" decorative></ui-icon><text>{{decorFullscreen?'退出全屏':'全屏查看'}}</text></button>
     <canvas
@@ -114,12 +115,14 @@
     </view>
 
     <view
+      wx:if="{{stageIndex===0}}"
       id="wheelRoot"
       class="wheel-root {{wheelPaused?'wheel-paused':''}} wheel-{{wheelState}}"
       style="--wheel-period:{{wheelPeriodMs}}ms; --contact-shadow-width:{{contactShadowWidth}}rpx;"
     >
       <view id="wheelContact" class="wheel-contact-anchor"></view>
       <view class="contact-shadow"></view>
+      <view class="wheel-basin"></view>
       <view class="wheel-head">
         <view class="wheel-head-spin">
           <view class="machined-rings"></view>
@@ -127,6 +130,7 @@
           <view class="wheel-glint"></view>
         </view>
       </view>
+      <view class="wheel-front-lip"></view>
     </view>
 
     <view
@@ -193,43 +197,49 @@
       <view class="stage-tips-row">随时点回正，可重新完整查看器形</view>
     </view>
 
-    <view wx:if="{{stageIndex===0}}" class="wall-caliper {{wallAdjusting?'active':''}}">
-      <view class="wall-caliper-head">
-        <view class="caliper-glyph"><view></view><view></view></view>
-        <text>泥壁厚度</text>
-        <view class="wall-state">{{wallThicknessLabel}}</view>
-        <text class="wall-value">{{wallThicknessText}}</text>
+    <view wx:if="{{stageIndex===0}}" class="shaping-controls">
+      <view class="wall-caliper {{wallAdjusting?'active':''}}">
+        <view class="wall-caliper-head">
+          <view class="caliper-glyph"><view></view><view></view></view>
+          <text>泥壁厚度</text>
+          <view class="wall-state">{{wallThicknessLabel}}</view>
+          <text class="wall-value">{{wallThicknessText}}</text>
+        </view>
+        <view class="wall-slider-row">
+          <text>薄</text>
+          <slider
+            class="wall-slider"
+            min="{{wallThicknessMin}}"
+            max="{{wallThicknessMax}}"
+            step="1"
+            value="{{wallThicknessValue}}"
+            activeColor="var(--color-celadon-300)"
+            backgroundColor="var(--ui-workshop-border)"
+            block-color="var(--color-on-dark)"
+            block-size="16"
+            aria-label="调整泥壁厚度，当前{{wallThicknessText}}"
+            bindchanging="changeWallThickness"
+            bindchange="finishWallThickness"
+          ></slider>
+          <text>厚</text>
+        </view>
+        <view class="wall-link">上拉变薄 · 下压回厚</view>
       </view>
-      <view class="wall-slider-row">
-        <text>薄</text>
-        <slider
-          class="wall-slider"
-          min="{{wallThicknessMin}}"
-          max="{{wallThicknessMax}}"
-          step="1"
-          value="{{wallThicknessValue}}"
-          activeColor="var(--color-celadon-300)"
-          backgroundColor="var(--ui-workshop-border)"
-          block-color="var(--color-on-dark)"
-          block-size="16"
-          aria-label="调整泥壁厚度，当前{{wallThicknessText}}"
-          bindchanging="changeWallThickness"
-          bindchange="finishWallThickness"
-        ></slider>
-        <text>厚</text>
-      </view>
-      <view class="wall-link">上拉变薄 · 下压回厚</view>
-    </view>
 
-    <view wx:if="{{stageIndex===0}}" class="form-switcher" aria-label="受力形态">
-      <button
-        wx:for="{{shapingForms}}"
-        wx:key="id"
-        class="form-chip {{shapingForm===item.id?'active':''}}"
-        aria-label="选择{{item.name}}塑形"
-        data-id="{{item.id}}"
-        bindtap="chooseShapingForm"
-      >{{item.name}}</button>
+      <view class="form-switcher" aria-label="受力形态">
+        <view
+          wx:for="{{shapingForms}}"
+          wx:key="id"
+          class="form-chip-hit"
+        >
+          <button
+            class="form-chip {{shapingForm===item.id?'active':''}}"
+            aria-label="选择{{item.name}}塑形"
+            data-id="{{item.id}}"
+            bindtap="chooseShapingForm"
+          >{{item.name}}</button>
+        </view>
+      </view>
     </view>
 
     <view wx:if="{{stageIndex===0}}" class="material-dock">
@@ -543,22 +553,6 @@
     ><ui-icon name="back" size="32" tone="light" decorative></ui-icon></button>
       <template is="stageProgress" data="{{stageSteps: stageSteps, stageName: stageName, stageIndex: stageIndex}}"></template>
       <button class="decor-complete" aria-label="完成彩绘，直接进入低温烤花" bindtap="startRefire"><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
-    </view>
-  </view>
-
-  <view wx:elif="{{stageIndex===6}}" class="tray">
-    <view class="tray-bottom stagebar">
-      <button
-        class="stagebar-prev"
-        aria-label="返回上一道工序"
-        bindtap="goPreviousStage"
-      ><ui-icon name="back" size="32" tone="light" decorative></ui-icon></button>
-      <template is="stageProgress" data="{{stageSteps: stageSteps, stageName: stageName, stageIndex: stageIndex}}"></template>
-      <button
-        class="stagebar-next"
-        aria-label="查看成品"
-        bindtap="completeStage"
-      ><ui-icon name="forward" size="32" tone="light" decorative></ui-icon></button>
     </view>
   </view>
 

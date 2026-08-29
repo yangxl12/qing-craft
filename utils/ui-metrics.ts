@@ -16,6 +16,7 @@ export interface UiMetrics {
   navigationTop: number;
   contentTop: number;
   capsulePadding: number;
+  capsuleBottom: number;
 }
 
 export function calculateUiMetrics(
@@ -31,6 +32,7 @@ export function calculateUiMetrics(
     statusBarHeight,
     Math.round(capsuleTop - (navigationBarHeight - capsuleHeight) / 2)
   );
+  const capsuleBottom = positive(capsule.bottom, capsuleTop + capsuleHeight);
   const capsulePadding = capsule.left && capsule.left > 0
     ? Math.max(96, Math.round(windowWidth - capsule.left + 12))
     : 96;
@@ -39,7 +41,8 @@ export function calculateUiMetrics(
     navigationBarHeight,
     navigationTop,
     contentTop:navigationTop + navigationBarHeight,
-    capsulePadding
+    capsulePadding,
+    capsuleBottom
   };
 }
 
@@ -55,6 +58,20 @@ export function resolveUiMetrics(): UiMetrics {
     // Keep conservative defaults when the platform APIs are unavailable.
   }
   return calculateUiMetrics(windowInfo, capsule);
+}
+
+/** Places an overlay control below the native WeChat capsule button. */
+export function calculateBelowCapsuleTop(
+  statusBarHeight: number,
+  capsuleBottom: number,
+  gap = 12,
+): number {
+  const safeStatusBar = positive(statusBarHeight, 20);
+  const safeCapsuleBottom = positive(capsuleBottom, safeStatusBar + 32);
+  return Math.max(
+    72,
+    Math.round(safeCapsuleBottom + Math.max(8, gap)),
+  );
 }
 
 function positive(value: number | undefined, fallback: number): number {

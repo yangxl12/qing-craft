@@ -9,18 +9,22 @@
     theme="dark"
     back-label="返回首页"
     auto-back="{{false}}"
-    right-icon="info"
-    right-label="查看作品信息"
     bindback="backHome"
-    bindright="openInfo"
   ></app-nav>
+
+  <button
+    class="result-more"
+    style="top:{{moreButtonTop}}px;"
+    aria-label="查看作品信息"
+    bindtap="openInfo"
+  ><ui-icon name="more" size="36" tone="light" decorative></ui-icon></button>
 
   <view class="reveal">
     <view class="eyebrow">七道工序 · 已完成</view>
     <view class="display name">{{work.title}}</view>
   </view>
 
-  <view class="scene">
+  <view id="resultScene" class="scene">
     <view class="spotlight" aria-hidden="true"></view>
     <canvas
       wx:if="{{!fallback}}"
@@ -42,18 +46,11 @@
     </view>
     <view class="plinth" aria-hidden="true">
       <view class="plinth-shadow"></view>
-      <view class="plinth-feet">
-        <view class="plinth-foot plinth-foot-left"></view>
-        <view class="plinth-foot plinth-foot-right"></view>
-      </view>
-      <view class="plinth-apron">
-        <view class="plinth-cloud plinth-cloud-left"></view>
-        <view class="plinth-cloud-pearl"></view>
-        <view class="plinth-cloud plinth-cloud-right"></view>
-      </view>
-      <view class="plinth-rim"></view>
+      <view class="plinth-base"></view>
+      <view class="plinth-front"></view>
       <view class="plinth-top"></view>
-      <view class="plinth-contact"></view>
+      <view class="plinth-top-inset"></view>
+      <view id="plinthContact" class="plinth-contact"></view>
     </view>
   </view>
 

@@ -21,6 +21,24 @@
 .result-bg-grade { position: absolute; inset: 0; background: linear-gradient(180deg, var(--ui-workshop-scrim-strong) 0, var(--ui-workshop-scrim) 25%, transparent 54%, var(--ui-workshop-scrim-strong) 100%), radial-gradient(64% 58% at 50% 48%, transparent 0, transparent 54%, var(--ui-workshop-scrim) 100%); }
 
 .result > app-nav { position: relative; z-index: 60; flex: none; }
+.result-more {
+  position: absolute;
+  z-index: 70;
+  right: 16px;
+  width: 72rpx !important;
+  min-width: 72rpx !important;
+  height: 72rpx;
+  min-height: 72rpx;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-on-dark) !important;
+  background: var(--ui-workshop-panel-soft) !important;
+  border: 1rpx solid var(--ui-workshop-border) !important;
+  border-radius: var(--radius-full) !important;
+  box-shadow: 0 10rpx 24rpx var(--ui-workshop-shadow);
+}
 
 .reveal {
   position: relative;
@@ -39,21 +57,18 @@
 .result-canvas { position: absolute; z-index: 12; inset: 0; width: 100%; height: 100%; }
 .spotlight { position: absolute; z-index: 2; left: 50%; top: 4%; width: 72%; height: 76%; border-radius: 50%; background: radial-gradient(ellipse, var(--ui-workshop-highlight) 0, transparent 68%); filter: blur(14rpx); transform: translateX(-50%); }
 
-.result-pot { position: absolute; z-index: 12; left: 50%; bottom: 112rpx; width: 320rpx; height: 430rpx; border-radius: 32% 32% 44% 44% / 16% 16% 40% 40%; display: flex; align-items: center; justify-content: center; color: var(--color-cobalt); background: linear-gradient(100deg, var(--color-celadon-500), var(--color-on-dark) 48%, var(--color-celadon-300)); box-shadow: inset 24rpx 0 38rpx var(--ui-workshop-highlight), 0 28rpx 54rpx var(--ui-workshop-shadow); transform: translateX(-50%); }
+.result-pot { position: absolute; z-index: 12; left: 50%; bottom: 140rpx; width: 320rpx; height: 430rpx; border-radius: 32% 32% 44% 44% / 16% 16% 40% 40%; display: flex; align-items: center; justify-content: center; color: var(--color-cobalt); background: linear-gradient(100deg, var(--color-celadon-500), var(--color-on-dark) 48%, var(--color-celadon-300)); box-shadow: inset 24rpx 0 38rpx var(--ui-workshop-highlight), 0 28rpx 54rpx var(--ui-workshop-shadow); transform: translateX(-50%); }
 .result-pot::before { content: ""; position: absolute; left: 50%; top: -18rpx; width: 118rpx; height: 46rpx; border-radius: 50%; background: var(--color-workshop-surface); box-shadow: inset 0 10rpx 12rpx var(--ui-workshop-shadow), 0 0 0 10rpx var(--color-on-dark-muted); transform: translateX(-50%); }
 .result-fallback-pattern { font-family: var(--font-display); font-size: var(--type-display-size); line-height: var(--type-display-line); }
 .result-fallback-mark { position: absolute; right: 48rpx; bottom: 56rpx; color: var(--color-cinnabar); font-family: var(--font-display); font-size: var(--type-body-sm-size); }
 
 .plinth { position: absolute; z-index: 11; left: 50%; bottom: 44rpx; width: 520rpx; height: 120rpx; transform: translateX(-50%); }
-.plinth-shadow { position: absolute; left: 8%; right: 0; bottom: 0; height: 34rpx; border-radius: 50%; background: var(--ui-workshop-shadow); filter: blur(12rpx); transform: skewX(-10deg); }
-.plinth-top { position: absolute; left: 3%; right: 3%; top: 8rpx; height: 56rpx; border-radius: 50%; background: radial-gradient(ellipse at 42% 30%, var(--ui-workshop-highlight), var(--color-workshop-surface) 50%, var(--color-workshop-bg) 100%); border: 1rpx solid var(--ui-workshop-border); }
-.plinth-rim { position: absolute; z-index: 2; left: 6%; right: 6%; top: 42rpx; height: 42rpx; border-radius: 0 0 var(--radius-lg) var(--radius-lg); background: var(--color-workshop-surface); border: 1rpx solid var(--ui-workshop-border); }
-.plinth-contact { position: absolute; z-index: 3; left: 25%; right: 25%; top: 12rpx; height: 24rpx; border-radius: 50%; background: var(--ui-workshop-shadow); filter: blur(6rpx); }
-.plinth-apron { position: absolute; z-index: 1; left: 13%; right: 13%; top: 62rpx; height: 38rpx; border-radius: 0 0 var(--radius-md) var(--radius-md); background: var(--ui-workshop-panel); border: 1rpx solid var(--ui-workshop-border); }
-.plinth-feet { position: absolute; left: 17%; right: 17%; bottom: 4rpx; display: flex; justify-content: space-between; }
-.plinth-foot { width: 60rpx; height: 34rpx; border-radius: 0 0 var(--radius-sm) var(--radius-sm); background: var(--color-workshop-surface); }
-.plinth-cloud,
-.plinth-cloud-pearl { display: none; }
+.plinth-shadow { position: absolute; z-index: 1; left: 4%; right: 4%; bottom: 0; height: 28rpx; border-radius: 50%; background: var(--ui-workshop-shadow); filter: blur(14rpx); }
+.plinth-base { position: absolute; z-index: 2; left: 13%; right: 13%; top: 72rpx; height: 38rpx; box-sizing: border-box; border: 1rpx solid var(--ui-workshop-border); border-radius: 0 0 24% 24% / 0 0 34% 34%; background: linear-gradient(180deg, var(--color-workshop-surface), var(--color-workshop-bg)); box-shadow: inset 0 2rpx 0 var(--ui-workshop-highlight), 0 8rpx 18rpx var(--ui-workshop-shadow); }
+.plinth-front { position: absolute; z-index: 3; left: 7%; right: 7%; top: 34rpx; height: 64rpx; box-sizing: border-box; border: 1rpx solid var(--ui-workshop-border); border-radius: 0 0 46% 46% / 0 0 28% 28%; background: linear-gradient(180deg, var(--color-celadon-700), var(--color-workshop-surface) 42%, var(--color-workshop-bg)); box-shadow: inset 0 8rpx 12rpx var(--ui-workshop-highlight), 0 12rpx 20rpx var(--ui-workshop-shadow); }
+.plinth-top { position: absolute; z-index: 4; left: 3%; right: 3%; top: 6rpx; height: 58rpx; box-sizing: border-box; border: 1rpx solid var(--ui-workshop-border); border-radius: 50%; background: radial-gradient(ellipse at 34% 22%, var(--ui-workshop-highlight) 0, var(--color-celadon-500) 24%, var(--color-workshop-surface) 60%, var(--color-workshop-bg) 100%); box-shadow: 0 8rpx 12rpx var(--ui-workshop-shadow); }
+.plinth-top-inset { position: absolute; z-index: 5; left: 14%; right: 14%; top: 16rpx; height: 36rpx; box-sizing: border-box; border: 1rpx solid var(--ui-workshop-highlight); border-radius: 50%; background: radial-gradient(ellipse at 34% 24%, var(--ui-workshop-highlight), var(--color-workshop-surface) 62%, var(--color-workshop-bg)); }
+.plinth-contact { position: absolute; z-index: 6; left: 25%; right: 25%; top: 12rpx; height: 24rpx; border-radius: 50%; background: var(--ui-workshop-shadow); filter: blur(6rpx); }
 
 .poster-canvas { position: fixed; left: -2200px; top: -2200px; width: 1080px; height: 1440px; opacity: 0; pointer-events: none; }
 
@@ -68,11 +83,12 @@
   backdrop-filter: blur(18rpx);
 }
 
-.actions { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) 88rpx; gap: var(--space-3); }
-.actions > button { min-width: 0 !important; min-height: 88rpx; padding: 0 var(--space-4); gap: var(--space-2); border-radius: var(--radius-md); font-size: var(--type-body-size); line-height: var(--type-body-line); font-weight: 600; }
+.actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 72rpx; gap: var(--space-2); align-items: center; }
+.actions > button { width: 100%; min-width: 0 !important; min-height: 96rpx; padding: var(--space-2) var(--space-1); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; border-radius: var(--radius-md); font-size: var(--type-caption-size); line-height: var(--type-caption-line); font-weight: 600; white-space: nowrap; }
+.actions > button text { display: block; line-height: var(--type-caption-line); }
 .action-primary { color: var(--ui-action-text) !important; background: var(--color-celadon-300) !important; box-shadow: var(--elevation-1); }
 .action-secondary { color: var(--color-on-dark) !important; background: var(--ui-workshop-panel-soft) !important; border: 1rpx solid var(--ui-workshop-border) !important; }
-.action-share { width: 88rpx !important; padding: 0 !important; color: var(--color-on-dark) !important; background: var(--ui-workshop-panel-soft) !important; border: 1rpx solid var(--ui-workshop-border) !important; border-radius: var(--radius-full) !important; }
+.action-share { width: 72rpx !important; min-width: 72rpx !important; height: 72rpx; min-height: 72rpx !important; padding: 0 !important; color: var(--color-on-dark) !important; background: var(--ui-workshop-panel-soft) !important; border: 1rpx solid var(--ui-workshop-border) !important; border-radius: var(--radius-full) !important; }
 .action-feedback { min-height: 44rpx; margin-top: var(--space-2); display: flex; align-items: center; justify-content: center; gap: var(--space-2); color: var(--ui-kiln-muted); font-size: var(--type-caption-size); line-height: var(--type-caption-line); text-align: center; }
 
 .info-mask { position: fixed; z-index: 90; inset: 0; background: var(--ui-overlay); }
@@ -118,10 +134,11 @@
 .reduce-motion button { animation: none !important; transition: none !important; }
 
 @media (max-width: 340px) {
-  .actions { grid-template-columns: minmax(0, 1fr) 88rpx; }
+  .actions { grid-template-columns: minmax(0, 1fr) 72rpx; gap: var(--space-2); }
   .action-primary { grid-column: 1 / -1; }
   .action-secondary { grid-column: 1; }
   .action-share { grid-column: 2; }
+  .actions > button { min-height: 88rpx; }
   .reveal { padding-left: 24rpx; padding-right: 24rpx; padding-bottom: var(--space-4); }
   .plinth { width: 470rpx; }
   .info-sheet { padding-left: 24rpx; padding-right: 24rpx; }
@@ -136,6 +153,5 @@
   .reveal .eyebrow { display: none; }
   .name { font-size: var(--type-h2-size); line-height: var(--type-h2-line); }
   .result-actions-wrap { padding-top: var(--space-2); padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom)); }
-  .plinth { bottom: var(--space-3); }
   .preview-frame > image { height: 48vh; }
 }

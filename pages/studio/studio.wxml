@@ -121,16 +121,13 @@
       style="--wheel-period:{{wheelPeriodMs}}ms; --contact-shadow-width:{{contactShadowWidth}}rpx;"
     >
       <view id="wheelContact" class="wheel-contact-anchor"></view>
-      <view class="contact-shadow"></view>
-      <view class="wheel-basin"></view>
-      <view class="wheel-head">
-        <view class="wheel-head-spin">
-          <view class="machined-rings"></view>
-          <view class="slip-mark"></view>
-          <view class="wheel-glint"></view>
+      <view class="wheel-plate" aria-hidden="true">
+        <view class="wheel-plate-edge"></view>
+        <view class="wheel-plate-face">
+          <view class="wheel-plate-spin"></view>
         </view>
+        <view class="wheel-plate-contact" aria-hidden="true"></view>
       </view>
-      <view class="wheel-front-lip"></view>
     </view>
 
     <view

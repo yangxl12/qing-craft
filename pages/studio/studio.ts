@@ -2561,20 +2561,25 @@ Page({
     this.engine?.setKilnHeat(0);
     this.engine?.setPotteryCentered(false);
     const refire = this.data.kilnType === "low";
-    this.setData({ kiln: false, kilnProgress: 100 }, () => {
-      if (refire && this.work) {
-        this.work.status = "completed";
-        this.work.currentStage = "finished";
-        this.work.stageIndex = 6;
-        track("stage_complete", { stage:"refire", next_stage:"finished" });
-        this.persist();
-        this.vibrate("medium");
-        wx.redirectTo({
-          url:`/pages/result/result?id=${this.work.workId}`,
-          fail:() => this.syncData()
-        });
-        return;
-      }
+    if (refire && this.work) {
+      this.work.status = "completed";
+      this.work.currentStage = "finished";
+      this.work.stageIndex = 6;
+      track("stage_complete", { stage:"refire", next_stage:"finished" });
+      this.persist();
+      this.vibrate("medium");
+      // 低温烤花完成后直接进入成品展台，不再 setData 关闭窑火，
+      // 避免渲染「成品」空白页造成的跳转闪烁。
+      wx.redirectTo({
+        url:`/pages/result/result?id=${this.work.workId}`,
+        fail:() => {
+          this.setData({ kiln:false, kilnProgress:100 });
+          this.syncData();
+        }
+      });
+      return;
+    }
+    this.setData({ kiln:false, kilnProgress:100 }, () => {
       this.advance();
       setTimeout(() => this.refreshCanvasLayout(false, false), 0);
     });

@@ -358,6 +358,7 @@
 .fallback-decor > small { margin-top: var(--space-2); font-size: var(--type-caption-size); line-height: var(--type-caption-line); }
 .fallback-inscription { position: absolute; z-index: 14; right: 30%; bottom: 24%; color: var(--color-cinnabar); font-family: var(--font-display); font-size: var(--type-body-sm-size); }
 
+/* 陶轮：一个精致的圆盘，盘面随陶器同向同速旋转。 */
 .wheel-root {
   position: absolute;
   z-index: 8;
@@ -367,22 +368,92 @@
   height: 152rpx;
   transform: translateX(-50%);
   pointer-events: none;
+  /* 透视比 = 盘面高 / 盘面宽 = 112 / 512 ≈ 0.219 */
+  --wheel-squash: 0.21875;
 }
 
+/* 锚点：陶轮几何中心，决定器物落点（勿删，引擎据此定位器物）。 */
 .wheel-contact-anchor { position: absolute; left: 50%; top: 64rpx; width: 2rpx; height: 2rpx; }
-.contact-shadow { position: absolute; z-index: 2; left: 50%; top: 50rpx; width: var(--contact-shadow-width); height: 26rpx; border-radius: 50%; background: var(--ui-workshop-shadow); filter: blur(8rpx); transform: translateX(-50%); }
-.wheel-basin { position: absolute; z-index: 0; left: 0; right: 0; top: 46rpx; height: 94rpx; border: 1rpx solid var(--ui-workshop-border); border-radius: 0 0 50% 50% / 0 0 34% 34%; background: linear-gradient(180deg, var(--color-workshop-surface), var(--color-workshop-bg)); box-shadow: 0 18rpx 30rpx var(--ui-workshop-shadow); }
-.wheel-head { position: absolute; z-index: 1; left: 4%; right: 4%; top: 8rpx; height: 112rpx; border: 2rpx solid var(--ui-workshop-border); border-radius: 50%; overflow: hidden; background: var(--color-workshop-surface); box-shadow: 0 18rpx 30rpx var(--ui-workshop-shadow), inset 0 2rpx 0 var(--ui-workshop-highlight); }
-.wheel-head-spin { position: absolute; inset: 0; border-radius: inherit; background: radial-gradient(ellipse at 36% 22%, var(--color-on-dark-muted) 0, var(--color-celadon-500) 18%, var(--color-celadon-700) 52%, var(--color-workshop-surface) 84%); }
-.machined-rings { position: absolute; inset: 14rpx 36rpx; border: 2rpx solid var(--ui-workshop-highlight); border-radius: 50%; box-shadow: inset 0 0 0 10rpx transparent, inset 0 0 0 12rpx var(--ui-workshop-highlight), inset 0 0 0 25rpx transparent, inset 0 0 0 27rpx var(--ui-workshop-highlight); }
-.slip-mark { position: absolute; left: 50%; top: 50%; width: 52%; height: 54%; box-sizing: border-box; border: 2rpx solid transparent; border-top-color: var(--ui-workshop-highlight); border-left-color: var(--ui-workshop-highlight); border-radius: 50%; opacity: 0.9; transform: translate(-50%, -50%) rotate(-24deg); }
-.wheel-glint { position: absolute; left: 16%; top: 14%; width: 42%; height: 20%; border-radius: 50%; background: var(--ui-workshop-highlight); filter: blur(6rpx); transform: rotate(-18deg); }
-.wheel-front-lip { position: absolute; z-index: 3; left: 7%; right: 7%; top: 98rpx; height: 40rpx; box-sizing: border-box; border: 1rpx solid var(--ui-workshop-border); border-radius: 0 0 48% 48% / 0 0 58% 58%; background: linear-gradient(180deg, var(--color-celadon-700), var(--color-workshop-surface) 48%, var(--color-workshop-bg)); box-shadow: inset 0 2rpx 0 var(--ui-workshop-highlight), 0 12rpx 20rpx var(--ui-workshop-shadow); }
-.wheel-spinning .wheel-head-spin { animation: wheel-turn var(--wheel-period) linear infinite; }
-.wheel-paused .wheel-head-spin,
-.reduce-motion .wheel-head-spin { animation-play-state: paused; }
 
-@keyframes wheel-turn { to { transform: rotate(360deg); } }
+.wheel-plate {
+  position: absolute;
+  z-index: 1;
+  left: 24rpx;
+  right: 24rpx;
+  top: 8rpx;
+  height: 112rpx;
+}
+
+/* 盘壁（厚度）：向下偏移 12rpx，仅在底部露出一弯厚边，呈现立体。 */
+.wheel-plate-edge {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  top: 12rpx;
+  height: 112rpx;
+  border-radius: 50%;
+  background: var(--ui-wheel-edge-grad);
+  box-shadow: var(--ui-wheel-edge-shadow);
+}
+
+/* 盘面：主光自右上压下（工坊 key 方向 +X/+Z），亮区在右上、暗角在左下，比例与陶器一致。 */
+.wheel-plate-face {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 112rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  background:
+    var(--ui-wheel-face-warm),
+    var(--ui-wheel-face-dark),
+    var(--ui-wheel-face-grad);
+  box-shadow:
+    inset 0 0 0 1.5rpx var(--ui-wheel-rim),
+    inset 0 8rpx 16rpx var(--ui-wheel-back-shade);
+}
+
+/* 旋转层：方形 → scaleY + rotate 实现透视下的旋转，与陶器同向同速（周期由引擎给出）。 */
+.wheel-plate-spin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scaleY(var(--wheel-squash)) rotate(0deg);
+  background: var(--ui-wheel-spin-grad);
+  filter: blur(2rpx);
+  opacity: 0.82;
+  pointer-events: none;
+}
+
+.wheel-root:not(.wheel-paused) .wheel-plate-spin {
+  animation: wheel-turn var(--wheel-period) linear infinite;
+}
+.reduce-motion .wheel-plate-spin { animation: none !important; }
+
+@keyframes wheel-turn {
+  from { transform: translate(-50%, -50%) scaleY(var(--wheel-squash)) rotate(0deg); }
+  to { transform: translate(-50%, -50%) scaleY(var(--wheel-squash)) rotate(360deg); }
+}
+
+/* 器物落在盘面的接地阴影：与盘面同透视比，略偏左上（工坊主光自右上）。 */
+.wheel-plate-contact {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 56rpx;
+  width: var(--contact-shadow-width)rpx;
+  height: calc(var(--contact-shadow-width) * 0.21875rpx);
+  border-radius: 50%;
+  background: var(--ui-wheel-contact);
+  filter: blur(10rpx);
+  transform: translate(-56%, -50%);
+}
 
 .stage-footer,
 .glaze-bottom,
@@ -434,8 +505,7 @@
 .decor-fullscreen .decor-fullscreen-trigger { top: 72px; }
 
 .reduce-motion .stage-tool,
-.reduce-motion .decor-fullscreen-trigger,
-.reduce-motion .wheel-head-spin { animation: none !important; transition: none !important; }
+.reduce-motion .decor-fullscreen-trigger { animation: none !important; transition: none !important; }
 
 @media (max-width: 340px) {
   .topbar { grid-template-columns: 96rpx minmax(0, 1fr) 96rpx; padding: 0 var(--space-3); }
@@ -460,13 +530,12 @@
   .stage-progress-mark { width: 34rpx; height: 34rpx; }
   .stage-tool-rail,
   .decor-fullscreen-trigger { top: var(--space-2); }
-  .wheel-root { width: 500rpx; height: 132rpx; }
+  .wheel-root { width: 500rpx; height: 132rpx; --wheel-squash: 0.2069; }
   .wheel-contact-anchor { top: 54rpx; }
-  .contact-shadow { top: 42rpx; height: 24rpx; }
-  .wheel-basin { top: 40rpx; height: 84rpx; }
-  .wheel-head { top: 6rpx; height: 96rpx; }
-  .machined-rings { inset: 12rpx 32rpx; }
-  .wheel-front-lip { top: 84rpx; height: 34rpx; }
+  .wheel-plate { left: 18rpx; right: 18rpx; top: 6rpx; height: 96rpx; }
+  .wheel-plate-edge { top: 10rpx; height: 96rpx; }
+  .wheel-plate-face { height: 96rpx; }
+  .wheel-plate-contact { top: 48rpx; }
   .stage-footer,
   .glaze-bottom,
   .tray-bottom { min-height: 96rpx; padding-top: var(--space-1); padding-bottom: calc(var(--space-1) + env(safe-area-inset-bottom)); }

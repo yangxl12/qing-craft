@@ -70,6 +70,9 @@
   right: var(--space-4);
   top: 112rpx;
   width: 300rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
 .choice-popover {
@@ -154,12 +157,13 @@
 
 .form-switcher {
   position: relative;
-  width: 100%;
+  width: auto;
   margin-top: var(--space-2);
   padding: var(--space-2);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: var(--space-1);
   background: var(--ui-workshop-panel-soft);
   border: 1rpx solid var(--ui-workshop-border);
@@ -169,9 +173,9 @@
 }
 
 .form-chip-hit {
-  width: 100%;
-  height: 80rpx;
-  min-height: 80rpx;
+  width: 72rpx;
+  height: 72rpx;
+  min-height: 72rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -182,9 +186,10 @@
   min-width: 100% !important;
   height: 72rpx;
   min-height: 72rpx;
-  padding: 0 var(--space-2) !important;
+  padding: 0 !important;
   color: var(--color-on-dark-muted) !important;
-  font-size: var(--type-caption-size) !important;
+  font-size: var(--type-micro-size) !important;
+  line-height: 1;
 }
 
 .form-chip.active {
@@ -196,6 +201,7 @@
 .gesture-map {
   right: var(--space-4);
   top: 108rpx;
+  z-index: 31;
   width: 340rpx;
   padding: var(--space-4);
   box-sizing: border-box;
@@ -261,6 +267,8 @@
   .shaping-controls { right: var(--space-3); width: 276rpx; }
   .gesture-map { right: var(--space-3); width: 320rpx; }
   .stage-tips { left: var(--space-3); width: 292rpx; }
+  .form-chip-hit { width: 64rpx; height: 64rpx; min-height: 64rpx; }
+  .form-chip { height: 64rpx; min-height: 64rpx; }
 }
 
 @media (max-height: 700px) {

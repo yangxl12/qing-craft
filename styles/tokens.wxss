@@ -81,6 +81,31 @@ page {
   --ui-pottery-shadow: rgba(32, 41, 35, 0.28);
   --ui-hero-placeholder: #d7e1dc;
 
+  /* 成品展台：与展柜主光（左上）对应的圆柱配色与渐变 */
+  --ui-plinth-floor-shadow: rgba(2, 6, 5, 0.55);
+  --ui-plinth-wall-grad: linear-gradient(90deg, #4a6056 0%, #6a8077 10%, #5f7569 24%, #566c62 40%, #4a6056 50%, #3a4d44 64%, #2c3c36 78%, #243330 92%, #1e2a27 100%);
+  --ui-plinth-wall-shade: linear-gradient(180deg, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.18) 80%, rgba(0, 0, 0, 0.36) 100%);
+  --ui-plinth-top-grad: linear-gradient(180deg, #3a4f45 0%, #2c3e37 60%, #243330 100%);
+  --ui-plinth-top-warm: radial-gradient(70% 80% at 28% 24%, rgba(248, 238, 212, 0.32) 0%, rgba(248, 238, 212, 0.10) 30%, rgba(0, 0, 0, 0) 58%);
+  --ui-plinth-top-dark: radial-gradient(50% 55% at 80% 80%, rgba(0, 0, 0, 0.20) 0%, rgba(0, 0, 0, 0) 72%);
+  --ui-plinth-rim: rgba(242, 244, 238, 0.28);
+  --ui-plinth-back-shade: rgba(0, 0, 0, 0.22);
+  --ui-plinth-groove: rgba(242, 244, 238, 0.16);
+  --ui-plinth-groove-shade: rgba(0, 0, 0, 0.30);
+  --ui-plinth-cast: rgba(4, 8, 7, 0.32);
+  --ui-plinth-ao: rgba(4, 8, 7, 0.5);
+
+  /* 制坯陶轮：与工坊主光（右上）对应的圆盘配色与渐变 */
+  --ui-wheel-edge-grad: linear-gradient(180deg, #1a2522 0%, #131d1a 58%, #0b1411 100%);
+  --ui-wheel-edge-shadow: 0 20rpx 30rpx rgba(0, 0, 0, 0.55);
+  --ui-wheel-face-grad: linear-gradient(158deg, #3d5249 0%, #2c3b35 48%, #1d2724 100%);
+  --ui-wheel-face-warm: radial-gradient(95% 80% at 72% 24%, rgba(230, 240, 232, 0.28) 0%, rgba(230, 240, 232, 0.08) 30%, rgba(0, 0, 0, 0) 58%);
+  --ui-wheel-face-dark: radial-gradient(70% 60% at 22% 78%, rgba(0, 0, 0, 0.34) 0%, rgba(0, 0, 0, 0) 64%);
+  --ui-wheel-rim: rgba(242, 244, 238, 0.22);
+  --ui-wheel-back-shade: rgba(0, 0, 0, 0.38);
+  --ui-wheel-spin-grad: conic-gradient(from 0deg, rgba(255, 255, 255, 0) 0deg, rgba(238, 246, 238, 0.22) 36deg, rgba(255, 255, 255, 0.04) 84deg, rgba(0, 0, 0, 0.18) 168deg, rgba(0, 0, 0, 0.02) 224deg, rgba(238, 246, 238, 0.10) 300deg, rgba(255, 255, 255, 0) 360deg);
+  --ui-wheel-contact: rgba(4, 8, 7, 0.5);
+
   /* Type roles */
   --font-display: "Songti SC", "STSong", "SimSun", serif;
   --font-body: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;

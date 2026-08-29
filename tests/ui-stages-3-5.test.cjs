@@ -66,7 +66,11 @@ assert.match(resultSource, /savingPreview:true[\s\S]*?saveImageToPhotosAlbum/, "
 assert.match(resultSource, /相册权限未开启[\s\S]*?再次点“保存到相册”即可/, "相册拒绝后必须给出可恢复路径");
 assert.match(resultSource, /loadSettings\(\)\.reduceMotion/, "成品页必须消费全局减少动态设置");
 assert.match(resultMarkup, /class="result-more"[\s\S]*?name="more"/, "成品页必须提供更多信息入口");
-assert.match(resultMarkup, /class="plinth-front"[\s\S]*?class="plinth-top-inset"/, "成品展台必须使用分层前立面与台面");
+assert.match(
+  resultMarkup,
+  /class="plinth-wall"[\s\S]*?class="plinth-top"[\s\S]*?class="plinth-top-groove"/,
+  "成品展台必须使用圆柱侧壁、台面与内圈凹槽分层"
+);
 assert.doesNotMatch(resultMarkup, /plinth-rim|plinth-feet|plinth-cloud/, "成品展台不得继续保留旧的家具式底座装饰");
 assert.doesNotMatch(resultMarkup, /right-icon="info"/, "成品页必须移除旧信息 i 按钮");
 assert.match(resultStyles, /flex-direction:\s*column/, "成品操作按钮内的图标和文字必须垂直居中");

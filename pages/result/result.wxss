@@ -62,13 +62,101 @@
 .result-fallback-pattern { font-family: var(--font-display); font-size: var(--type-display-size); line-height: var(--type-display-line); }
 .result-fallback-mark { position: absolute; right: 48rpx; bottom: 56rpx; color: var(--color-cinnabar); font-family: var(--font-display); font-size: var(--type-body-sm-size); }
 
-.plinth { position: absolute; z-index: 11; left: 50%; bottom: 44rpx; width: 520rpx; height: 120rpx; transform: translateX(-50%); }
-.plinth-shadow { position: absolute; z-index: 1; left: 4%; right: 4%; bottom: 0; height: 28rpx; border-radius: 50%; background: var(--ui-workshop-shadow); filter: blur(14rpx); }
-.plinth-base { position: absolute; z-index: 2; left: 13%; right: 13%; top: 72rpx; height: 38rpx; box-sizing: border-box; border: 1rpx solid var(--ui-workshop-border); border-radius: 0 0 24% 24% / 0 0 34% 34%; background: linear-gradient(180deg, var(--color-workshop-surface), var(--color-workshop-bg)); box-shadow: inset 0 2rpx 0 var(--ui-workshop-highlight), 0 8rpx 18rpx var(--ui-workshop-shadow); }
-.plinth-front { position: absolute; z-index: 3; left: 7%; right: 7%; top: 34rpx; height: 64rpx; box-sizing: border-box; border: 1rpx solid var(--ui-workshop-border); border-radius: 0 0 46% 46% / 0 0 28% 28%; background: linear-gradient(180deg, var(--color-celadon-700), var(--color-workshop-surface) 42%, var(--color-workshop-bg)); box-shadow: inset 0 8rpx 12rpx var(--ui-workshop-highlight), 0 12rpx 20rpx var(--ui-workshop-shadow); }
-.plinth-top { position: absolute; z-index: 4; left: 3%; right: 3%; top: 6rpx; height: 58rpx; box-sizing: border-box; border: 1rpx solid var(--ui-workshop-border); border-radius: 50%; background: radial-gradient(ellipse at 34% 22%, var(--ui-workshop-highlight) 0, var(--color-celadon-500) 24%, var(--color-workshop-surface) 60%, var(--color-workshop-bg) 100%); box-shadow: 0 8rpx 12rpx var(--ui-workshop-shadow); }
-.plinth-top-inset { position: absolute; z-index: 5; left: 14%; right: 14%; top: 16rpx; height: 36rpx; box-sizing: border-box; border: 1rpx solid var(--ui-workshop-highlight); border-radius: 50%; background: radial-gradient(ellipse at 34% 24%, var(--ui-workshop-highlight), var(--color-workshop-surface) 62%, var(--color-workshop-bg)); }
-.plinth-contact { position: absolute; z-index: 6; left: 25%; right: 25%; top: 12rpx; height: 24rpx; border-radius: 50%; background: var(--ui-workshop-shadow); filter: blur(6rpx); }
+/* 成品展台：一个与陶器同透视比（0.212）的精致圆柱，造型/光线与展柜（showcase）预设对齐。 */
+.plinth { position: absolute; z-index: 11; left: 50%; bottom: 40rpx; width: 580rpx; height: 190rpx; transform: translateX(-50%); }
+
+/* 地面落影：略偏右上（展柜主光自左上压下），与台面同透视比。 */
+.plinth-floor-shadow {
+  position: absolute;
+  z-index: 1;
+  left: 2%;
+  right: 2%;
+  bottom: -10rpx;
+  height: 110rpx;
+  border-radius: 50%;
+  background: var(--ui-plinth-floor-shadow);
+  filter: blur(24rpx);
+  transform: translateX(14rpx);
+}
+
+/* 圆柱侧壁：顶面中心 → 下底中心，水平向明暗（主光在左），底部自然变暗。 */
+.plinth-wall {
+  position: absolute;
+  z-index: 2;
+  left: 2%;
+  right: 2%;
+  top: 59rpx;
+  height: 131rpx;
+  border-radius: 0 0 50% 50% / 0 0 45% 45%;
+  background: var(--ui-plinth-wall-shade), var(--ui-plinth-wall-grad);
+}
+
+/* 顶面：主光在左上、镜面高光偏左下-右上一带；薄边亮线。 */
+.plinth-top {
+  position: absolute;
+  z-index: 3;
+  left: 2%;
+  right: 2%;
+  top: 0;
+  height: 118rpx;
+  border-radius: 50%;
+  background: var(--ui-plinth-top-warm), var(--ui-plinth-top-dark), var(--ui-plinth-top-grad);
+  box-shadow:
+    inset 0 0 0 1.5rpx var(--ui-plinth-rim),
+    inset 0 10rpx 18rpx var(--ui-plinth-back-shade);
+}
+
+/* 顶面细凹槽：精致的机刻感，靠内一圈亮线。 */
+.plinth-top-groove {
+  position: absolute;
+  z-index: 4;
+  left: 8%;
+  right: 8%;
+  top: 12rpx;
+  height: 94rpx;
+  border-radius: 50%;
+  border: 1rpx solid var(--ui-plinth-groove);
+  box-shadow: inset 0 2rpx 4rpx var(--ui-plinth-groove-shade);
+}
+
+/* 器物投影：偏右上（展柜主光在左上），与顶面同透视比。 */
+.plinth-cast {
+  position: absolute;
+  z-index: 5;
+  left: 26%;
+  width: 46%;
+  top: 8rpx;
+  height: 106rpx;
+  border-radius: 50%;
+  background: var(--ui-plinth-cast);
+  filter: blur(18rpx);
+  transform: translate(22rpx, -8rpx);
+}
+
+/* 器物接地：暗部居中，比器物底稍大。 */
+.plinth-ao {
+  position: absolute;
+  z-index: 6;
+  left: 30%;
+  right: 30%;
+  top: 30rpx;
+  height: 58rpx;
+  border-radius: 50%;
+  background: var(--ui-plinth-ao);
+  filter: blur(12rpx);
+}
+
+/* 引擎据此锚点计算器物落点；中心需与顶面椭圆中心（y=59rpx）对齐。 */
+.plinth-contact-anchor {
+  position: absolute;
+  z-index: 7;
+  left: 45%;
+  right: 45%;
+  top: 53rpx;
+  height: 12rpx;
+  opacity: 0;
+  pointer-events: none;
+}
 
 .poster-canvas { position: fixed; left: -2200px; top: -2200px; width: 1080px; height: 1440px; opacity: 0; pointer-events: none; }
 
@@ -140,7 +228,7 @@
   .action-share { grid-column: 2; }
   .actions > button { min-height: 88rpx; }
   .reveal { padding-left: 24rpx; padding-right: 24rpx; padding-bottom: var(--space-4); }
-  .plinth { width: 470rpx; }
+  .plinth { width: 520rpx; }
   .info-sheet { padding-left: 24rpx; padding-right: 24rpx; }
   .preview-frame { margin-left: 24rpx; margin-right: 24rpx; }
   .preview-copy { padding-left: 24rpx; padding-right: 24rpx; }

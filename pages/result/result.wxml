@@ -45,12 +45,13 @@
       <view wx:if="{{work.decorationComposition.inscription}}" class="result-fallback-mark">{{work.decorationComposition.inscription.text}}</view>
     </view>
     <view class="plinth" aria-hidden="true">
-      <view class="plinth-shadow"></view>
-      <view class="plinth-base"></view>
-      <view class="plinth-front"></view>
+      <view class="plinth-floor-shadow"></view>
+      <view class="plinth-wall"></view>
       <view class="plinth-top"></view>
-      <view class="plinth-top-inset"></view>
-      <view id="plinthContact" class="plinth-contact"></view>
+      <view class="plinth-top-groove"></view>
+      <view class="plinth-cast"></view>
+      <view class="plinth-ao"></view>
+      <view id="plinthContact" class="plinth-contact-anchor"></view>
     </view>
   </view>
 

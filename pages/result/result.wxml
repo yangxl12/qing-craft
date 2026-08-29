@@ -18,7 +18,6 @@
   <view class="reveal">
     <view class="eyebrow">七道工序 · 已完成</view>
     <view class="display name">{{work.title}}</view>
-    <view class="note">拖动细看，釉色已在光里定住。</view>
   </view>
 
   <view class="scene">

@@ -39,33 +39,6 @@
       </label>
     </view>
 
-    <view class="settings-group ui-section-card" aria-label="引导强度">
-      <view class="group-heading">
-        <view class="group-title">引导强度</view>
-        <view class="group-note">帮助入口在所有模式下都可使用</view>
-      </view>
-
-      <radio-group class="choice-list" bindchange="setGuidance">
-        <label
-          wx:for="{{guidanceOptions}}"
-          wx:key="value"
-          class="setting-choice {{settings.guidance === item.value ? 'is-selected' : ''}}"
-        >
-          <radio
-            class="choice-radio"
-            value="{{item.value}}"
-            checked="{{settings.guidance === item.value}}"
-            color="var(--ui-action)"
-            aria-label="{{item.label}}，{{item.description}}，{{settings.guidance === item.value ? '已选中' : '未选中'}}"
-          />
-          <view class="choice-copy">
-            <view class="choice-label">{{item.label}}</view>
-            <text>{{item.description}}</text>
-          </view>
-        </label>
-      </radio-group>
-    </view>
-
     <view class="settings-group ui-section-card" aria-label="画质">
       <view class="group-heading">
         <view class="group-title">画质</view>

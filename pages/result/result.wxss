@@ -34,7 +34,6 @@
 .reveal::after { content: ""; position: absolute; left: 50%; bottom: var(--space-2); width: 128rpx; height: 4rpx; border-radius: var(--radius-full); background: linear-gradient(90deg, var(--color-on-dark), var(--color-celadon-300)); transform: translateX(-50%); }
 .reveal .eyebrow { color: var(--color-on-dark-muted); font-size: var(--type-caption-size); line-height: var(--type-caption-line); letter-spacing: 0.06em; }
 .name { margin-top: var(--space-1); overflow: hidden; color: var(--color-on-dark); font-size: var(--type-h1-size); line-height: var(--type-h1-line); font-weight: 500; letter-spacing: 0.04em; text-overflow: ellipsis; white-space: nowrap; }
-.note { color: var(--color-on-dark-muted); font-size: var(--type-body-sm-size); line-height: var(--type-body-sm-line); }
 
 .scene { position: relative; z-index: 10; min-height: 0; flex: 1; overflow: hidden; }
 .result-canvas { position: absolute; z-index: 12; inset: 0; width: 100%; height: 100%; }
@@ -124,7 +123,6 @@
   .action-secondary { grid-column: 1; }
   .action-share { grid-column: 2; }
   .reveal { padding-left: 24rpx; padding-right: 24rpx; padding-bottom: var(--space-4); }
-  .note { display: none; }
   .plinth { width: 470rpx; }
   .info-sheet { padding-left: 24rpx; padding-right: 24rpx; }
   .preview-frame { margin-left: 24rpx; margin-right: 24rpx; }
@@ -135,8 +133,7 @@
 
 @media (max-height: 700px) {
   .reveal { padding-top: var(--space-2); padding-bottom: var(--space-3); }
-  .reveal .eyebrow,
-  .note { display: none; }
+  .reveal .eyebrow { display: none; }
   .name { font-size: var(--type-h2-size); line-height: var(--type-h2-line); }
   .result-actions-wrap { padding-top: var(--space-2); padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom)); }
   .plinth { bottom: var(--space-3); }

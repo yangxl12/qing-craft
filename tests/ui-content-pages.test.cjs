@@ -11,7 +11,7 @@ const settingsSource = read("pages/settings/settings.ts");
 const navStyles = read("components/app-nav/app-nav.wxss");
 
 assert.match(settingsMarkup, /<app-nav/, "设置页应复用共享导航");
-assert.match(settingsMarkup, /<radio-group[^>]+bindchange="setGuidance"/, "引导强度应使用原生单选组");
+assert.doesNotMatch(settingsMarkup, /引导强度|guidance/, "引导强度设置必须移除");
 assert.match(settingsMarkup, /<radio-group[^>]+bindchange="setQuality"/, "画质应使用原生单选组");
 assert.doesNotMatch(settingsMarkup, /环境声音|settings\.sound/, "未实现的环境声音不得重新出现");
 assert.doesNotMatch(settingsMarkup, /自动降低细节/, "设置页不得承诺尚未实现的自动画质降档");

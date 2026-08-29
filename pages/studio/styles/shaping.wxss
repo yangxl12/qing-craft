@@ -1,7 +1,8 @@
 .material-dock,
 .wall-caliper,
 .form-switcher,
-.gesture-map {
+.gesture-map,
+.stage-tips {
   position: absolute;
   z-index: 30;
 }
@@ -205,9 +206,32 @@
 .finger-pair > view:last-child { right: 5rpx; transform: rotate(8deg); }
 .gesture-map-note { display: block; margin-top: var(--space-3); color: var(--color-on-dark-muted); font-size: var(--type-caption-size); line-height: var(--type-caption-line); }
 
+.stage-tips {
+  z-index: 31;
+  left: var(--space-4);
+  top: 112rpx;
+  width: 320rpx;
+  padding: var(--space-4);
+  box-sizing: border-box;
+  color: var(--color-on-dark);
+  background: var(--ui-workshop-panel);
+  border: 1rpx solid var(--color-celadon-300);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elevation-3);
+  backdrop-filter: blur(18rpx);
+  animation: shaping-pop var(--motion-overlay) var(--ease-enter) both;
+}
+
+.stage-tips-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.stage-tips-head > button { width: 80rpx !important; min-width: 80rpx !important; height: 80rpx; }
+.stage-tips-title { font-family: var(--font-display); font-size: var(--type-h3-size); line-height: var(--type-h3-line); }
+.stage-tips-row { position: relative; margin-top: var(--space-3); padding-left: var(--space-3); color: var(--color-on-dark); font-size: var(--type-body-sm-size); line-height: var(--type-body-sm-line); }
+.stage-tips-row::before { content: ""; position: absolute; left: 0; top: 18rpx; width: 8rpx; height: 8rpx; border-radius: var(--radius-full); background: var(--color-celadon-300); }
+
 .show-help .material-dock,
 .show-help .wall-caliper,
-.show-help .form-switcher { opacity: 0.22; pointer-events: none; }
+.show-help .form-switcher,
+.show-tips .material-dock { opacity: 0.22; pointer-events: none; }
 
 @keyframes shaping-pop { from { opacity: 0; transform: translateY(-10rpx); } to { opacity: 1; transform: translateY(0); } }
 
@@ -215,12 +239,14 @@
   .material-dock { left: var(--space-3); width: 268rpx; }
   .wall-caliper { right: var(--space-3); width: 276rpx; }
   .gesture-map { right: var(--space-3); width: 320rpx; }
+  .stage-tips { left: var(--space-3); width: 292rpx; }
 }
 
 @media (max-height: 700px) {
   .material-dock,
   .wall-caliper,
   .gesture-map { top: 92rpx; }
+  .stage-tips { top: 92rpx; }
   .wall-link { display: none; }
   .wall-caliper { padding: var(--space-3); }
   .choice-popover { max-height: 290rpx; overflow-y: auto; }

@@ -7,8 +7,7 @@
 .kiln-active .decor-tray,
 .kiln-active .glaze-tray,
 .kiln-active .tray,
-.kiln-active .wheel-root,
-.kiln-active .hint { display: none; }
+.kiln-active .wheel-root { display: none; }
 
 .kiln-active .stage-area { z-index: 10; flex: 1; }
 .kiln-active .pottery-spotlight { display: none; }

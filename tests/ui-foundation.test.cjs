@@ -10,10 +10,7 @@ require.extensions[".ts"] = (module, filename) => {
   module._compile(output, filename);
 };
 
-const {
-  normalizeSettings,
-  shouldShowGuidance,
-} = require("../utils/settings.ts");
+const { normalizeSettings } = require("../utils/settings.ts");
 const { runConfirmedAction } = require("../utils/destructive-actions.ts");
 const { calculateUiMetrics } = require("../utils/ui-metrics.ts");
 
@@ -21,19 +18,14 @@ const legacySettings = normalizeSettings({
   sound:true,
   haptics:false,
   quality:"high",
-  guidance:"necessary",
   reduceMotion:true,
 });
 assert.equal("sound" in legacySettings, false, "声音引擎未实现前不能继续保存无效设置");
 assert.deepEqual(legacySettings, {
   haptics:false,
   quality:"high",
-  guidance:"necessary",
   reduceMotion:true,
 });
-assert.equal(shouldShowGuidance("relaxed", "teaching"), true, "轻松引导应显示教学提示");
-assert.equal(shouldShowGuidance("necessary", "teaching"), false, "仅必要提示应隐藏教学提示");
-assert.equal(shouldShowGuidance("free", "risk"), true, "自由创作仍须保留风险提示");
 
 const untouched = { layers:["lotus"], history:["snapshot"] };
 const beforeCancel = JSON.stringify(untouched);
@@ -55,12 +47,17 @@ const settingsMarkup = fs.readFileSync("pages/settings/settings.wxml", "utf8");
 const resultStyles = fs.readFileSync("pages/result/result.wxss", "utf8");
 const galleryMarkup = fs.readFileSync("pages/gallery/gallery.wxml", "utf8");
 const studioSource = fs.readFileSync("pages/studio/studio.ts", "utf8");
+const studioMarkup = fs.readFileSync("pages/studio/studio.wxml", "utf8");
+const resultMarkup = fs.readFileSync("pages/result/result.wxml", "utf8");
 assert.doesNotMatch(settingsMarkup, /环境声音|settings\.sound/, "未实现的环境声音设置必须隐藏");
 assert.match(settingsMarkup, /<app-nav/, "设置页必须使用共享导航作为浅色场景样例");
 assert.match(resultStyles, /minmax\(0, 1\.35fr\) minmax\(0, 1fr\) 88rpx/, "成品操作区必须允许网格内容收缩");
 assert.match(resultStyles, /@media \(max-width: 340px\)/, "成品操作区必须提供窄屏换行");
 assert.match(galleryMarkup, /disabled="{{!selectedCount}}"[^>]+aria-disabled="{{!selectedCount}}"/, "无选择时删除必须真正禁用");
-assert.match(studioSource, /setGuidanceHint\([\s\S]*?shouldShowGuidance/, "创作台必须消费引导强度");
+assert.doesNotMatch(studioSource, /setGuidanceHint|shouldShowGuidance|scheduleIdleGuidance/, "引导强度已下线，创作台不再写入教学提示");
+assert.doesNotMatch(studioMarkup, /class="hint panel"/, "创作台底部提示面板必须移除");
+assert.match(studioMarkup, /bindtap="toggleTips"/, "制坯顶部必须提供独立提示入口");
+assert.doesNotMatch(resultMarkup, /class="note"/, "成品页底部提示必须移除");
 assert.match(studioSource, /runConfirmedAction\(result/, "返回制坯必须把变更置于确认边界后");
 
 console.log("ui foundation tests passed: settings, confirmation invariance, metrics and P0 layout guards");

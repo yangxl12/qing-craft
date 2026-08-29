@@ -422,30 +422,6 @@
 .tool { min-width: 152rpx !important; min-height: 88rpx; padding: 0 var(--space-4) !important; gap: var(--space-2); color: var(--color-on-dark-muted) !important; border: 1rpx solid var(--ui-workshop-border) !important; }
 .tool.active { color: var(--ui-action-text) !important; background: var(--color-celadon-300) !important; border-color: var(--color-celadon-300) !important; }
 
-.hint {
-  position: absolute;
-  z-index: 35;
-  left: 50%;
-  bottom: var(--space-6);
-  width: calc(100% - 64rpx);
-  max-width: 620rpx;
-  min-height: 80rpx;
-  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-6);
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  color: var(--color-on-dark);
-  background: var(--ui-workshop-panel);
-  border: 1rpx solid var(--ui-workshop-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--elevation-2);
-  transform: translateX(-50%);
-}
-
-.hint > text { min-width: 0; flex: 1; font-size: var(--type-body-sm-size); line-height: var(--type-body-sm-line); }
-.hint > button { width: 80rpx !important; min-width: 80rpx !important; height: 80rpx; }
-
 .decor-fullscreen .safe-top,
 .decor-fullscreen .topbar,
 .decor-fullscreen .stage-progress,
@@ -456,7 +432,6 @@
 
 .reduce-motion .stage-tool,
 .reduce-motion .decor-fullscreen-trigger,
-.reduce-motion .hint,
 .reduce-motion .wheel-head-spin { animation: none !important; transition: none !important; }
 
 @media (max-width: 340px) {

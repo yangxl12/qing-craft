@@ -1,4 +1,4 @@
-<view class="studio tone-dark {{reduceMotion?'reduce-motion':''}} {{showHelp?'show-help':''}} {{kiln?'kiln-active kiln-'+kilnType:''}} {{stageIndex===1||stageIndex===4?'decor-stage':''}} {{stageIndex===4?'paint-stage':''}} {{stageIndex===2?'glaze-stage':''}} {{decorTrayOpen?'decor-menu-open':'decor-menu-closed'}} {{decorFullscreen?'decor-fullscreen':''}}">
+<view class="studio tone-dark {{reduceMotion?'reduce-motion':''}} {{showHelp?'show-help':''}} {{showTips?'show-tips':''}} {{kiln?'kiln-active kiln-'+kilnType:''}} {{stageIndex===1||stageIndex===4?'decor-stage':''}} {{stageIndex===4?'paint-stage':''}} {{stageIndex===2?'glaze-stage':''}} {{decorTrayOpen?'decor-menu-open':'decor-menu-closed'}} {{decorFullscreen?'decor-fullscreen':''}}">
   <view wx:if="{{stageIndex===0}}" class="shaping-workshop-bg" aria-hidden="true">
     <image
       class="shaping-workshop-image"
@@ -70,6 +70,7 @@
       <button class="stage-tool" disabled="{{!canUndo}}" aria-disabled="{{!canUndo}}" aria-label="撤销" bindtap="undo"><ui-icon name="undo" size="38" tone="light" decorative></ui-icon></button>
       <button class="stage-tool" disabled="{{!canRedo}}" aria-disabled="{{!canRedo}}" aria-label="重做" bindtap="redo"><ui-icon name="redo" size="38" tone="light" decorative></ui-icon></button>
       <button wx:if="{{stageIndex===0}}" class="stage-tool {{showHelp?'is-active':''}}" aria-label="{{showHelp?'收起手势帮助':'查看手势帮助'}}" bindtap="help"><ui-icon name="help" size="38" tone="light" decorative></ui-icon></button>
+      <button wx:if="{{stageIndex===0}}" class="stage-tool {{showTips?'is-active':''}}" aria-label="{{showTips?'收起制坯提示':'查看制坯提示'}}" bindtap="toggleTips"><ui-icon name="info" size="38" tone="light" decorative></ui-icon></button>
     </view>
     <button
       wx:if="{{stageIndex===1||stageIndex===4}}"
@@ -183,6 +184,15 @@
       <text class="gesture-map-note">双指环看与缩放；回正可重新完整查看器形。</text>
     </view>
 
+    <view wx:if="{{stageIndex===0&&showTips}}" class="stage-tips" aria-role="dialog" aria-label="制坯提示">
+      <view class="stage-tips-head"><view class="stage-tips-title">制坯小贴士</view><button aria-label="关闭制坯提示" bindtap="toggleTips"><ui-icon name="close" size="32" tone="light" decorative></ui-icon></button></view>
+      <view class="stage-tips-row">单指按住器身，向外推即拉伸，向内推即收拢</view>
+      <view class="stage-tips-row">上下轻抹可以放平器口或收出圈足</view>
+      <view class="stage-tips-row">双指环看与缩放，可翻转细看器身各处</view>
+      <view class="stage-tips-row">用右侧泥壁厚度滑杆微调薄厚</view>
+      <view class="stage-tips-row">随时点回正，可重新完整查看器形</view>
+    </view>
+
     <view wx:if="{{stageIndex===0}}" class="wall-caliper {{wallAdjusting?'active':''}}">
       <view class="wall-caliper-head">
         <view class="caliper-glyph"><view></view><view></view></view>
@@ -260,10 +270,6 @@
       </view>
     </view>
 
-    <view class="hint panel" wx:if="{{showHint}}" aria-role="status">
-      <text>{{showHelp?cameraHelp:hint}}</text>
-      <button aria-label="收起提示" bindtap="hideHint"><ui-icon name="close" size="28" tone="light" decorative></ui-icon></button>
-    </view>
   </view>
 
   <view wx:if="{{stageIndex===0}}" class="stage-footer stagebar">

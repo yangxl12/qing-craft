@@ -1,17 +1,10 @@
 import {
   DEFAULT_SETTINGS,
-  GuidanceLevel,
   loadSettings,
   QualityLevel,
   saveSettings,
   UserSettings
 } from "../../utils/settings";
-
-const GUIDANCE_OPTIONS = [
-  { value:"relaxed", label:"轻松引导", description:"首用、停滞与风险时给出提示" },
-  { value:"necessary", label:"仅必要提示", description:"只提示错误与不可逆风险" },
-  { value:"free", label:"自由创作", description:"隐藏教学提示，帮助入口始终可用" }
-] as const;
 
 const QUALITY_OPTIONS = [
   { value:"low", label:"流畅" },
@@ -22,7 +15,6 @@ const QUALITY_OPTIONS = [
 Page({
   data: {
     settings: { ...DEFAULT_SETTINGS } as UserSettings,
-    guidanceOptions: GUIDANCE_OPTIONS,
     qualityOptions: QUALITY_OPTIONS,
     saveState: ""
   },
@@ -44,12 +36,6 @@ Page({
       : !this.data.settings[key];
     const label = key === "haptics" ? "轻触反馈" : "减少动态效果";
     this.persist({ ...this.data.settings, [key]:value }, `${label}已保存`);
-  },
-
-  setGuidance(e: WechatMiniprogramTouchEvent) {
-    const value = e.detail?.value as GuidanceLevel;
-    if (!GUIDANCE_OPTIONS.some((option) => option.value === value)) return;
-    this.persist({ ...this.data.settings, guidance:value }, "引导强度已保存");
   },
 
   setQuality(e: WechatMiniprogramTouchEvent) {

@@ -34,6 +34,7 @@
     "ui-icon": "/components/ui-icon/ui-icon",
     "app-nav": "/components/app-nav/app-nav"
   },
+  "lazyCodeLoading": "requiredComponents",
   "style": "v2",
   "sitemapLocation": "sitemap.json"
 }

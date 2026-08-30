@@ -20,7 +20,7 @@
   ><ui-icon name="more" size="36" tone="light" decorative></ui-icon></button>
 
   <view class="reveal">
-    <view class="eyebrow">七道工序 · 已完成</view>
+    <view class="eyebrow">六道工序 · 已完成</view>
     <view class="display name">{{work.title}}</view>
   </view>
 

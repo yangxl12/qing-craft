@@ -116,8 +116,7 @@ export const GLAZES: GlazeOption[] = [...CLASSIC_GLAZES, ...LEGACY_GLAZES];
 
 export const STAGES = [
   { id:"shaping", short:"坯", name:"制坯" }, { id:"decorate", short:"饰", name:"装饰" }, { id:"glaze", short:"釉", name:"上釉" },
-  { id:"firing", short:"烧", name:"高温烧制" }, { id:"paint", short:"彩", name:"釉上彩绘" }, { id:"refire", short:"烤", name:"低温烤花" },
-  { id:"finished", short:"成", name:"成品" }
+  { id:"firing", short:"烧", name:"高温烧制" }, { id:"paint", short:"彩", name:"釉上彩绘" }, { id:"refire", short:"烤", name:"低温烤花" }
 ] as const;
 
 export const TOOLS: Record<string, { id:string; name:string; hint:string }[]> = {
@@ -131,6 +130,5 @@ export const TOOLS: Record<string, { id:string; name:string; hint:string }[]> = 
   glaze: [],
   firing: [{id:"kiln",name:"点火入窑",hint:"泥与釉会在火中定形"}],
   paint: [{id:"brush",name:"画笔",hint:"在器身直接落笔"},{id:"dot",name:"点彩",hint:"点下细小色斑"},{id:"pattern",name:"纹样",hint:"添加环绕纹样"},{id:"eraser",name:"橡皮",hint:"擦去刚才的颜色"}],
-  refire: [{id:"refire",name:"合窑烤花",hint:"让彩绘颜色定住"}],
-  finished: []
+  refire: [{id:"refire",name:"合窑烤花",hint:"让彩绘颜色定住"}]
 };

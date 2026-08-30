@@ -1,4 +1,4 @@
-import { CLAYS, SHAPES } from "../../core/catalog";
+import { CLAYS, SHAPES, STAGES } from "../../core/catalog";
 import { createWork, PotteryWork } from "../../core/model";
 import { track } from "../../services/analytics";
 import { listWorks, removeWork, saveWork } from "../../services/storage";
@@ -61,7 +61,7 @@ Page({
         const timeText = formatTime(work.updatedAt);
         const statusLabel = work.status === "completed"
           ? "已成器"
-          : `工序 ${work.stageIndex + 1} / 7`;
+          : `工序 ${work.stageIndex + 1} / ${STAGES.length}`;
         const selectionState = this.data.selectMode
           ? selected ? "，已选中" : "，未选中"
           : "";

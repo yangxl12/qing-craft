@@ -262,6 +262,9 @@
 
 @keyframes shaping-pop { from { opacity: 0; transform: translateY(-10rpx); } to { opacity: 1; transform: translateY(0); } }
 
+/* 先隐藏陶轮底盘：保留 wheel-contact-anchor 供引擎定位，视觉上先不展示转盘。 */
+.wheel-root { visibility: hidden; }
+
 @media (max-width: 340px) {
   .material-dock { left: var(--space-3); width: 268rpx; }
   .shaping-controls { right: var(--space-3); width: 276rpx; }

@@ -1,4 +1,4 @@
-import { CLAYS, GLAZES, SHAPES } from "../../core/catalog";
+import { CLAYS, GLAZES, SHAPES, STAGES } from "../../core/catalog";
 import { decorationSummary, motifById, STYLE_PACKS } from "../../core/decoration";
 import { PotteryEngine } from "../../core/pottery-engine";
 import { PotteryWork } from "../../core/model";
@@ -74,8 +74,10 @@ Page({
     }
     this.work = work;
     this.work.status = "completed";
-    this.work.currentStage = "finished";
-    this.work.stageIndex = 6;
+    // 流程已去掉独立的“成品”工序页，进入成品展台即视为最后一道工序完成。
+    const lastStage = STAGES[STAGES.length - 1];
+    this.work.currentStage = lastStage.id;
+    this.work.stageIndex = STAGES.length - 1;
     try { saveWork(this.work); } catch (_error) {
       wx.showToast({ title:"成品状态还没落盘", icon:"none" });
     }

@@ -481,7 +481,8 @@ Page({
       return;
     }
     this.work = work;
-    if (work.status === "completed" || work.currentStage === "finished" || work.stageIndex === 6) {
+    // 已完成或旧版“成品”页草稿直接进入成品展台，不再展示 studio 内的成品工序。
+    if (work.status === "completed" || work.currentStage === "finished") {
       wx.redirectTo({ url:`/pages/result/result?id=${work.workId}` });
       return;
     }
@@ -2420,10 +2421,6 @@ Page({
       this.startKiln(stage === "refire");
       return;
     }
-    if (stage === "finished") {
-      wx.redirectTo({ url: `/pages/result/result?id=${this.work.workId}` });
-      return;
-    }
     if (stage === "decorate") {
       const composition = this.work.decorationComposition;
       track("decorate_complete", {
@@ -2563,9 +2560,10 @@ Page({
     const refire = this.data.kilnType === "low";
     if (refire && this.work) {
       this.work.status = "completed";
-      this.work.currentStage = "finished";
-      this.work.stageIndex = 6;
-      track("stage_complete", { stage:"refire", next_stage:"finished" });
+      // 工序流程已去掉“成品”页，低温烤花完成即视为整件作品完成。
+      this.work.currentStage = STAGES[STAGES.length - 1].id;
+      this.work.stageIndex = STAGES.length - 1;
+      track("stage_complete", { stage:"refire", next_stage:"result" });
       this.persist();
       this.vibrate("medium");
       // 低温烤花完成后直接进入成品展台，不再 setData 关闭窑火，

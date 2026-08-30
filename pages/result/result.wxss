@@ -186,7 +186,7 @@
 .sheet-heading-copy { display: flex; align-items: center; gap: var(--space-3); }
 .sheet-seal { width: 56rpx; height: 56rpx; border-radius: var(--radius-xs); display: flex; align-items: center; justify-content: center; color: var(--ui-accent-text); background: var(--ui-accent); font-size: var(--type-h3-size); line-height: var(--type-h3-line); box-shadow: inset 0 0 0 2rpx var(--ui-accent-text); }
 .sheet-title { font-size: var(--type-h2-size); line-height: var(--type-h2-line); font-weight: 500; }
-.sheet-close { width: 80rpx !important; min-width: 80rpx !important; height: 80rpx; padding: 0; color: var(--color-text) !important; background: var(--ui-surface-subtle) !important; border-radius: var(--radius-full) !important; }
+.sheet-close { width: 80rpx !important; min-width: 80rpx !important; height: 80rpx; padding: 0; display: flex; align-items: center; justify-content: center; color: var(--color-text) !important; background: var(--ui-surface-subtle) !important; border-radius: var(--radius-full) !important; }
 .sheet-divider { width: 120rpx; height: 4rpx; margin-bottom: var(--space-3); border-radius: var(--radius-full); background: linear-gradient(90deg, var(--color-text), var(--color-celadon-300)); }
 .info-scroll { min-height: 0; flex: 1; }
 .info-row { min-height: 80rpx; padding: var(--space-3) 0; box-sizing: border-box; display: grid; grid-template-columns: 120rpx minmax(0, 1fr); align-items: start; gap: var(--space-4); border-bottom: 1rpx solid var(--ui-border); }
@@ -195,9 +195,9 @@
 .meaning-card { margin: var(--space-4) 0; padding: var(--space-4); color: var(--color-text); background: var(--ui-surface-subtle); border-radius: var(--radius-md); }
 .meaning-card > text { color: var(--color-text-secondary); font-size: var(--type-caption-size); line-height: var(--type-caption-line); }
 .meaning-card > view { margin-top: var(--space-2); font-size: var(--type-body-sm-size); line-height: var(--type-body-sm-line); }
-.sheet-cta { width: 100% !important; min-height: 88rpx; margin-top: var(--space-4) !important; color: var(--ui-action-text) !important; background: var(--ui-action) !important; border-radius: var(--radius-md) !important; font-size: var(--type-body-size) !important; font-weight: 600; }
+.sheet-cta { width: 100% !important; min-height: 88rpx; margin-top: var(--space-4) !important; display: flex; align-items: center; justify-content: center; color: var(--ui-action-text) !important; background: var(--ui-action) !important; border-radius: var(--radius-md) !important; font-size: var(--type-body-size) !important; font-weight: 600; }
 .sheet-mini-row { margin-top: var(--space-3); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-3); }
-.sheet-mini { min-width: 0 !important; min-height: 88rpx; padding: 0 var(--space-3) !important; gap: var(--space-2); color: var(--color-text) !important; background: var(--ui-surface) !important; border: 1rpx solid var(--ui-border) !important; border-radius: var(--radius-md) !important; font-size: var(--type-body-sm-size) !important; }
+.sheet-mini { width: 100% !important; min-width: 0 !important; min-height: 88rpx; padding: 0 var(--space-3) !important; display: flex; align-items: center; justify-content: center; gap: var(--space-2); color: var(--color-text) !important; background: var(--ui-surface) !important; border: 1rpx solid var(--ui-border) !important; border-radius: var(--radius-md) !important; font-size: var(--type-body-sm-size) !important; white-space: nowrap; }
 .sheet-mini.danger { color: var(--ui-danger) !important; border-color: var(--ui-danger) !important; }
 .sheet-safe-space { height: calc(var(--space-6) + env(safe-area-inset-bottom)); }
 

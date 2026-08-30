@@ -167,7 +167,7 @@
   box-sizing: border-box;
   flex: none;
   display: grid;
-  grid-template-columns: repeat(7, 40rpx);
+  grid-template-columns: repeat(6, 40rpx);
   justify-content: center;
   align-items: center;
   gap: var(--space-1);
@@ -512,7 +512,7 @@
   .top-exit { min-width: 88rpx !important; }
   .topbar-balance { width: 96rpx; }
   .save-state { display: none; }
-  .stage-progress { grid-template-columns: repeat(7, 34rpx); gap: 0; padding: 0 17rpx; }
+  .stage-progress { grid-template-columns: repeat(6, 34rpx); gap: 0; padding: 0 17rpx; }
   .stage-progress-line { left: 34rpx; right: 34rpx; }
   .stage-progress-mark { width: 32rpx; height: 32rpx; }
   .stage-tool-rail { left: var(--space-3); }

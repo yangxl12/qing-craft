@@ -58,7 +58,7 @@
       <ui-icon name="back" size="36" tone="light" decorative></ui-icon><text>退出</text>
     </button>
     <view class="work-title">
-      <view class="work-title-main"><text>{{stageName}}</text><small>{{stageIndex+1}} / 7</small></view>
+      <view class="work-title-main"><text>{{stageName}}</text><small>{{stageIndex+1}} / 6</small></view>
       <text class="save-state {{saveState==='已保存'?'saved':''}}" aria-role="status">{{saveState}}</text>
     </view>
     <view class="topbar-balance" aria-hidden="true"></view>
@@ -314,47 +314,33 @@
         </view>
         <view class="decor-library-body">
           <view wx:if="{{decorTab==='inscription'}}" class="seal-panel">
-            <view class="seal-block">
-              <view class="seal-block-head">
-                <view class="seal-block-title"><small aria-hidden="true">款</small><text>题款内容</text></view>
-                <text class="seal-count">{{sealTextLength}}/{{sealTextLimit}}</text>
-              </view>
-              <input
-                class="seal-input"
-                value="{{sealText}}"
-                maxlength="6"
-                placeholder="最多六个字"
-                placeholder-class="seal-input-placeholder"
-                aria-label="题款内容，最多六个字"
-                bindinput="inputSealText"
-              />
+            <input
+              class="seal-input"
+              value="{{sealText}}"
+              maxlength="6"
+              placeholder="最多六个字"
+              placeholder-class="seal-input-placeholder"
+              aria-label="题款内容，最多六个字"
+              bindinput="inputSealText"
+            />
+
+            <view class="seal-color-row" role="radiogroup" aria-role="radiogroup" aria-label="选择题款款色">
+              <button
+                wx:for="{{sealColors}}"
+                wx:key="id"
+                class="seal-color {{sealColorId===item.id?'active':''}}"
+                aria-role="radio"
+                aria-checked="{{sealColorId===item.id}}"
+                aria-label="选择{{item.name}}"
+                data-id="{{item.id}}"
+                bindtap="chooseSealColor"
+              >
+                <view class="seal-color-chip" style="background:{{item.color}}"></view>
+                <text class="seal-color-name">{{item.name}}</text>
+              </button>
             </view>
 
-            <view class="seal-block">
-              <view class="seal-block-head">
-                <view class="seal-block-title"><small aria-hidden="true">色</small><text>款色</text></view>
-              </view>
-              <view class="seal-color-row" role="radiogroup" aria-role="radiogroup" aria-label="选择题款款色">
-                <button
-                  wx:for="{{sealColors}}"
-                  wx:key="id"
-                  class="seal-color {{sealColorId===item.id?'active':''}}"
-                  aria-role="radio"
-                  aria-checked="{{sealColorId===item.id}}"
-                  aria-label="选择{{item.name}}"
-                  data-id="{{item.id}}"
-                  bindtap="chooseSealColor"
-                >
-                  <view class="seal-color-chip" style="background:{{item.color}}"></view>
-                  <text class="seal-color-name">{{item.name}}</text>
-                </button>
-              </view>
-            </view>
-
-            <view class="seal-block seal-block-final">
-              <button class="seal-apply" aria-label="在器身生成题款" bindtap="applySealMark">{{sealApplied?'重新生成题款':'落款成印'}}</button>
-              <text class="seal-hint">{{sealApplied?'题款已入被选图菜单 · 选中后可调校或删除':'生成后可在右侧选中、拖动和调校'}}</text>
-            </view>
+            <button class="seal-apply" aria-label="在器身生成题款" bindtap="applySealMark">{{sealApplied?'重新生成题款':'落款成印'}}</button>
           </view>
 
           <block wx:else>
@@ -610,7 +596,7 @@
   </view>
 
   <template name="stageProgress">
-    <view class="stage-progress" aria-label="七道工序，当前{{stageName}}，第{{stageIndex+1}}道">
+    <view class="stage-progress" aria-label="六道工序，当前{{stageName}}，第{{stageIndex+1}}道">
       <view class="stage-progress-line" aria-hidden="true"></view>
       <view
         wx:for="{{stageSteps}}"

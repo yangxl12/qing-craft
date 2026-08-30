@@ -161,6 +161,8 @@ const WALL_SLIDER_MAX = Math.round(MAX_POTTERY_WALL * WALL_SLIDER_SCALE);
 // can flip the piece completely over.
 const TWO_FINGER_ORBIT_GAIN = 1.5;
 const SEAL_MARK_SELECTION_ID = "seal_mark";
+// 装饰与釉上彩绘两道工序里，器身默认落点略微偏上，整体下移 50px 更好观看。
+const DECOR_STAGE_BASE_OFFSET_PX = 50;
 const KILN_DURATION_MS = 20_000;
 const KILN_TICK_MS = 100;
 
@@ -555,13 +557,16 @@ Page({
         const wheelInfo = results && results[1];
         const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
         const hasWheelContact = Number.isFinite(wheelInfo?.top) && Number(wheelInfo?.height) > 0;
-        const baseScreenY = hasWheelContact && info?.height
-          ? calculatePotteryBaseScreenYFromLayout(
-              info.top || 0,
-              info.height,
-              wheelInfo.top
-            )
-          : calculatePotteryBaseScreenY(system.windowHeight || info?.height || 812);
+        const baseScreenY = this.resolveBaseScreenY(
+          hasWheelContact && info?.height
+            ? calculatePotteryBaseScreenYFromLayout(
+                info.top || 0,
+                info.height,
+                wheelInfo.top
+              )
+            : calculatePotteryBaseScreenY(system.windowHeight || info?.height || 812),
+          info?.height || 0
+        );
         if (!info?.node) {
           this.setData({
             fallback: true,
@@ -915,6 +920,17 @@ Page({
     this.syncWallThicknessData(true);
   },
 
+  /**
+   * 装饰（第 2 道）与釉上彩绘（第 5 道）工序的器身落点略微偏上，
+   * 统一换算成画布比例后整体下移，进入页面与视角回正都会用到这个值。
+   */
+  resolveBaseScreenY(baseScreenY: number, canvasHeight: number): number {
+    const stage = this.work?.currentStage;
+    if (stage !== "decorate" && stage !== "paint") return baseScreenY;
+    const height = Number.isFinite(canvasHeight) && canvasHeight > 0 ? canvasHeight : 812;
+    return clamp(baseScreenY + DECOR_STAGE_BASE_OFFSET_PX / height, 0.6, 0.93);
+  },
+
   refreshCanvasLayout(preserveVisualScale = false, centerPottery = false) {
     if (!this.engine || !this.canvas) return;
     const query = wx.createSelectorQuery().in(this);
@@ -933,13 +949,16 @@ Page({
       const system = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
       const dpr = resolveRenderDpr(system.pixelRatio || 2, loadSettings().quality);
       const hasWheelContact = Number.isFinite(wheelInfo?.top) && Number(wheelInfo?.height) > 0;
-      const baseScreenY = hasWheelContact
-        ? calculatePotteryBaseScreenYFromLayout(
-            info.top || 0,
-            info.height,
-            wheelInfo.top
-          )
-        : calculatePotteryBaseScreenY(info.height);
+      const baseScreenY = this.resolveBaseScreenY(
+        hasWheelContact
+          ? calculatePotteryBaseScreenYFromLayout(
+              info.top || 0,
+              info.height,
+              wheelInfo.top
+            )
+          : calculatePotteryBaseScreenY(info.height),
+        info.height
+      );
       this.engine?.resize(info.width, info.height, dpr, preserveVisualScale);
       this.engine?.setBaseScreenY(baseScreenY);
       this.engine?.setPotteryCentered(centerPottery);

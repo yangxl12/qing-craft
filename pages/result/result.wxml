@@ -12,12 +12,18 @@
     bindback="backHome"
   ></app-nav>
 
-  <button
-    class="result-more"
-    style="top:{{moreButtonTop}}px;"
-    aria-label="查看作品信息"
-    bindtap="openInfo"
-  ><ui-icon name="more" size="36" tone="light" decorative></ui-icon></button>
+  <view class="result-top-actions" style="top:{{moreButtonTop}}px;">
+    <button
+      class="result-works"
+      aria-label="查看我的作品"
+      bindtap="openGallery"
+    ><ui-icon name="works" size="32" tone="light" decorative></ui-icon><text>我的作品</text></button>
+    <button
+      class="result-more"
+      aria-label="查看作品信息"
+      bindtap="openInfo"
+    ><ui-icon name="more" size="36" tone="light" decorative></ui-icon></button>
+  </view>
 
   <view class="reveal">
     <view class="eyebrow">六道工序 · 已完成</view>

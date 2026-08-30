@@ -4,7 +4,7 @@ const ICON_NAMES = [
   "flip-vertical", "scale-horizontal", "scale-vertical", "check", "info",
   "warning", "saving", "shape", "clay", "pattern", "share", "forward",
   "flower", "animal", "wave", "geometry", "glaze", "kiln",
-  "paint", "download", "poster", "rename"
+  "paint", "download", "poster", "rename", "works"
 ] as const;
 
 const ICON_NAME_SET = new Set<string>(ICON_NAMES);

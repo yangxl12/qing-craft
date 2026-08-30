@@ -152,26 +152,26 @@
           class="decor-tool-fold"
           aria-label="{{decorToolsCollapsed?'展开操作按钮':'收起操作按钮'}}"
           catchtap="toggleDecorTools"
-        ><ui-icon name="{{decorToolsCollapsed?'expand':'collapse'}}" size="28" tone="light" decorative></ui-icon></button>
+        ><ui-icon name="{{decorToolsCollapsed?'expand':'collapse'}}" size="36" tone="light" decorative></ui-icon></button>
       </view>
       <view
         class="decor-tool-actions {{decorToolsCollapsed?'is-collapsed':''}}"
         aria-hidden="{{decorToolsCollapsed}}"
       >
-        <button class="decor-tool-command danger" aria-label="删除当前{{selectedDecorationLabel}}" bindtap="deleteSelectedDecoration"><ui-icon name="delete" size="32" decorative></ui-icon></button>
-        <button wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command" aria-label="复制当前图案" bindtap="copySelectedDecoration"><ui-icon name="copy" size="32" decorative></ui-icon></button>
-        <button class="decor-tool-command" disabled="{{!canUndo}}" aria-label="撤回上一步" aria-disabled="{{!canUndo}}" bindtap="undo"><ui-icon name="undo" size="32" decorative></ui-icon></button>
+        <button class="decor-tool-command danger" aria-label="删除当前{{selectedDecorationLabel}}" bindtap="deleteSelectedDecoration"><ui-icon name="delete" size="40" decorative></ui-icon></button>
+        <button wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command" aria-label="复制当前图案" bindtap="copySelectedDecoration"><ui-icon name="copy" size="40" decorative></ui-icon></button>
+        <button class="decor-tool-command" disabled="{{!canUndo}}" aria-label="撤回上一步" aria-disabled="{{!canUndo}}" bindtap="undo"><ui-icon name="undo" size="40" decorative></ui-icon></button>
         <view class="decor-axis-command">
           <button aria-label="减小当前{{selectedDecorationLabel}}横向尺寸" data-axis="x" data-direction="-1" bindtap="adjustDecorAxis">−</button>
-          <ui-icon name="scale-horizontal" size="28" decorative></ui-icon>
+          <ui-icon name="scale-horizontal" size="36" decorative></ui-icon>
           <button aria-label="增大当前{{selectedDecorationLabel}}横向尺寸" data-axis="x" data-direction="1" bindtap="adjustDecorAxis">＋</button>
         </view>
         <view class="decor-axis-command">
           <button aria-label="减小当前{{selectedDecorationLabel}}纵向尺寸" data-axis="y" data-direction="-1" bindtap="adjustDecorAxis">−</button>
-          <ui-icon name="scale-vertical" size="28" decorative></ui-icon>
+          <ui-icon name="scale-vertical" size="36" decorative></ui-icon>
           <button aria-label="增大当前{{selectedDecorationLabel}}纵向尺寸" data-axis="y" data-direction="1" bindtap="adjustDecorAxis">＋</button>
         </view>
-        <button wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command flip" aria-label="上下翻转当前图案" bindtap="flipSelectedDecoration"><ui-icon name="flip-vertical" size="32" decorative></ui-icon></button>
+        <button wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command flip" aria-label="上下翻转当前图案" bindtap="flipSelectedDecoration"><ui-icon name="flip-vertical" size="40" decorative></ui-icon></button>
       </view>
     </view>
 

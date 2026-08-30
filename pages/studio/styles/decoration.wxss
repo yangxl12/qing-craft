@@ -6,7 +6,7 @@
   left: auto;
   right: var(--space-4);
   top: 120rpx;
-  width: 132rpx;
+  width: 165rpx;
   box-sizing: border-box;
   color: var(--color-on-dark);
   background: var(--ui-workshop-panel);
@@ -18,10 +18,10 @@
   animation: decor-tool-enter var(--motion-overlay) var(--ease-enter) both;
 }
 
-.decor-tool-panel.collapsed { width: 132rpx; }
+.decor-tool-panel.collapsed { width: 165rpx; }
 .decor-tool-head {
   min-height: 0;
-  height: 56rpx;
+  height: 70rpx;
   display: flex;
   flex-direction: row;
   align-items: stretch;
@@ -37,18 +37,18 @@
   justify-content: center;
 }
 .decor-drag-icon {
-  width: 18rpx;
+  width: 22rpx;
   display: grid;
-  grid-template-columns: repeat(2, 6rpx);
-  grid-auto-rows: 6rpx;
-  gap: 5rpx;
+  grid-template-columns: repeat(2, 7rpx);
+  grid-auto-rows: 7rpx;
+  gap: 6rpx;
   transform: rotate(90deg);
 }
-.decor-drag-icon > view { width: 6rpx; height: 6rpx; border-radius: var(--radius-full); background: var(--color-on-dark-muted); }
+.decor-drag-icon > view { width: 7rpx; height: 7rpx; border-radius: var(--radius-full); background: var(--color-on-dark-muted); }
 .decor-tool-title { display: none; }
 .decor-tool-fold {
   flex: none;
-  width: 56rpx !important;
+  width: 70rpx !important;
   min-width: 0 !important;
   height: 100% !important;
   border-left: 1rpx solid var(--ui-workshop-border) !important;
@@ -57,16 +57,16 @@
   padding: 0 !important;
 }
 .decor-tool-actions {
-  padding: var(--space-1);
+  padding: var(--space-2);
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 .decor-tool-actions.is-collapsed { display: none; }
 
 .decor-tool-command,
 .decor-axis-command {
-  min-height: 56rpx;
+  min-height: 70rpx;
   color: var(--color-text) !important;
   background: var(--ui-porcelain-panel-solid) !important;
   border: 1rpx solid var(--ui-porcelain-border) !important;
@@ -89,13 +89,13 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 .decor-axis-command > button {
   flex: 1;
   width: auto !important;
   min-width: 0 !important;
-  height: 48rpx;
+  height: 60rpx;
   padding: 0 !important;
   color: var(--color-text) !important;
   font-family: var(--font-data);
@@ -270,15 +270,16 @@
 .decor-selected-empty > text { font-family: var(--font-display); font-size: var(--type-body-size); line-height: var(--type-body-line); }
 .decor-selected-empty > small { margin-top: var(--space-2); font-size: var(--type-caption-size); line-height: var(--type-caption-line); }
 
-.seal-panel { grid-column: 1 / -1; min-height: 0; padding: var(--space-3); box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; gap: var(--space-3); overflow-y: auto; }
+/* 写款面板内容比面板高度矮，居中并放大后避免出现“按钮下方一大块空”。 */
+.seal-panel { grid-column: 1 / -1; min-height: 0; padding: var(--space-3); box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: var(--space-4); overflow-y: auto; }
 .seal-input { width: 100%; height: 80rpx; padding: 0 var(--space-3); box-sizing: border-box; color: var(--color-text); background: var(--ui-surface); border: 1rpx solid var(--ui-border); border-radius: var(--radius-sm); font-family: var(--font-display); font-size: var(--type-body-size); }
 .seal-input-placeholder { color: var(--color-text-tertiary); }
 .seal-color-row { display: flex; flex-wrap: nowrap; gap: var(--space-2); }
-.seal-color { flex: 1; min-width: 0 !important; min-height: 80rpx; padding: var(--space-1) !important; display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); color: var(--color-text-secondary) !important; background: var(--ui-surface) !important; border: 1rpx solid var(--ui-border) !important; border-radius: var(--radius-sm) !important; }
+.seal-color { flex: 1; min-width: 0 !important; min-height: 88rpx; padding: var(--space-1) !important; display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); color: var(--color-text-secondary) !important; background: var(--ui-surface) !important; border: 1rpx solid var(--ui-border) !important; border-radius: var(--radius-sm) !important; }
 .seal-color.active { color: var(--ui-action) !important; border: 2rpx solid var(--ui-action) !important; }
 .seal-color-chip { width: 28rpx; height: 28rpx; border: 1rpx solid var(--ui-border); border-radius: var(--radius-full); }
 .seal-color-name { max-width: 100%; overflow: hidden; font-size: var(--type-micro-size); line-height: var(--type-micro-line); text-overflow: ellipsis; white-space: nowrap; }
-.seal-apply { width: 66%; min-height: 72rpx; padding: 0 var(--space-4) !important; align-self: center; color: var(--ui-action-text) !important; background: var(--ui-action) !important; border-radius: var(--radius-sm) !important; font-size: var(--type-body-sm-size) !important; font-weight: 600; }
+.seal-apply { width: 76%; min-height: 88rpx; padding: 0 var(--space-4) !important; align-self: center; color: var(--ui-action-text) !important; background: var(--ui-action) !important; border-radius: var(--radius-sm) !important; font-size: var(--type-body-sm-size) !important; font-weight: 600; }
 
 .decor-bottom {
   min-height: 104rpx;
@@ -326,13 +327,13 @@
 @keyframes decor-tray-enter { from { opacity: 0; transform: translateY(18rpx); } to { opacity: 1; transform: translateY(0); } }
 
 @media (max-width: 340px) {
-  .decor-tool-panel { right: var(--space-3); width: 124rpx; }
-  .decor-tool-panel.collapsed { width: 124rpx; }
-  .decor-tool-head { height: 52rpx; }
-  .decor-tool-fold { width: 52rpx !important; }
+  .decor-tool-panel { right: var(--space-3); width: 155rpx; }
+  .decor-tool-panel.collapsed { width: 155rpx; }
+  .decor-tool-head { height: 65rpx; }
+  .decor-tool-fold { width: 65rpx !important; }
   .decor-tool-command,
-  .decor-axis-command { min-height: 52rpx; }
-  .decor-axis-command > button { height: 44rpx; }
+  .decor-axis-command { min-height: 65rpx; }
+  .decor-axis-command > button { height: 55rpx; }
   .decor-panel-grid { padding-left: var(--space-3); padding-right: var(--space-3); gap: var(--space-2); }
   .decor-library-body { grid-template-columns: 96rpx minmax(0, 1fr); }
   .decor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -344,11 +345,11 @@
 
 @media (max-height: 700px) {
   .decor-tool-panel { top: 104rpx; }
-  .decor-tool-head { height: 52rpx; }
-  .decor-tool-fold { width: 52rpx !important; }
+  .decor-tool-head { height: 65rpx; }
+  .decor-tool-fold { width: 65rpx !important; }
   .decor-tool-command,
-  .decor-axis-command { min-height: 52rpx; }
-  .decor-axis-command > button { height: 44rpx; }
+  .decor-axis-command { min-height: 65rpx; }
+  .decor-axis-command > button { height: 55rpx; }
   .decor-panel-grid { height: 300rpx; }
   .decor-library-panel,
   .decor-selected-panel { grid-template-rows: 72rpx minmax(0, 1fr); }
@@ -357,5 +358,6 @@
   .decor-grid-card,
   .decor-selected-card { min-height: 96rpx; }
   .decor-bottom { min-height: 96rpx; padding-top: var(--space-1); padding-bottom: calc(var(--space-1) + env(safe-area-inset-bottom)); }
-  .seal-panel { padding: var(--space-2); gap: var(--space-2); }
+  /* 矮屏内容会溢出，靠顶部对齐才能让滚动条看到输入框。 */
+  .seal-panel { padding: var(--space-2); gap: var(--space-2); justify-content: flex-start; }
 }

@@ -21,10 +21,36 @@
 .result-bg-grade { position: absolute; inset: 0; background: linear-gradient(180deg, var(--ui-workshop-scrim-strong) 0, var(--ui-workshop-scrim) 25%, transparent 54%, var(--ui-workshop-scrim-strong) 100%), radial-gradient(64% 58% at 50% 48%, transparent 0, transparent 54%, var(--ui-workshop-scrim) 100%); }
 
 .result > app-nav { position: relative; z-index: 60; flex: none; }
-.result-more {
+/* 胶囊下方的一排浮层入口：右侧对齐，内部元素横向排列。 */
+.result-top-actions {
   position: absolute;
   z-index: 70;
   right: 16px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+.result-works {
+  height: 72rpx;
+  min-height: 72rpx;
+  min-width: 0 !important;
+  padding: 0 var(--space-3) !important;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  color: var(--color-on-dark) !important;
+  background: var(--ui-workshop-panel-soft) !important;
+  border: 1rpx solid var(--ui-workshop-border) !important;
+  border-radius: var(--radius-full) !important;
+  box-shadow: 0 10rpx 24rpx var(--ui-workshop-shadow);
+  font-size: var(--type-caption-size) !important;
+  line-height: var(--type-caption-line);
+  white-space: nowrap;
+}
+.result-more {
   width: 72rpx !important;
   min-width: 72rpx !important;
   height: 72rpx;

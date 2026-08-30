@@ -138,6 +138,8 @@ Page({
 
   backHome() { wx.reLaunch({ url:"/pages/index/index" }); },
 
+  openGallery() { wx.navigateTo({ url:"/pages/gallery/gallery" }); },
+
   openInfo() { this.setData({ infoOpen:true }); },
 
   closeInfo() { this.setData({ infoOpen:false }); },

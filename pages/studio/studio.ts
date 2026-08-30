@@ -21,6 +21,9 @@ import {
   createDecorationLayer,
   createDecorationStamp,
   createSealMark,
+  DECOR_CARVING_WORKS,
+  DECOR_ORNAMENT_WORKS,
+  DECOR_PATTERN_WORKS,
   duplicateDecorationLayer,
   DecorationAnchor,
   DecorationLayer,
@@ -252,13 +255,6 @@ function paintCatalogPool(tab: PaintCatalogTabId, shapeId: ShapeId) {
   return source.filter((motif) => motif.anchors.some((anchor) => available.includes(anchor)));
 }
 
-const DECOR_SIDE_MENUS = [
-  { id:"flora", name:"花卉", icon:"flower", index:0 },
-  { id:"animal", name:"瑞兽", icon:"animal", index:1 },
-  { id:"water", name:"云水", icon:"wave", index:2 },
-  { id:"geometry", name:"几何", icon:"geometry", index:3 }
-] as const;
-
 function stageProgressSteps(currentIndex: number) {
   return STAGES.map((stage, index) => ({
     id:stage.id,
@@ -268,27 +264,26 @@ function stageProgressSteps(currentIndex: number) {
   }));
 }
 
-function rotateOptions<T>(values: T[], offset: number, count = 6): T[] {
-  if (!values.length) return [];
-  return Array.from({ length:Math.min(count, values.length) }, (_, index) =>
-    values[(offset + index) % values.length]
-  );
+function decorCatalogPool(tab: DecorCatalogTabId) {
+  if (tab === "pattern") return DECOR_PATTERN_WORKS;
+  if (tab === "ornament") return DECOR_ORNAMENT_WORKS;
+  if (tab === "carving") return DECOR_CARVING_WORKS;
+  return [];
 }
 
-function decorCatalogPool(tab: DecorCatalogTabId, menuIndex: number) {
-  if (tab === "pattern") {
-    const families = ["flora", "animal", "cloud_water", "symbol"];
-    const family = families[menuIndex] || "geometry";
-    const familyItems = MOTIFS.filter((motif) =>
-      motif.family === family || (menuIndex === 3 && motif.family === "geometry")
-    );
-    return familyItems.length >= 3 ? familyItems : rotateOptions(MOTIFS, menuIndex * 4);
-  }
-  if (tab === "ornament") return rotateOptions(BORDERS, menuIndex * 2, 6);
-  if (tab === "inscription") {
-    return rotateOptions(MOTIFS.filter((motif) => motif.roles.includes("stamp")), menuIndex * 3, 6);
-  }
-  return rotateOptions(MOTIFS.filter((motif) => motif.techniques.includes("incise")), menuIndex * 3, 6);
+function motifPreviewClass(
+  motif: (typeof ALL_DECORATION_MOTIFS)[number],
+  technique: DecorationTechnique
+): string {
+  const collections = [
+    ["pattern", DECOR_PATTERN_WORKS],
+    ["ornament", DECOR_ORNAMENT_WORKS],
+    ["carving", DECOR_CARVING_WORKS]
+  ] as const;
+  const collection = collections.find(([, works]) => works.some((item) => item.id === motif.id));
+  const variant = collection ? collection[1].findIndex((item) => item.id === motif.id) + 1 : ((motif.shaderCode * 7) % 20) + 1;
+  const category = collection?.[0] || "classic";
+  return `motif-preview-${variant} motif-category-${category} motif-technique-${technique}`;
 }
 
 function decorCatalogRole(tab: DecorCatalogTabId): "main" | "border" | "stamp" {
@@ -355,8 +350,6 @@ Page({
     decorSection: "main",
     decorTabs: DECOR_CATALOG_TABS,
     decorTab: "pattern" as DecorCatalogTabId,
-    decorSideMenus: DECOR_SIDE_MENUS,
-    decorMenuId: DECOR_SIDE_MENUS[0].id,
     decorCatalogItems: [] as any[],
     sealColors: SEAL_MARK_COLOR_OPTIONS,
     sealText: "",
@@ -701,7 +694,7 @@ Page({
             checked:!!match,
             ariaLabel:match ? `移除${motif.name}彩绘` : `添加${motif.name}彩绘`,
             layerId:match?.layerId || "",
-            patternClass:`motif-ink-${(motif.shaderCode % 6) + 1}`
+            patternClass:motifPreviewClass(motif, "overglaze")
           };
         });
     const paintLayerCards = paintLayers.map((layer) => {
@@ -718,7 +711,7 @@ Page({
         copyNumber:layer.copyNumber || 0,
         color:color?.color || "#a84f43",
         colorName:color?.name || "釉上彩",
-        patternClass:`motif-ink-${(motif.shaderCode % 6) + 1}`
+        patternClass:motifPreviewClass(motif, "overglaze")
       };
     });
     const sealMark = composition.sealMark;
@@ -738,8 +731,7 @@ Page({
       motif.anchors.some((anchor) => anchors.includes(anchor)) &&
       (this.work!.mode === "free" || motif.stylePackIds.includes(composition.stylePackId))
     );
-    const menuIndex = DECOR_SIDE_MENUS.find((menu) => menu.id === this.data.decorMenuId)?.index || 0;
-    const catalogItems = decorCatalogPool(this.data.decorTab as DecorCatalogTabId, menuIndex).map((motif) => {
+    const catalogItems = decorCatalogPool(this.data.decorTab as DecorCatalogTabId).map((motif) => {
       const role = decorCatalogRole(this.data.decorTab as DecorCatalogTabId);
       const technique = decorCatalogTechnique(this.data.decorTab as DecorCatalogTabId, motif.id);
       const key = `${this.data.decorTab}:${motif.id}`;
@@ -756,7 +748,7 @@ Page({
         technique,
         checked:!!match,
         layerId:match?.layerId || "",
-        patternClass:`motif-ink-${(motif.shaderCode % 6) + 1}`
+        patternClass:motifPreviewClass(motif, technique)
       };
     });
     const decorationLayers = all.map((layer) => ({
@@ -769,7 +761,7 @@ Page({
       visible:layer.visible,
       copyNumber:layer.copyNumber || 0,
       isSeal:false,
-      patternClass:`motif-ink-${(motifById(layer.motifId).shaderCode % 6) + 1}`
+      patternClass:motifPreviewClass(motifById(layer.motifId), layer.technique)
     }));
     if (sealMark) {
       decorationLayers.push({
@@ -1135,16 +1127,9 @@ Page({
     if (!DECOR_CATALOG_TABS.some((item) => item.id === tab)) return;
     this.setData({
       decorTab:tab,
-      decorMenuId:DECOR_SIDE_MENUS[0].id,
       pendingStampMotifId:""
     }, () => this.setData(this.decorationData()));
     this.vibrate();
-  },
-
-  selectDecorMenu(event: WechatMiniprogramTouchEvent) {
-    const id = event.currentTarget.dataset.id;
-    if (!DECOR_SIDE_MENUS.some((item) => item.id === id)) return;
-    this.setData({ decorMenuId:id }, () => this.setData(this.decorationData()));
   },
 
   toggleDecorCatalogItem(event: WechatMiniprogramTouchEvent) {
@@ -1186,10 +1171,11 @@ Page({
       this.setData({ selectedDecorationId:stamp.layerId });
     } else {
       const layer = createDecorationLayer(motifId, role, this.work.shapeId, composition.stylePackId, {
+        ...motif.catalogDefaults,
         catalogKey:key,
         technique,
         colorId:decorCatalogColor(tab, technique),
-        scale:role === "border" ? .72 : 1
+        scale:motif.catalogDefaults?.scale ?? (role === "border" ? .72 : 1)
       });
       composition.layers.push(layer);
       this.setData({ selectedDecorationId:layer.layerId });
@@ -1935,7 +1921,7 @@ Page({
           technique_id:stamp.technique
         });
       }
-      // 题款和普通纹样共用“先在被选图菜单选中，再到器身拖动”的规则，
+      // 题款和普通纹样共用“先在当前装饰区选中，再到器身拖动”的规则，
       // 避免写款页签抢走当前普通图案的手势。
       const sealMark = this.work.decorationComposition.sealMark;
       if (this.work.currentStage === "decorate" && sealMark && this.isSealSelected()) {

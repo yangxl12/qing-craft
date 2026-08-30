@@ -24,6 +24,9 @@ const {
   createDecorationLayer,
   createSealMark,
   createDecorationStamp,
+  DECOR_CARVING_WORKS,
+  DECOR_ORNAMENT_WORKS,
+  DECOR_PATTERN_WORKS,
   duplicateDecorationLayer,
   DECORATION_TEMPLATES,
   MAX_DECORATION_STAMPS,
@@ -40,6 +43,17 @@ const { cloneWork, createWork, validateWork } = require("../core/model.ts");
 assert.equal(STYLE_PACKS.length, 3, "MVP 必须提供三个风格包");
 assert.equal(MOTIFS.length, 15, "MVP 必须提供十五个母纹样");
 assert.equal(BORDERS.length, 6, "MVP 必须提供六条连续边饰");
+assert.equal(DECOR_PATTERN_WORKS.length, 20, "装饰材料库必须精选二十件图案");
+assert.equal(DECOR_ORNAMENT_WORKS.length, 20, "装饰材料库必须精选二十件纹样");
+assert.equal(DECOR_CARVING_WORKS.length, 20, "装饰材料库必须精选二十件刻花");
+for (const [name, works] of [
+  ["图案", DECOR_PATTERN_WORKS],
+  ["纹样", DECOR_ORNAMENT_WORKS],
+  ["刻花", DECOR_CARVING_WORKS],
+]) {
+  assert.equal(new Set(works.map((item) => item.id)).size, 20, `${name}作品必须拥有独立目录 ID`);
+  assert.ok(works.every((item) => item.catalogDefaults), `${name}作品必须带有精修构图参数`);
+}
 assert.equal(DECORATION_TEMPLATES.length, 6, "MVP 必须提供六套一键构图");
 
 const studioMarkup = fs.readFileSync("pages/studio/studio.wxml", "utf8");
@@ -71,6 +85,15 @@ assert.doesNotMatch(
 );
 assert.match(studioMarkup, /bindtap="copySelectedDecoration"/, "纹样调校必须提供复制操作");
 assert.match(studioMarkup, /maxlength="6"/, "装饰页题款输入必须限制为六个字");
+assert.doesNotMatch(studioMarkup, /decor-side-menu|selectDecorMenu/, "精选目录不得继续显示多余侧边分类菜单");
+assert.doesNotMatch(studioSource, /DECOR_SIDE_MENUS|decorMenuId/, "侧边分类状态与轮转凑数逻辑必须完整删除");
+const decorationStyles = fs.readFileSync("pages/studio/styles/decoration.wxss", "utf8");
+assert.match(
+  decorationStyles,
+  /\.decor-grid\s*\{[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/,
+  "装饰作品目录每行必须稳定展示四件",
+);
+assert.doesNotMatch(studioMarkup, /<view><\/view><text>\{\{item\.glyph\}\}<\/text><view><\/view>/, "目录缩略图不得继续使用汉字加椭圆占位图");
 assert.match(
   studioMarkup,
   /wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command"[^>]+bindtap="copySelectedDecoration"/,

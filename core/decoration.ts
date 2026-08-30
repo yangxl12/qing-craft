@@ -99,6 +99,10 @@ export interface MotifOption {
   meaningNote: string;
   shaderCode: number;
   glyph: string;
+  catalogDefaults?: Partial<Pick<
+    DecorationLayer,
+    "anchor" | "repeatMode" | "scale" | "scaleX" | "scaleY" | "rotation" | "density"
+  >>;
   license: "original";
 }
 
@@ -184,7 +188,112 @@ export const BORDERS: MotifOption[] = [
   { ...MOTIFS[11], id:"pearl_border", name:"珠点边饰", roles:["border"], shaderCode:21 }
 ];
 
-export const ALL_DECORATION_MOTIFS = [...MOTIFS, ...BORDERS];
+interface CuratedMotifOptions {
+  id: string;
+  name: string;
+  shaderCode: number;
+  defaults: NonNullable<MotifOption["catalogDefaults"]>;
+}
+
+function curatedMotif(
+  source: MotifOption,
+  options: CuratedMotifOptions,
+  kind: "pattern" | "ornament" | "carving"
+): MotifOption {
+  return {
+    ...source,
+    id:options.id,
+    name:options.name,
+    roles:kind === "ornament" ? ["border"] : ["main"],
+    stylePackIds:ALL_STYLES,
+    techniques:kind === "carving" ? ["incise"] : ["underglaze"],
+    repeatMode:options.defaults.repeatMode || source.repeatMode,
+    shaderCode:options.shaderCode,
+    catalogDefaults:options.defaults,
+    license:"original"
+  };
+}
+
+/**
+ * 装饰材料库中的馆藏级图案。每一项都拥有独立目录 ID、构图比例与着色器变体，
+ * 不再通过侧栏轮转少量母纹样来凑数；母纹样仍保留给旧作品和一键构图使用。
+ */
+export const DECOR_PATTERN_WORKS: MotifOption[] = [
+  curatedMotif(MOTIFS[0], { id:"curated_lotus_pond", name:"莲池清韵", shaderCode:33, defaults:{ repeatMode:"radial", scaleX:1.08, scaleY:1.08, density:1.15 } }, "pattern"),
+  curatedMotif(MOTIFS[1], { id:"curated_peony_scroll", name:"缠枝牡丹", shaderCode:66, defaults:{ repeatMode:"four", scaleX:.88, scaleY:.94, rotation:-8, density:1.3 } }, "pattern"),
+  curatedMotif(MOTIFS[2], { id:"curated_plum_shadow", name:"梅枝疏影", shaderCode:99, defaults:{ repeatMode:"single", scaleX:1.18, scaleY:.9, rotation:-16, density:.88 } }, "pattern"),
+  curatedMotif(MOTIFS[3], { id:"curated_bamboo_stone", name:"竹石清风", shaderCode:36, defaults:{ repeatMode:"pair", scaleX:.82, scaleY:1.16, rotation:7, density:1.02 } }, "pattern"),
+  curatedMotif(MOTIFS[4], { id:"curated_fish_algae", name:"鱼藻同游", shaderCode:69, defaults:{ repeatMode:"pair", scaleX:1.04, scaleY:.76, rotation:-5, density:1.18 } }, "pattern"),
+  curatedMotif(MOTIFS[5], { id:"curated_cloud_crane", name:"云鹤延年", shaderCode:102, defaults:{ repeatMode:"pair", scaleX:1.02, scaleY:1.08, rotation:8, density:.92 } }, "pattern"),
+  curatedMotif(MOTIFS[6], { id:"curated_five_bats", name:"五福捧寿", shaderCode:39, defaults:{ repeatMode:"four", scaleX:.82, scaleY:.82, rotation:12, density:1.24 } }, "pattern"),
+  curatedMotif(MOTIFS[7], { id:"curated_butterfly_peony", name:"蝶恋牡丹", shaderCode:72, defaults:{ repeatMode:"pair", scaleX:.96, scaleY:.84, rotation:-12, density:1.08 } }, "pattern"),
+  curatedMotif(MOTIFS[8], { id:"curated_dragon_pearl", name:"云龙赶珠", shaderCode:105, defaults:{ repeatMode:"single", scaleX:1.2, scaleY:.88, rotation:-6, density:.8 } }, "pattern"),
+  curatedMotif(MOTIFS[9], { id:"curated_auspicious_cloud", name:"瑞云流霞", shaderCode:42, defaults:{ repeatMode:"four", scaleX:.9, scaleY:.78, rotation:6, density:1.36 } }, "pattern"),
+  curatedMotif(MOTIFS[10], { id:"curated_cliff_sea", name:"海水江崖", shaderCode:75, defaults:{ repeatMode:"band", scaleX:.78, scaleY:.72, density:1.45 } }, "pattern"),
+  curatedMotif(MOTIFS[11], { id:"curated_longevity_roundel", name:"团寿如意", shaderCode:108, defaults:{ repeatMode:"single", scaleX:.88, scaleY:.88, rotation:45, density:1.05 } }, "pattern"),
+  curatedMotif(MOTIFS[14], { id:"curated_lotus_treasure", name:"莲瓣宝相", shaderCode:47, defaults:{ repeatMode:"radial", scaleX:.94, scaleY:.94, density:1.28 } }, "pattern"),
+  curatedMotif(MOTIFS[1], { id:"curated_broken_peony", name:"折枝牡丹", shaderCode:98, defaults:{ repeatMode:"single", scaleX:1.12, scaleY:1.04, rotation:14, density:.86 } }, "pattern"),
+  curatedMotif(MOTIFS[0], { id:"curated_twin_lotus", name:"并蒂莲华", shaderCode:65, defaults:{ repeatMode:"pair", scaleX:.9, scaleY:1.08, rotation:-4, density:1.12 } }, "pattern"),
+  curatedMotif(MOTIFS[3], { id:"curated_orchid_bamboo", name:"兰竹双清", shaderCode:100, defaults:{ repeatMode:"pair", scaleX:.72, scaleY:1.22, rotation:-9, density:.94 } }, "pattern"),
+  curatedMotif(MOTIFS[4], { id:"curated_double_fish", name:"双鱼吉庆", shaderCode:37, defaults:{ repeatMode:"pair", scaleX:1.12, scaleY:.8, rotation:6, density:1.2 } }, "pattern"),
+  curatedMotif(MOTIFS[5], { id:"curated_crane_sun", name:"鹤舞朝阳", shaderCode:70, defaults:{ repeatMode:"single", scaleX:1.08, scaleY:1.18, rotation:-7, density:.84 } }, "pattern"),
+  curatedMotif(MOTIFS[7], { id:"curated_spring_butterfly", name:"花蝶迎春", shaderCode:104, defaults:{ repeatMode:"four", scaleX:.78, scaleY:.82, rotation:15, density:1.26 } }, "pattern"),
+  curatedMotif(MOTIFS[6], { id:"curated_fortune_longevity", name:"福寿连绵", shaderCode:71, defaults:{ repeatMode:"four", scaleX:.88, scaleY:.88, rotation:-10, density:1.38 } }, "pattern")
+];
+
+export const DECOR_ORNAMENT_WORKS: MotifOption[] = [
+  curatedMotif(BORDERS[0], { id:"curated_meander_brocade", name:"回纹锦地", shaderCode:48, defaults:{ repeatMode:"band", scaleX:.72, scaleY:.64, density:1.52 } }, "ornament"),
+  curatedMotif(BORDERS[1], { id:"curated_ruyi_cloud", name:"如意云头", shaderCode:81, defaults:{ repeatMode:"band", scaleX:.82, scaleY:.72, density:1.28 } }, "ornament"),
+  curatedMotif(BORDERS[2], { id:"curated_lotus_up_down", name:"仰覆莲瓣", shaderCode:114, defaults:{ repeatMode:"band", scaleX:.74, scaleY:.82, density:1.36 } }, "ornament"),
+  curatedMotif(BORDERS[3], { id:"curated_waves_cliff", name:"海水江崖", shaderCode:147, defaults:{ repeatMode:"band", scaleX:.78, scaleY:.76, density:1.48 } }, "ornament"),
+  curatedMotif(BORDERS[4], { id:"curated_scroll_lotus", name:"缠枝莲带", shaderCode:52, defaults:{ repeatMode:"band", scaleX:.84, scaleY:.72, rotation:-4, density:1.42 } }, "ornament"),
+  curatedMotif(BORDERS[5], { id:"curated_linked_pearl", name:"联珠纹", shaderCode:85, defaults:{ repeatMode:"band", scaleX:.58, scaleY:.58, density:1.62 } }, "ornament"),
+  curatedMotif(BORDERS[4], { id:"curated_scroll_grass", name:"卷草纹", shaderCode:116, defaults:{ repeatMode:"band", scaleX:.86, scaleY:.66, rotation:7, density:1.34 } }, "ornament"),
+  curatedMotif(BORDERS[0], { id:"curated_thunder", name:"云雷纹", shaderCode:144, defaults:{ repeatMode:"band", scaleX:.64, scaleY:.58, rotation:45, density:1.68 } }, "ornament"),
+  curatedMotif(BORDERS[0], { id:"curated_tortoise_brocade", name:"龟背锦", shaderCode:80, defaults:{ repeatMode:"band", scaleX:.72, scaleY:.72, rotation:30, density:1.26 } }, "ornament"),
+  curatedMotif(BORDERS[2], { id:"curated_diamond_flower", name:"菱花锦", shaderCode:50, defaults:{ repeatMode:"band", scaleX:.68, scaleY:.68, rotation:45, density:1.44 } }, "ornament"),
+  curatedMotif(BORDERS[5], { id:"curated_yingluo", name:"璎珞垂珠", shaderCode:117, defaults:{ repeatMode:"band", scaleX:.7, scaleY:.86, density:1.3 } }, "ornament"),
+  curatedMotif(BORDERS[2], { id:"curated_banana_leaf", name:"蕉叶纹", shaderCode:82, defaults:{ repeatMode:"band", scaleX:.64, scaleY:.92, density:1.38 } }, "ornament"),
+  curatedMotif(BORDERS[3], { id:"curated_layered_waves", name:"叠浪纹", shaderCode:51, defaults:{ repeatMode:"band", scaleX:.8, scaleY:.66, density:1.56 } }, "ornament"),
+  curatedMotif(BORDERS[1], { id:"curated_cloud_scroll", name:"卷云纹", shaderCode:113, defaults:{ repeatMode:"band", scaleX:.76, scaleY:.7, rotation:-8, density:1.32 } }, "ornament"),
+  curatedMotif(BORDERS[4], { id:"curated_treasure_flower", name:"宝相花带", shaderCode:84, defaults:{ repeatMode:"band", scaleX:.82, scaleY:.78, density:1.22 } }, "ornament"),
+  curatedMotif(BORDERS[4], { id:"curated_honeysuckle", name:"忍冬纹", shaderCode:148, defaults:{ repeatMode:"band", scaleX:.86, scaleY:.68, rotation:10, density:1.4 } }, "ornament"),
+  curatedMotif(BORDERS[2], { id:"curated_ice_flower", name:"六出冰花", shaderCode:146, defaults:{ repeatMode:"band", scaleX:.66, scaleY:.66, rotation:30, density:1.5 } }, "ornament"),
+  curatedMotif(BORDERS[5], { id:"curated_pearl_roundel", name:"联珠团花", shaderCode:53, defaults:{ repeatMode:"band", scaleX:.62, scaleY:.62, density:1.46 } }, "ornament"),
+  curatedMotif(BORDERS[1], { id:"curated_lotus_ruyi", name:"莲瓣如意", shaderCode:49, defaults:{ repeatMode:"band", scaleX:.78, scaleY:.78, density:1.34 } }, "ornament"),
+  curatedMotif(BORDERS[3], { id:"curated_winding_water", name:"曲水纹", shaderCode:115, defaults:{ repeatMode:"band", scaleX:.88, scaleY:.64, rotation:-5, density:1.58 } }, "ornament")
+];
+
+export const DECOR_CARVING_WORKS: MotifOption[] = [
+  curatedMotif(MOTIFS[0], { id:"curated_incised_lotus", name:"半刀泥莲花", shaderCode:129, defaults:{ repeatMode:"four", scaleX:.86, scaleY:.86, density:1.12 } }, "carving"),
+  curatedMotif(MOTIFS[1], { id:"curated_incised_peony", name:"剔刻缠枝牡丹", shaderCode:162, defaults:{ repeatMode:"four", scaleX:.9, scaleY:.96, rotation:-8, density:1.3 } }, "carving"),
+  curatedMotif(MOTIFS[2], { id:"curated_incised_plum", name:"刻划梅枝", shaderCode:195, defaults:{ repeatMode:"single", scaleX:1.2, scaleY:.9, rotation:-17, density:.86 } }, "carving"),
+  curatedMotif(MOTIFS[3], { id:"curated_incised_bamboo", name:"刻花竹叶", shaderCode:132, defaults:{ repeatMode:"pair", scaleX:.78, scaleY:1.18, rotation:7, density:.98 } }, "carving"),
+  curatedMotif(MOTIFS[4], { id:"curated_incised_fish", name:"划花游鱼", shaderCode:165, defaults:{ repeatMode:"pair", scaleX:1.08, scaleY:.78, rotation:-5, density:1.15 } }, "carving"),
+  curatedMotif(MOTIFS[5], { id:"curated_incised_crane", name:"暗刻云鹤", shaderCode:198, defaults:{ repeatMode:"pair", scaleX:1.02, scaleY:1.1, rotation:8, density:.9 } }, "carving"),
+  curatedMotif(MOTIFS[9], { id:"curated_incised_cloud", name:"刻花如意云", shaderCode:138, defaults:{ repeatMode:"four", scaleX:.86, scaleY:.76, rotation:6, density:1.34 } }, "carving"),
+  curatedMotif(MOTIFS[10], { id:"curated_incised_wave", name:"篦划水波", shaderCode:171, defaults:{ repeatMode:"band", scaleX:.8, scaleY:.68, density:1.58 } }, "carving"),
+  curatedMotif(MOTIFS[11], { id:"curated_incised_longevity", name:"暗刻团寿", shaderCode:204, defaults:{ repeatMode:"single", scaleX:.88, scaleY:.88, rotation:45, density:1.05 } }, "carving"),
+  curatedMotif(MOTIFS[12], { id:"curated_incised_meander", name:"暗刻回纹", shaderCode:141, defaults:{ repeatMode:"band", scaleX:.68, scaleY:.58, density:1.62 } }, "carving"),
+  curatedMotif(MOTIFS[13], { id:"curated_incised_ruyi", name:"刻花如意", shaderCode:174, defaults:{ repeatMode:"band", scaleX:.76, scaleY:.72, density:1.36 } }, "carving"),
+  curatedMotif(MOTIFS[14], { id:"curated_incised_petals", name:"刻划莲瓣", shaderCode:207, defaults:{ repeatMode:"band", scaleX:.72, scaleY:.84, density:1.42 } }, "carving"),
+  curatedMotif(MOTIFS[0], { id:"curated_incised_lotus_pond", name:"划花莲池", shaderCode:193, defaults:{ repeatMode:"radial", scaleX:1.12, scaleY:1.02, rotation:-7, density:1.24 } }, "carving"),
+  curatedMotif(MOTIFS[7], { id:"curated_incised_butterfly", name:"刻划双蝶", shaderCode:136, defaults:{ repeatMode:"pair", scaleX:.94, scaleY:.82, rotation:14, density:1.08 } }, "carving"),
+  curatedMotif(MOTIFS[8], { id:"curated_incised_dragon", name:"剔刻云龙", shaderCode:169, defaults:{ repeatMode:"single", scaleX:1.2, scaleY:.9, rotation:-6, density:.8 } }, "carving"),
+  curatedMotif(MOTIFS[1], { id:"curated_incised_treasure", name:"半刀泥宝相花", shaderCode:194, defaults:{ repeatMode:"radial", scaleX:1.02, scaleY:1.02, density:1.2 } }, "carving"),
+  curatedMotif(BORDERS[4], { id:"curated_incised_scroll", name:"剔刻卷草", shaderCode:180, defaults:{ repeatMode:"band", scaleX:.84, scaleY:.68, rotation:8, density:1.44 } }, "carving"),
+  curatedMotif(MOTIFS[1], { id:"curated_incised_flower_spray", name:"刻花折枝花", shaderCode:130, defaults:{ repeatMode:"single", scaleX:1.14, scaleY:1.02, rotation:15, density:.88 } }, "carving"),
+  curatedMotif(BORDERS[0], { id:"curated_incised_cloud_thunder", name:"暗刻云雷", shaderCode:176, defaults:{ repeatMode:"band", scaleX:.66, scaleY:.58, rotation:45, density:1.66 } }, "carving"),
+  curatedMotif(MOTIFS[1], { id:"curated_incised_scroll_peony", name:"刻花缠枝牡丹", shaderCode:226, defaults:{ repeatMode:"four", scaleX:.88, scaleY:.94, rotation:-10, density:1.38 } }, "carving")
+];
+
+export const ALL_DECORATION_MOTIFS = [
+  ...MOTIFS,
+  ...BORDERS,
+  ...DECOR_PATTERN_WORKS,
+  ...DECOR_ORNAMENT_WORKS,
+  ...DECOR_CARVING_WORKS
+];
 
 export const DECORATION_TEMPLATES: DecorationTemplate[] = [
   { id:"lotus_pond", name:"莲池清韵", note:"莲花与游鱼留出水面般的呼吸", stylePackId:"song_incise", recommendedShapes:["bowl","plate","jar"], components:[

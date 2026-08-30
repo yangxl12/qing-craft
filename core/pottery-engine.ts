@@ -347,7 +347,7 @@ float decorationPointWindow(vec2 point){
   return 1.0 - smoothstep(.82, 1.08, max(abs(point.x), abs(point.y)));
 }
 
-float motifMask(float code, vec2 point){
+float motifBaseMask(float code, vec2 point){
   float radius = length(point);
   float angle = stableAngle(point);
   float mask = 0.0;
@@ -425,9 +425,43 @@ float motifMask(float code, vec2 point){
   return clamp(mask, 0.0, 1.0);
 }
 
-float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
+float motifMask(float code, vec2 point){
+  float baseCode = mod(code, 32.0);
+  float edition = mod(floor(code / 32.0), 4.0);
+  vec2 primaryPoint = point;
+  if (edition > .5) primaryPoint = rotatePoint(primaryPoint, .08 * edition);
+  float mask = motifBaseMask(baseCode, primaryPoint);
+
+  // Curated editions keep the historic silhouette but add an inner vein and
+  // a slightly offset echo. At thumbnail scale this reads as fine brushwork;
+  // on the vessel it prevents large motifs from looking like a single stamp.
+  if (edition > .5) {
+    vec2 detailPoint = rotatePoint(point * (1.28 + edition * .08), -.2 - edition * .05);
+    detailPoint += vec2(.08, -.035) * edition;
+    mask = max(mask, motifBaseMask(baseCode, detailPoint) * .72);
+  }
+  if (edition > 1.5) {
+    vec2 innerPoint = rotatePoint(point * (1.62 + edition * .06), .24);
+    innerPoint += vec2(-.1, .07);
+    mask = max(mask, motifBaseMask(baseCode, innerPoint) * .54);
+  }
+  if (edition > 2.5) {
+    float vein = lineMask(abs(length(point) - .26), .028) *
+      (1.0 - smoothstep(.58, .86, length(point)));
+    mask = max(mask, vein * .6);
+  }
+  return clamp(mask, 0.0, 1.0);
+}
+
+float decorationLayerMaskAt(
+  vec4 layerA,
+  vec4 layerB,
+  vec4 layerC,
+  vec3 objectPos,
+  float normalizedY
+){
   if (layerA.x < .5) return 0.0;
-  float surfaceU = stableAngle(vObjectPos.xz) / 6.2831853 + .5;
+  float surfaceU = stableAngle(objectPos.xz) / 6.2831853 + .5;
   float density = mod(layerC.x, 32.0);
   float anchor = floor(layerC.x / 32.0);
   float rotation = (fract(layerA.z) * 1000.0 - 180.0) * .0174532925;
@@ -438,8 +472,8 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     float wantedCavity = anchor < 5.5 ? step(.52, vCavity) : (1.0 - step(-.62, normalize(vNormal).y));
     if (anchor > 5.5) wantedCavity *= 1.0 - step(.35, vCavity);
     point = vec2(
-      -vObjectPos.x / max(.08, uMaxRadius * layerB.z * .72),
-      vObjectPos.z / max(.08, uMaxRadius * verticalScale * .72)
+      -objectPos.x / max(.08, uMaxRadius * layerB.z * .72),
+      objectPos.z / max(.08, uMaxRadius * verticalScale * .72)
     );
     point.y *= verticalDirection;
     point = rotatePoint(point, rotation);
@@ -462,7 +496,7 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
   if (layerB.y >= 0.0) {
     wallPoint = vec2(
       localU / max(.035, horizontalScale),
-      (vY - layerB.y) / max(.035, .16 * verticalScale)
+      (normalizedY - layerB.y) / max(.035, .16 * verticalScale)
     );
   } else {
     float wallCopyCenterU = layerB.x + floor((surfaceU - layerB.x) * copies + .5) / copies;
@@ -470,7 +504,7 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     float anchorS = layerB.y * uFootRadius;
     wallPoint = vec2(
       wallOffsetU * 6.2831853 * uFootRadius / max(.001, layerHorizontalUnit),
-      (vY * uHeight - anchorS) / max(.001, layerVerticalUnit)
+      (normalizedY * uHeight - anchorS) / max(.001, layerVerticalUnit)
     );
   }
   wallPoint.y *= verticalDirection;
@@ -495,8 +529,8 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     ? layerB.y * uHeight
     : layerB.y * uFootRadius;
   vec2 basePoint = vec2(
-    dot(vObjectPos.xz, baseTangent) / max(.001, layerHorizontalUnit),
-    (dot(vObjectPos.xz, baseOutward) - uFootRadius - baseAnchorS) /
+    dot(objectPos.xz, baseTangent) / max(.001, layerHorizontalUnit),
+    (dot(objectPos.xz, baseOutward) - uFootRadius - baseAnchorS) /
       max(.001, layerVerticalUnit)
   );
   basePoint.y *= verticalDirection;
@@ -504,6 +538,10 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
   float baseMark = motifMask(layerA.y, basePoint) *
     baseSurface * decorationPointWindow(basePoint);
   return max(wallMark, baseMark);
+}
+
+float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
+  return decorationLayerMaskAt(layerA, layerB, layerC, vObjectPos, vY);
 }
 
   float hash31(vec3 point){
@@ -654,6 +692,18 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     porcelainBody *= mix(vec3(0.965, 1.018, 0.988), vec3(1.022, 0.986, 1.008), vY);
     material = mix(material, porcelainBody, porcelainFinish);
     float reliefShade = 0.0;
+    float incisionDepth = 0.0;
+    vec2 incisionSlope = vec2(0.0);
+    vec3 objectReliefTangent = vec3(-vObjectPos.z, 0.0, vObjectPos.x);
+    if (dot(objectReliefTangent, objectReliefTangent) < 1e-8) objectReliefTangent = vec3(1.0, 0.0, 0.0);
+    objectReliefTangent = normalize(objectReliefTangent);
+    vec3 objectReliefAcross = vec3(0.0, -1.0, 0.0);
+    if (decorationSurfaceMask(2.0) > .5) {
+      objectReliefAcross = vec3(-vObjectPos.x, 0.0, -vObjectPos.z);
+      if (dot(objectReliefAcross, objectReliefAcross) < 1e-8) objectReliefAcross = vec3(-1.0, 0.0, 0.0);
+      objectReliefAcross = normalize(objectReliefAcross);
+    }
+    float reliefStep = max(.0035, min(uMaxRadius, uHeight) * .0045);
     for (int layerIndex = 0; layerIndex < ${MAX_RENDERED_DECORATIONS}; layerIndex++) {
       vec4 layerA = uLayerA[layerIndex];
       vec4 layerB = uLayerB[layerIndex];
@@ -666,8 +716,32 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
       mark *= mix(1.0, kilnVariation, layerFired);
       vec3 markColor = layerC.yzw;
       if (layerA.z < .5) {
-        material *= 1.0 - mark * mix(.1, .2, layerFired);
-        reliefShade = max(reliefShade, mark * .18);
+        // Incision is a recessed V-groove, not a grey decal. Sample the same
+        // motif one small step along both surface axes and use its height
+        // gradient to bend the lighting normal into the clay. A restrained
+        // floor occlusion keeps the groove visible when the light faces it.
+        float tangentMark = decorationLayerMaskAt(
+          layerA,
+          layerB,
+          layerC,
+          vObjectPos + objectReliefTangent * reliefStep,
+          vY
+        );
+        float acrossY = clamp(vY + objectReliefAcross.y * reliefStep / max(.001, uHeight), 0.0, 1.0);
+        float acrossMark = decorationLayerMaskAt(
+          layerA,
+          layerB,
+          layerC,
+          vObjectPos + objectReliefAcross * reliefStep,
+          acrossY
+        );
+        float groove = smoothstep(.42, .86, mark);
+        float tangentGroove = smoothstep(.42, .86, tangentMark);
+        float acrossGroove = smoothstep(.42, .86, acrossMark);
+        incisionSlope += vec2(tangentGroove - groove, acrossGroove - groove);
+        incisionDepth = max(incisionDepth, groove);
+        material *= 1.0 - groove * mix(.08, .15, layerFired);
+        reliefShade = max(reliefShade, groove * .09);
       } else if (layerA.z < 1.5) {
         material = mix(material, markColor, mark * mix(.32, .48, layerFired));
         reliefShade = max(reliefShade, mark * .08);
@@ -677,6 +751,13 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
         material = mix(material, markColor, mark * mix(.78, .92, layerFired));
       }
     }
+    normal = normalize(
+      normal +
+      tangent * incisionSlope.x * .92 +
+      bitangent * incisionSlope.y * .92
+    );
+    key = max(dot(normal, keyDirection), 0.0);
+    fill = max(dot(normal, fillDirection), 0.0);
 
     if (uInscriptionParams.z > .5) {
       vec2 inscriptionUv = vec2(.5);
@@ -790,6 +871,10 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
       pow(max(dot(normal, fillHalfVector), 0.0), 28.0) * 0.085,
       porcelainFinish
     );
+    float incisionReflectance = 1.0 - incisionDepth * .68;
+    specular *= incisionReflectance;
+    clearcoat *= incisionReflectance;
+    fillSpecular *= mix(1.0, incisionReflectance, .82);
     float facing = max(dot(normal, viewDirection), 0.0);
     float fresnel = pow(1.0 - facing, 3.0) *
       mix(0.026 + wetClay * 0.024, mix(0.11, 0.068, glazeRoughness), surfaceGlaze);

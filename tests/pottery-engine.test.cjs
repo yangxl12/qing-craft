@@ -248,7 +248,7 @@ assert.match(
 );
 assert.match(
   engineSource,
-  /dot\(vObjectPos\.xz, baseTangent\)/,
+  /dot\(objectPos\.xz, baseTangent\)/,
   "器底纹样必须使用笛卡尔切线坐标，不能退回 atan 放射映射",
 );
 assert.match(
@@ -268,7 +268,7 @@ assert.match(
 );
 assert.match(
   engineSource,
-  /dot\(vObjectPos\.xz, baseTangent\)\s*\/\s*max\(\.001, layerHorizontalUnit\)/,
+  /dot\(objectPos\.xz, baseTangent\)\s*\/\s*max\(\.001, layerHorizontalUnit\)/,
   "器身与器底必须共用同一横向物理尺寸，避免越过足边时突然缩放",
 );
 assert.match(
@@ -280,6 +280,21 @@ assert.equal(
   (engineSource.match(/uniform mediump float uHeight;/g) || []).length,
   2,
   "顶点与片元着色器共享的高度 uniform 必须使用相同精度才能成功链接",
+);
+assert.match(
+  engineSource,
+  /decorationLayerMaskAt\([\s\S]*?vObjectPos \+ objectReliefTangent \* reliefStep/,
+  "刻花必须沿器物切向采样沟槽坡度，不能继续使用平面压暗假装凹刻",
+);
+assert.match(
+  engineSource,
+  /normal = normalize\([\s\S]*?tangent \* incisionSlope\.x[\s\S]*?bitangent \* incisionSlope\.y/,
+  "刻花坡度必须真实扰动表面法线，让凹槽随光线方向变化",
+);
+assert.match(
+  engineSource,
+  /incisionReflectance[\s\S]*?clearcoat \*= incisionReflectance/,
+  "刻花槽底必须压低釉面高光，形成真实内凹材质层次",
 );
 assert.ok(
   mesh.indices.every((index) => index < mesh.positions.length / 3),

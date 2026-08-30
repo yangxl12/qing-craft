@@ -176,17 +176,12 @@
 .decor-catalog-tabs > button.active::after { content: ""; position: absolute; left: var(--space-3); right: var(--space-3); bottom: 0; height: 4rpx; border-radius: var(--radius-full); background: var(--ui-action); }
 .decor-catalog-tabs > button.active > small { color: var(--ui-action-text) !important; background: var(--ui-action) !important; border-color: var(--ui-action) !important; }
 
-.decor-library-body { min-width: 0; min-height: 0; display: grid; grid-template-columns: 108rpx minmax(0, 1fr); }
-.decor-side-menu { height: 100%; background: var(--ui-surface-subtle); border-right: 1rpx solid var(--ui-border); }
-.decor-side-menu-item { width: 100% !important; min-width: 0 !important; min-height: 88rpx; padding: var(--space-2) 0 !important; display: flex !important; flex-direction: column; gap: var(--space-1); border-radius: 0 !important; color: var(--color-text-secondary) !important; font-size: var(--type-micro-size) !important; }
-.decor-side-menu-item > text { font-size: var(--type-micro-size); line-height: var(--type-micro-line); }
-.decor-side-menu-icon { width: 48rpx; height: 40rpx; display: flex; align-items: center; justify-content: center; }
-.decor-side-menu-item.active { color: var(--ui-action-text) !important; background: var(--ui-action) !important; }
+.decor-library-body { min-width: 0; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
 
 .decor-grid-scroll,
 .decor-selected-scroll,
 .paint-grid-scroll { height: 100%; min-height: 0; }
-.decor-grid { padding: var(--space-2); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+.decor-grid { padding: var(--space-2); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6rpx; }
 .decor-selected-grid { padding: var(--space-2); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
 
 .decor-grid-card,
@@ -204,6 +199,7 @@
   border-radius: var(--radius-sm) !important;
   overflow: hidden;
 }
+.decor-grid-card { min-height: 126rpx; padding: 6rpx !important; }
 
 .decor-grid-card.checked,
 .decor-selected-card.active {
@@ -214,16 +210,84 @@
 }
 
 .decor-selected-card.hidden { opacity: 0.46; }
-.motif-art { position: relative; width: 64rpx; height: 58rpx; flex: none; display: flex; align-items: center; justify-content: center; color: var(--color-cobalt); }
-.motif-art > text { position: relative; z-index: 2; font-family: var(--font-display); font-size: var(--type-h2-size); line-height: var(--type-h2-line); }
-.motif-art > view { position: absolute; width: 42rpx; height: 42rpx; border: 2rpx solid currentColor; border-radius: 42% 58% 44% 56%; opacity: 0.36; transform: rotate(22deg); }
-.motif-art > view:last-child { transform: rotate(-22deg); }
+.motif-art {
+  position: relative;
+  width: 68rpx;
+  height: 62rpx;
+  flex: none;
+  overflow: hidden;
+  color: var(--color-cobalt);
+  background: var(--color-surface-subtle);
+  border: 1rpx solid var(--ui-border);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 3rpx var(--ui-surface);
+}
+.motif-art > text { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: var(--type-h2-size); line-height: var(--type-h2-line); }
+.motif-stroke { position: absolute; box-sizing: border-box; border: 2rpx solid currentColor; opacity: .82; }
+.motif-stroke-a { left: 13rpx; top: 16rpx; width: 42rpx; height: 28rpx; border-radius: 50%; transform: rotate(-16deg); }
+.motif-stroke-b { left: 24rpx; top: 9rpx; width: 22rpx; height: 44rpx; border-radius: 52% 48% 50% 50%; transform: rotate(22deg); }
+.motif-stroke-c { left: 8rpx; top: 30rpx; width: 52rpx; height: 18rpx; border-width: 2rpx 0 0; border-radius: 50%; transform: rotate(8deg); }
+.motif-stroke-d { left: 29rpx; top: 24rpx; width: 10rpx; height: 10rpx; border-radius: 50%; background: currentColor; opacity: .68; }
+.motif-category-ornament .motif-stroke-a,
+.motif-category-ornament .motif-stroke-b { border-radius: var(--radius-xs); }
+.motif-category-carving { color: var(--color-celadon-700); background: var(--color-celadon-100); box-shadow: inset 3rpx 3rpx 7rpx var(--ui-porcelain-shadow), inset -2rpx -2rpx 5rpx var(--ui-surface); }
+.motif-category-carving .motif-stroke { opacity: .62; box-shadow: 1rpx 1rpx 0 var(--ui-surface); }
+.motif-technique-overglaze { color: var(--color-cinnabar); }
+
+.motif-preview-2 .motif-stroke-a { width: 34rpx; height: 34rpx; left: 17rpx; top: 10rpx; transform: rotate(45deg); }
+.motif-preview-2 .motif-stroke-b { width: 48rpx; height: 18rpx; left: 10rpx; top: 28rpx; transform: rotate(-12deg); }
+.motif-preview-3 .motif-stroke-a { width: 48rpx; height: 22rpx; left: 10rpx; top: 11rpx; transform: rotate(-24deg); }
+.motif-preview-3 .motif-stroke-b { left: 31rpx; top: 7rpx; width: 14rpx; height: 50rpx; transform: rotate(36deg); }
+.motif-preview-3 .motif-stroke-d { left: 14rpx; top: 36rpx; width: 12rpx; height: 12rpx; }
+.motif-preview-4 .motif-stroke-a { left: 19rpx; top: 5rpx; width: 30rpx; height: 52rpx; border-radius: 50% 50% 42% 42%; }
+.motif-preview-4 .motif-stroke-b { left: 8rpx; top: 22rpx; width: 52rpx; height: 18rpx; transform: rotate(0); }
+.motif-preview-5 .motif-stroke-a { left: 8rpx; top: 16rpx; width: 52rpx; height: 30rpx; border-radius: 52% 48% 44% 56%; transform: rotate(0); }
+.motif-preview-5 .motif-stroke-b { left: 9rpx; top: 20rpx; width: 18rpx; height: 22rpx; border-width: 2rpx 0 2rpx 2rpx; transform: rotate(45deg); }
+.motif-preview-6 .motif-stroke-a { left: 9rpx; top: 28rpx; width: 50rpx; height: 20rpx; border-width: 2rpx 0 0; transform: rotate(-8deg); }
+.motif-preview-6 .motif-stroke-b { left: 25rpx; top: 5rpx; width: 18rpx; height: 46rpx; transform: rotate(-18deg); }
+.motif-preview-6 .motif-stroke-c { left: 12rpx; top: 15rpx; width: 24rpx; transform: rotate(18deg); }
+.motif-preview-7 .motif-stroke-a { left: 8rpx; top: 12rpx; width: 26rpx; height: 30rpx; transform: rotate(-28deg); }
+.motif-preview-7 .motif-stroke-b { left: 34rpx; top: 12rpx; width: 26rpx; height: 30rpx; transform: rotate(28deg); }
+.motif-preview-7 .motif-stroke-d { left: 29rpx; top: 38rpx; }
+.motif-preview-8 .motif-stroke-a { left: 7rpx; top: 9rpx; width: 27rpx; height: 36rpx; transform: rotate(-32deg); }
+.motif-preview-8 .motif-stroke-b { left: 34rpx; top: 9rpx; width: 27rpx; height: 36rpx; transform: rotate(32deg); }
+.motif-preview-8 .motif-stroke-c { left: 22rpx; top: 38rpx; width: 24rpx; }
+.motif-preview-9 .motif-stroke-a { left: 10rpx; top: 9rpx; width: 48rpx; height: 45rpx; border-radius: 50%; transform: rotate(0); }
+.motif-preview-9 .motif-stroke-b { left: 19rpx; top: 18rpx; width: 31rpx; height: 27rpx; border-radius: 50%; transform: rotate(0); }
+.motif-preview-9 .motif-stroke-c { left: 17rpx; top: 30rpx; width: 38rpx; transform: rotate(-35deg); }
+.motif-preview-10 .motif-stroke-a { left: 7rpx; top: 17rpx; width: 32rpx; height: 24rpx; }
+.motif-preview-10 .motif-stroke-b { left: 29rpx; top: 12rpx; width: 32rpx; height: 29rpx; transform: rotate(-8deg); }
+.motif-preview-10 .motif-stroke-c { top: 42rpx; transform: rotate(0); }
+.motif-preview-11 .motif-stroke-a { left: 5rpx; top: 16rpx; width: 58rpx; height: 16rpx; border-width: 2rpx 0 0; transform: rotate(0); }
+.motif-preview-11 .motif-stroke-b { left: 5rpx; top: 29rpx; width: 58rpx; height: 16rpx; border-width: 2rpx 0 0; transform: rotate(0); }
+.motif-preview-11 .motif-stroke-c { left: 5rpx; top: 42rpx; width: 58rpx; transform: rotate(0); }
+.motif-preview-12 .motif-stroke-a { left: 11rpx; top: 8rpx; width: 46rpx; height: 46rpx; border-radius: var(--radius-xs); transform: rotate(45deg); }
+.motif-preview-12 .motif-stroke-b { left: 23rpx; top: 20rpx; width: 22rpx; height: 22rpx; border-radius: var(--radius-xs); transform: rotate(45deg); }
+.motif-preview-13 .motif-stroke-a { left: 10rpx; top: 12rpx; width: 48rpx; height: 42rpx; border-radius: 50%; transform: rotate(0); }
+.motif-preview-13 .motif-stroke-b { left: 26rpx; top: 3rpx; width: 16rpx; height: 54rpx; transform: rotate(0); }
+.motif-preview-13 .motif-stroke-c { left: 8rpx; top: 29rpx; width: 52rpx; transform: rotate(0); }
+.motif-preview-14 .motif-stroke-a { left: 9rpx; top: 8rpx; width: 50rpx; height: 47rpx; border-radius: 50% 50% 42% 42%; transform: rotate(0); }
+.motif-preview-14 .motif-stroke-b { left: 18rpx; top: 15rpx; width: 32rpx; height: 32rpx; border-radius: 50%; transform: rotate(0); }
+.motif-preview-15 .motif-stroke-a { left: 6rpx; top: 24rpx; width: 56rpx; height: 29rpx; border-radius: 50% 50% 0 0; transform: rotate(0); }
+.motif-preview-15 .motif-stroke-b { left: 22rpx; top: 7rpx; width: 24rpx; height: 43rpx; border-radius: 50% 50% 0 0; transform: rotate(0); }
+.motif-preview-16 .motif-stroke-a { left: 7rpx; top: 10rpx; width: 54rpx; height: 42rpx; border-radius: var(--radius-xs); transform: rotate(0); }
+.motif-preview-16 .motif-stroke-b { left: 18rpx; top: 18rpx; width: 32rpx; height: 26rpx; border-radius: var(--radius-xs); transform: rotate(0); }
+.motif-preview-16 .motif-stroke-c { left: 8rpx; top: 30rpx; width: 52rpx; transform: rotate(0); }
+.motif-preview-17 .motif-stroke-a { left: 7rpx; top: 13rpx; width: 54rpx; height: 36rpx; border-radius: var(--radius-xs); transform: rotate(30deg); }
+.motif-preview-17 .motif-stroke-b { left: 7rpx; top: 13rpx; width: 54rpx; height: 36rpx; border-radius: var(--radius-xs); transform: rotate(-30deg); }
+.motif-preview-18 .motif-stroke-a { left: 8rpx; top: 8rpx; width: 52rpx; height: 46rpx; border-radius: 50%; transform: rotate(0); }
+.motif-preview-18 .motif-stroke-b { left: 14rpx; top: 14rpx; width: 40rpx; height: 34rpx; border-radius: 50%; transform: rotate(0); }
+.motif-preview-18 .motif-stroke-d { left: 11rpx; top: 26rpx; width: 46rpx; height: 8rpx; border-radius: var(--radius-full); }
+.motif-preview-19 .motif-stroke-a { left: 6rpx; top: 19rpx; width: 56rpx; height: 24rpx; border-radius: var(--radius-xs); transform: rotate(0); }
+.motif-preview-19 .motif-stroke-b { left: 22rpx; top: 5rpx; width: 24rpx; height: 52rpx; border-radius: var(--radius-xs); transform: rotate(0); }
+.motif-preview-20 .motif-stroke-a { left: 9rpx; top: 9rpx; width: 50rpx; height: 44rpx; border-radius: 46% 54% 42% 58%; transform: rotate(-18deg); }
+.motif-preview-20 .motif-stroke-b { left: 15rpx; top: 15rpx; width: 38rpx; height: 32rpx; border-radius: 54% 46% 58% 42%; transform: rotate(24deg); }
 .motif-ink-2 { color: var(--color-celadon-700); }
 .motif-ink-3 { color: var(--color-cobalt); }
 .motif-ink-4 { color: var(--color-warning); }
 .motif-ink-5 { color: var(--color-cinnabar); }
 .motif-ink-6 { color: var(--color-success); }
-.decor-grid-name,
+.decor-grid-name { width: 100%; min-height: 44rpx; overflow: hidden; display: -webkit-box; color: var(--color-text-secondary); font-size: var(--type-micro-size); line-height: 22rpx; text-align: center; text-overflow: ellipsis; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .decor-selected-card > text { width: 100%; overflow: hidden; font-size: var(--type-micro-size); line-height: var(--type-micro-line); text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 
 .decor-check {
@@ -336,9 +400,8 @@
   .decor-axis-command { min-height: 65rpx; }
   .decor-axis-command > button { height: 55rpx; }
   .decor-panel-grid { padding-left: var(--space-3); padding-right: var(--space-3); gap: var(--space-2); }
-  .decor-library-body { grid-template-columns: 96rpx minmax(0, 1fr); }
-  .decor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .paint-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .decor-grid,
+  .paint-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4rpx; }
   .decor-bottom { padding-left: var(--space-3); padding-right: var(--space-3); gap: var(--space-2); }
   .decor-previous,
   .decor-complete { width: 80rpx !important; min-width: 80rpx !important; min-height: 80rpx; }

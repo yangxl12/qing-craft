@@ -343,16 +343,6 @@
           </view>
 
           <block wx:else>
-            <scroll-view class="decor-side-menu" scroll-y enhanced show-scrollbar="false">
-              <button
-                wx:for="{{decorSideMenus}}"
-                wx:key="id"
-                class="decor-side-menu-item {{decorMenuId===item.id?'active':''}}"
-                aria-label="选择{{item.name}}类别，{{decorMenuId===item.id?'已选中':'未选中'}}"
-                data-id="{{item.id}}"
-                bindtap="selectDecorMenu"
-              ><view class="decor-side-menu-icon" aria-hidden="true"><ui-icon name="{{item.icon}}" size="34" tone="{{decorMenuId===item.id?'light':'dark'}}" decorative></ui-icon></view><text>{{item.name}}</text></button>
-            </scroll-view>
             <scroll-view class="decor-grid-scroll" scroll-y enhanced show-scrollbar="false">
               <view class="decor-grid">
                 <button
@@ -366,7 +356,12 @@
                   data-key="{{item.key}}"
                   bindtap="toggleDecorCatalogItem"
                 >
-                  <view class="motif-art {{item.patternClass}}"><view></view><text>{{item.glyph}}</text><view></view></view>
+                  <view class="motif-art {{item.patternClass}}" aria-hidden="true">
+                    <view class="motif-stroke motif-stroke-a"></view>
+                    <view class="motif-stroke motif-stroke-b"></view>
+                    <view class="motif-stroke motif-stroke-c"></view>
+                    <view class="motif-stroke motif-stroke-d"></view>
+                  </view>
                   <view wx:if="{{item.checked}}" class="decor-check"><ui-icon name="check" size="24" tone="light" decorative></ui-icon></view>
                   <text class="decor-grid-name">{{item.name}}</text>
                 </button>
@@ -377,7 +372,7 @@
       </view>
 
       <view class="decor-selected-panel">
-        <view class="decor-selected-head"><view><small>已入画</small><text>被选图菜单</text></view><text>{{selectedItemCount}}</text></view>
+        <view class="decor-selected-head"><view><small>已入画</small><text>当前装饰</text></view><text>{{selectedItemCount}}</text></view>
         <scroll-view class="decor-selected-scroll" scroll-y enhanced show-scrollbar="false">
           <view wx:if="{{decorationLayers.length}}" class="decor-selected-grid">
             <button
@@ -390,13 +385,19 @@
               data-id="{{item.id}}"
               bindtap="selectDecoration"
             >
-              <view class="motif-art {{item.patternClass}}"><view></view><text>{{item.glyph}}</text><view></view></view>
+              <view class="motif-art {{item.patternClass}}" aria-hidden="true">
+                <view wx:if="{{!item.isSeal}}" class="motif-stroke motif-stroke-a"></view>
+                <view wx:if="{{!item.isSeal}}" class="motif-stroke motif-stroke-b"></view>
+                <view wx:if="{{!item.isSeal}}" class="motif-stroke motif-stroke-c"></view>
+                <view wx:if="{{!item.isSeal}}" class="motif-stroke motif-stroke-d"></view>
+                <text wx:if="{{item.isSeal}}">{{item.glyph}}</text>
+              </view>
               <view wx:if="{{item.selected}}" class="decor-check"><ui-icon name="check" size="24" tone="light" decorative></ui-icon></view>
               <view wx:if="{{item.copyNumber}}" class="decor-copy-badge">{{item.copyNumber}}</view>
               <text>{{item.name}}</text>
             </button>
           </view>
-          <view wx:else class="decor-selected-empty"><text>尚未入画</text><small>从左侧轻点图案</small></view>
+          <view wx:else class="decor-selected-empty"><text>尚未入画</text><small>从左侧轻点作品</small></view>
         </scroll-view>
       </view>
     </view>
@@ -492,7 +493,12 @@
                   <view class="paint-pigment-dish"><view style="background:{{item.color}}"></view></view>
                   <text>{{item.glyph}}</text>
                 </view>
-                <view wx:else class="motif-art paint-motif-art {{item.patternClass}}" style="color:{{item.color}}"><view></view><text>{{item.glyph}}</text><view></view></view>
+                <view wx:else class="motif-art paint-motif-art {{item.patternClass}}" style="color:{{item.color}}" aria-hidden="true">
+                  <view class="motif-stroke motif-stroke-a"></view>
+                  <view class="motif-stroke motif-stroke-b"></view>
+                  <view class="motif-stroke motif-stroke-c"></view>
+                  <view class="motif-stroke motif-stroke-d"></view>
+                </view>
                 <view wx:if="{{item.checked}}" class="decor-check"><ui-icon name="check" size="24" tone="light" decorative></ui-icon></view>
                 <text class="decor-grid-name">{{item.name}}</text>
               </button>
@@ -515,7 +521,12 @@
               data-id="{{item.id}}"
               bindtap="selectDecoration"
             >
-              <view class="motif-art paint-motif-art {{item.patternClass}}" style="color:{{item.color}}"><view></view><text>{{item.glyph}}</text><view></view></view>
+              <view class="motif-art paint-motif-art {{item.patternClass}}" style="color:{{item.color}}" aria-hidden="true">
+                <view class="motif-stroke motif-stroke-a"></view>
+                <view class="motif-stroke motif-stroke-b"></view>
+                <view class="motif-stroke motif-stroke-c"></view>
+                <view class="motif-stroke motif-stroke-d"></view>
+              </view>
               <view class="paint-layer-swatch" style="background:{{item.color}}"></view>
               <view wx:if="{{item.selected}}" class="decor-check"><ui-icon name="check" size="24" tone="light" decorative></ui-icon></view>
               <view wx:if="{{item.copyNumber}}" class="decor-copy-badge">{{item.copyNumber}}</view>

@@ -17,7 +17,7 @@
       class="result-works"
       aria-label="查看我的作品"
       bindtap="openGallery"
-    ><ui-icon name="works" size="32" tone="light" decorative></ui-icon><text>我的作品</text></button>
+    ><ui-icon name="works" size="32" tone="light" decorative></ui-icon></button>
     <button
       class="result-more"
       aria-label="查看作品信息"

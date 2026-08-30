@@ -172,8 +172,9 @@
 .decor-catalog-tabs > button { position: relative; min-width: 0; min-height: 80rpx; gap: var(--space-1); border-radius: 0 !important; color: var(--color-text-secondary) !important; font-size: var(--type-caption-size) !important; }
 .decor-catalog-tabs > button > small { width: 32rpx; height: 32rpx; border: 1rpx solid var(--ui-border); border-radius: var(--radius-xs); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: var(--type-micro-size); line-height: var(--type-micro-line); }
 .decor-catalog-tabs > button > text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.decor-catalog-tabs > button.active { color: var(--ui-action) !important; font-weight: 600; }
-.decor-catalog-tabs > button.active::after { content: ""; position: absolute; left: var(--space-3); right: var(--space-3); bottom: 0; height: 4rpx; border-radius: var(--radius-full); background: linear-gradient(90deg, var(--color-text), var(--color-celadon-300)); }
+.decor-catalog-tabs > button.active { color: var(--ui-action) !important; font-weight: 600; background: var(--color-celadon-100) !important; }
+.decor-catalog-tabs > button.active::after { content: ""; position: absolute; left: var(--space-3); right: var(--space-3); bottom: 0; height: 4rpx; border-radius: var(--radius-full); background: var(--ui-action); }
+.decor-catalog-tabs > button.active > small { color: var(--ui-action-text) !important; background: var(--ui-action) !important; border-color: var(--ui-action) !important; }
 
 .decor-library-body { min-width: 0; min-height: 0; display: grid; grid-template-columns: 108rpx minmax(0, 1fr); }
 .decor-side-menu { height: 100%; background: var(--ui-surface-subtle); border-right: 1rpx solid var(--ui-border); }

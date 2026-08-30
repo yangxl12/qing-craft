@@ -59,7 +59,7 @@ import {
   MIN_POTTERY_WALL,
   POTTERY_MODEL_UNIT_MILLIMETERS
 } from "../../core/pottery-dimensions";
-import { PotteryEngine } from "../../core/pottery-engine";
+import { PotteryEngine, potteryLightingPreset } from "../../core/pottery-engine";
 import {
   calculatePotteryBaseScreenY,
   calculatePotteryBaseScreenYFromLayout,
@@ -589,6 +589,7 @@ Page({
           const dpr = resolveRenderDpr(system.pixelRatio || 2, settings.quality);
           const reduceMotion = settings.reduceMotion;
           this.engine.resize(info.width, info.height, dpr);
+          this.engine.setLighting(potteryLightingPreset(this.work!.stageIndex));
           this.engine.setBaseScreenY(baseScreenY);
           this.engine.setPotteryCentered(!!this.data.kiln);
           this.engine.setKilnHeat(this.data.kiln ? this.data.kilnProgress / 100 : 0);
@@ -627,6 +628,7 @@ Page({
   syncData() {
     if (!this.work) return;
     const stage = STAGES[this.work.stageIndex] || STAGES[0];
+    this.engine?.setLighting(potteryLightingPreset(this.work.stageIndex));
     const tools = TOOLS[stage.id] || [];
     const selected = tools.find((value) => value.id === this.data.tool) || tools[0];
     const layoutChanged = this.layoutStageIndex !== this.work.stageIndex;

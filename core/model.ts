@@ -102,7 +102,11 @@ export function clayColor(work: PotteryWork): string {
 }
 
 export function glazeColor(work: PotteryWork): string {
-  return glazeOption(work).fired;
+  const glaze = glazeOption(work);
+  // Fresh glaze is lighter and milkier. It develops its fired depth as soon
+  // as the work enters the kiln, so the paint stage visibly starts from a
+  // vitrified ceramic surface instead of the same preview used while glazing.
+  return work.stageIndex === 2 ? glaze.wet : glaze.fired;
 }
 
 export function glazeOption(work: PotteryWork): GlazeOption {

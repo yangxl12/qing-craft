@@ -70,10 +70,10 @@ const LIGHTING: Record<string, LightingPreset> = {
     fillDirection: [0.64, 0.28, 0.7],
     keyColor: [1, 0.98, 0.9],
     fillColor: [0.49, 0.63, 0.72],
-    ambient: [0.285, 0.295, 0.3],
-    keyIntensity: 0.8,
-    fillIntensity: 0.21,
-    exposure: 2.35
+    ambient: [0.205, 0.215, 0.215],
+    keyIntensity: 0.98,
+    fillIntensity: 0.18,
+    exposure: 2.18
   },
   // 成品展台：暖主光自左上方压下，冷补光自右低角度托起，整体亮度
   // 略高于工坊，配合釉面的环境映照呈现出博物馆展柜的莹润光泽。
@@ -95,18 +95,27 @@ const CLAY_GRAIN: Record<string, number> = {
   red: 1
 };
 
-export const DECORATION_PORCELAIN_COLOR = "#c6d8ce";
+export const DECORATION_PORCELAIN_COLOR = "#cfd9d4";
 
 export interface PotterySurfaceState {
   clayWetness: number;
   porcelainFinish: number;
+  ceramicMaturity: number;
 }
 
 export function potterySurfaceState(stageIndex: number): PotterySurfaceState {
-  if (stageIndex === 0) return { clayWetness: 0.94, porcelainFinish: 0 };
-  if (stageIndex === 1) return { clayWetness: 0.12, porcelainFinish: 1 };
-  if (stageIndex === 2) return { clayWetness: 0.28, porcelainFinish: 0 };
-  return { clayWetness: 0.06, porcelainFinish: 0 };
+  if (stageIndex === 0) return { clayWetness: 0.94, porcelainFinish: 0, ceramicMaturity: 0 };
+  if (stageIndex === 1) return { clayWetness: 0.08, porcelainFinish: 1, ceramicMaturity: 0.18 };
+  if (stageIndex === 2) return { clayWetness: 0.18, porcelainFinish: 0, ceramicMaturity: 0.32 };
+  if (stageIndex === 3) return { clayWetness: 0.05, porcelainFinish: 0, ceramicMaturity: 0.74 };
+  if (stageIndex === 4) return { clayWetness: 0.025, porcelainFinish: 0, ceramicMaturity: 0.88 };
+  return { clayWetness: 0.01, porcelainFinish: 0, ceramicMaturity: 1 };
+}
+
+export function potteryLightingPreset(stageIndex: number): string {
+  if (stageIndex === 1 || stageIndex === 2) return "window";
+  if (stageIndex >= 4) return "museum";
+  return "workshop";
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -291,6 +300,7 @@ uniform float uKilnHeat;
 uniform float uClayWetness;
 uniform float uClayGrain;
 uniform float uPorcelainFinish;
+uniform float uCeramicMaturity;
 uniform vec4 uLayerA[${MAX_RENDERED_DECORATIONS}];
 uniform vec4 uLayerB[${MAX_RENDERED_DECORATIONS}];
 uniform vec4 uLayerC[${MAX_RENDERED_DECORATIONS}];
@@ -533,6 +543,8 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     float glazeRoughness = clamp(uGlazeMaterial.y, 0.0, 1.0);
     float glazeVariation = clamp(uGlazeMaterial.z, 0.0, 1.0);
     float glazeTranslucency = clamp(uGlazeMaterial.w, 0.0, 1.0);
+    float ceramicMaturity = clamp(uCeramicMaturity, 0.0, 1.0);
+    float highFireReveal = smoothstep(0.58, 0.86, ceramicMaturity);
     float rawClay = 1.0 - smoothstep(0.08, 0.78, surfaceGlaze);
     float porcelainFinish = uPorcelainFinish * rawClay;
     float coarseClay = rawClay * (1.0 - porcelainFinish);
@@ -546,7 +558,9 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     vec3 tangent = normalize(vTangent - geometricNormal * dot(vTangent, geometricNormal));
     vec3 bitangent = normalize(cross(geometricNormal, tangent));
     float smoothSurface = max(surfaceGlaze, porcelainFinish * 0.94);
-    float microRelief = mix(0.032 * uClayGrain, 0.0042, smoothSurface);
+    float glazeMicroRelief = mix(0.0065, 0.0022, ceramicMaturity);
+    float microRelief = mix(0.032 * uClayGrain, glazeMicroRelief, smoothSurface);
+    microRelief = mix(microRelief, 0.003, porcelainFinish);
     vec3 normal = normalize(
       geometricNormal +
       tangent * (clayGrain - 0.5) * microRelief +
@@ -565,16 +579,18 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     float glazeCloud = noise3(vObjectPos * vec3(7.4, 10.2, 7.4) + vec3(2.7, 5.1, 8.3));
     float glazeFine = noise3(vObjectPos * vec3(31.0, 46.0, 31.0) + vec3(8.4, 1.9, 4.6));
     float glazeRun = sin(vY * 19.0 + angle * 2.3 + glazeCloud * 3.4) * 0.5 + 0.5;
+    float fluidVariation = mix(1.16, 0.72, ceramicMaturity);
     float glazeThickness = clamp(
       0.56 +
       (1.0 - vY) * 0.18 +
-      (glazeCloud - 0.5) * glazeVariation * 0.44 +
-      (glazeRun - 0.5) * glazeVariation * 0.11 +
+      (glazeCloud - 0.5) * glazeVariation * 0.44 * fluidVariation +
+      (glazeRun - 0.5) * glazeVariation * 0.11 * fluidVariation +
       vCavity * 0.12,
       0.2,
       1.0
     );
-    float kilnReveal = mix(0.78, 1.0, uFiredPreview);
+    float firedPreview = clamp(max(highFireReveal, uFiredPreview), 0.0, 1.0);
+    float kilnReveal = mix(0.76, 1.0, firedPreview);
     vec3 glazeTone = uGlaze;
 
     if (glazeProfile < 0.5) {
@@ -616,6 +632,13 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
       glazeTone = mix(qingbaiLight, qingbaiPool, smoothstep(0.5, 0.9, glazeThickness));
     }
 
+    // An unfired coat scatters more light and reads as a slightly milky liquid.
+    // High firing clears that veil, deepens the selected hue and leaves only a
+    // minute, irregular glass texture instead of a flat computer gradient.
+    vec3 wetGlazeTone = min(vec3(1.0), glazeTone * 0.86 + vec3(0.15, 0.16, 0.145));
+    glazeTone = mix(wetGlazeTone, glazeTone, smoothstep(0.26, 0.82, ceramicMaturity));
+    glazeTone *= 1.0 + (glazeFine - 0.5) * glazeVariation * mix(0.018, 0.009, ceramicMaturity);
+
     float pigmentOpacity = mix(0.96, 0.62, glazeTranslucency);
     pigmentOpacity *= mix(0.78, 1.0, glazeThickness);
     vec3 glazedBody = mix(uBase, glazeTone, pigmentOpacity);
@@ -624,8 +647,9 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     // restrained cloudy variation keeps the surface from reading as plastic,
     // while the chosen clay no longer exposes its damp, granular appearance.
     float porcelainCloud =
-      (clayCloud - 0.5) * 0.022 +
-      (secondGrain - 0.5) * 0.006;
+      (clayCloud - 0.5) * 0.014 +
+      (secondGrain - 0.5) * 0.003 +
+      sin(vY * 154.0 + angle * 1.4) * 0.0018;
     vec3 porcelainBody = uBase * (1.0 + porcelainCloud);
     porcelainBody *= mix(vec3(0.965, 1.018, 0.988), vec3(1.022, 0.986, 1.008), vY);
     material = mix(material, porcelainBody, porcelainFinish);
@@ -636,18 +660,21 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
       vec4 layerC = uLayerC[layerIndex];
       float mark = decorationLayerMask(layerA, layerB, layerC);
       float kilnVariation = .93 + .07 * noise3(vObjectPos * 13.0 + vec3(uKilnSeed * .0001 + float(layerIndex)));
-      mark *= mix(1.0, kilnVariation, uFiredPreview);
+      float overglazeLayer = step(2.5, layerA.z);
+      float overglazeFired = max(uFiredPreview, smoothstep(0.94, 0.995, ceramicMaturity));
+      float layerFired = mix(highFireReveal, overglazeFired, overglazeLayer);
+      mark *= mix(1.0, kilnVariation, layerFired);
       vec3 markColor = layerC.yzw;
       if (layerA.z < .5) {
-        material *= 1.0 - mark * mix(.1, .2, uFiredPreview);
+        material *= 1.0 - mark * mix(.1, .2, layerFired);
         reliefShade = max(reliefShade, mark * .18);
       } else if (layerA.z < 1.5) {
-        material = mix(material, markColor, mark * mix(.32, .48, uFiredPreview));
+        material = mix(material, markColor, mark * mix(.32, .48, layerFired));
         reliefShade = max(reliefShade, mark * .08);
       } else if (layerA.z < 2.5) {
-        material = mix(material, markColor, mark * mix(.68, .88, uFiredPreview));
+        material = mix(material, markColor, mark * mix(.68, .88, layerFired));
       } else {
-        material = mix(material, markColor, mark * mix(.78, .92, uFiredPreview));
+        material = mix(material, markColor, mark * mix(.78, .92, layerFired));
       }
     }
 
@@ -732,6 +759,8 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     vec3 fillHalfVector = normalize(fillDirection + viewDirection);
     float glazeSpecularPower = mix(132.0, 38.0, glazeRoughness);
     float glazeSpecularStrength = mix(0.42, 0.22, glazeRoughness);
+    glazeSpecularPower *= mix(0.72, 1.14, ceramicMaturity);
+    glazeSpecularStrength *= mix(1.04, 1.18, ceramicMaturity);
     // 展台模式：高光收得更紧、更亮，接近抛光釉面的镜面质感。
     glazeSpecularPower = mix(glazeSpecularPower, glazeSpecularPower * 1.4 + 24.0, uShowcase);
     glazeSpecularStrength = mix(glazeSpecularStrength, glazeSpecularStrength * 1.5 + 0.12, uShowcase);
@@ -747,7 +776,12 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     specular *= mix(0.72, 1.16, clayGrain);
     float broadWetHighlight =
       pow(max(dot(normal, halfVector), 0.0), 7.0) * wetClay * 0.052 +
-      pow(max(dot(normal, halfVector), 0.0), 11.0) * porcelainFinish * 0.082;
+      pow(max(dot(normal, halfVector), 0.0), 11.0) * porcelainFinish * 0.16 +
+      pow(max(dot(normal, halfVector), 0.0), 9.0) * surfaceGlaze * (1.0 - highFireReveal) * 0.082;
+    float clearcoatPower = mix(72.0, 184.0, ceramicMaturity) * mix(1.0, 0.72, glazeRoughness);
+    float clearcoat = pow(max(dot(normal, halfVector), 0.0), clearcoatPower) *
+      surfaceGlaze * mix(0.13, 0.3, ceramicMaturity);
+    clearcoat += pow(max(dot(normal, halfVector), 0.0), 118.0) * porcelainFinish * 0.22;
     float fillSpecular =
       pow(max(dot(normal, fillHalfVector), 0.0), mix(14.0, mix(82.0, 34.0, glazeRoughness), surfaceGlaze)) *
       mix(0.025, mix(0.15, 0.09, glazeRoughness), surfaceGlaze);
@@ -761,8 +795,9 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
       mix(0.026 + wetClay * 0.024, mix(0.11, 0.068, glazeRoughness), surfaceGlaze);
     fresnel = mix(fresnel, pow(1.0 - facing, 3.5) * 0.082, porcelainFinish);
 
-    // 成品展台专属：用一条简化的展馆环境（顶光渐亮 + 一带软箱高光）
-    // 映照釉面，掠射角反射更强，釉色因此呈现古瓷特有的莹润玻璃感。
+    // Fired glaze begins to reflect a quiet studio window; the final showcase
+    // strengthens the same environment instead of adding a disconnected white
+    // stripe. The restrained mullion shape echoes the photographic references.
     vec3 showcaseReflect = reflect(-viewDirection, normal);
     float envUp = clamp(showcaseReflect.y * 0.5 + 0.5, 0.0, 1.0);
     vec3 envTone = mix(
@@ -772,16 +807,27 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     );
     float softbox = exp(-pow((showcaseReflect.y - 0.38) * 3.4, 2.0));
     envTone += vec3(1.0, 0.97, 0.9) * softbox * 0.6;
+    float windowLeft = exp(-pow((showcaseReflect.x + 0.34) * 8.4, 2.0));
+    float windowRight = exp(-pow((showcaseReflect.x - 0.08) * 10.2, 2.0));
+    float windowHeight = smoothstep(-0.22, 0.08, showcaseReflect.y) *
+      (1.0 - smoothstep(0.78, 0.98, showcaseReflect.y));
+    float windowMullion = 1.0 - exp(-pow((showcaseReflect.y - 0.31) * 23.0, 2.0)) * 0.42;
+    float windowReflection = (windowLeft + windowRight * 0.72) * windowHeight * windowMullion;
+    envTone += vec3(0.92, 0.98, 1.0) * windowReflection * mix(0.2, 0.72, uShowcase);
     float envFacing = pow(1.0 - facing, 2.5) * 0.33 + 0.055;
-    float envMask = uShowcase * surfaceGlaze *
+    float studioReflection = mix(0.17, 0.3, highFireReveal);
+    float reflectiveSurface =
+      surfaceGlaze * mix(studioReflection, 1.0, uShowcase) +
+      porcelainFinish * 0.34;
+    float envMask = reflectiveSurface *
       mix(0.5, 1.0, 1.0 - glazeRoughness) *
       (1.0 - vCavity * 0.7);
 
     vec3 linearMaterial = pow(max(material, vec3(0.0)), vec3(2.2));
     float porcelainKey = clamp((dot(normal, keyDirection) + 0.28) / 1.28, 0.0, 1.0);
     float porcelainFill = clamp((dot(normal, fillDirection) + 0.18) / 1.18, 0.0, 1.0);
-    float diffuseKey = mix(key, porcelainKey, porcelainFinish * 0.55);
-    float diffuseFill = mix(fill, porcelainFill, porcelainFinish * 0.32);
+    float diffuseKey = mix(key, porcelainKey, porcelainFinish * 0.28);
+    float diffuseFill = mix(fill, porcelainFill, porcelainFinish * 0.18);
     vec3 diffuseLight =
       uAmbient +
       uKeyColor * diffuseKey * uKeyIntensity +
@@ -791,7 +837,7 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     vec3 linearColor = linearMaterial * diffuseLight * baseOcclusion * cavityOcclusion;
     linearColor *= 1.0 - reliefShade;
     linearColor += (
-      uKeyColor * (specular + broadWetHighlight) +
+      uKeyColor * (specular + broadWetHighlight + clearcoat) +
       uFillColor * (fillSpecular + fresnel)
     ) * mix(1.0, 0.48, vCavity);
     float glazeBloom =
@@ -802,6 +848,10 @@ float decorationLayerMask(vec4 layerA, vec4 layerB, vec4 layerC){
     linearColor += envTone *
       mix(vec3(1.0), min(glazeTone + vec3(0.25), vec3(1.0)), 0.5) *
       envFacing * envMask;
+    float transmittedEdge = pow(1.0 - facing, 2.2) * surfaceGlaze *
+      ceramicMaturity * (0.012 + glazeTranslucency * 0.04);
+    linearColor += mix(glazeTone, vec3(0.96, 0.985, 1.0), 0.48) *
+      transmittedEdge * (1.0 - vCavity * 0.78);
     linearColor +=
       pow(max(uBase, vec3(0.0)), vec3(2.2)) *
       pow(1.0 - facing, 2.4) *
@@ -1006,7 +1056,9 @@ export class PotteryEngine {
   }
 
   setLighting(value: string) {
-    this.lighting = LIGHTING[value] ? value : "workshop";
+    const nextLighting = LIGHTING[value] ? value : "workshop";
+    if (this.lighting === nextLighting) return;
+    this.lighting = nextLighting;
     this.render();
   }
 
@@ -1738,6 +1790,7 @@ export class PotteryEngine {
     gl.uniform1f(gl.getUniformLocation(program, "uClayGrain"), CLAY_GRAIN[this.work.clayId] ?? 0.62);
     gl.uniform1f(gl.getUniformLocation(program, "uClayWetness"), surface.clayWetness);
     gl.uniform1f(gl.getUniformLocation(program, "uPorcelainFinish"), surface.porcelainFinish);
+    gl.uniform1f(gl.getUniformLocation(program, "uCeramicMaturity"), surface.ceramicMaturity);
 
     const glazeMix = this.work.stageIndex >= 2 ? 1 : 0;
     gl.uniform1f(gl.getUniformLocation(program, "uGlazeMix"), glazeMix);

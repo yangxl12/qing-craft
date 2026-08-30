@@ -20,6 +20,8 @@ const {
   DECORATION_SURFACE_BASE,
   DECORATION_SURFACE_NONE,
   DECORATION_SURFACE_WALL,
+  POTTERY_FOOT_BEVEL_BANDS,
+  POTTERY_RIM_BANDS,
 } = require("../core/pottery-mesh.ts");
 const { createWork, validateWork } = require("../core/model.ts");
 const { profileDeltaFromDrag } = require("../core/profile.ts");
@@ -27,6 +29,7 @@ const {
   DECORATION_PORCELAIN_COLOR,
   MAX_RENDERED_DECORATIONS,
   PotteryEngine,
+  potteryLightingPreset,
   potterySurfaceState,
 } = require("../core/pottery-engine.ts");
 const {
@@ -68,11 +71,11 @@ assert.equal(
   "装饰抽屉收起后应按画布高度同比调整相机距离，保持瓷器视觉尺寸",
 );
 
-assert.equal(DECORATION_PORCELAIN_COLOR, "#c6d8ce", "装饰素坯应固定为青白玉色");
+assert.equal(DECORATION_PORCELAIN_COLOR, "#cfd9d4", "装饰素坯应使用温润且保留明暗层次的青白瓷色");
 assert.equal(MAX_RENDERED_DECORATIONS, 32, "WebGL 必须为大量图样与落印预留足够渲染槽位");
 assert.deepEqual(
   potterySurfaceState(1),
-  { clayWetness: 0.12, porcelainFinish: 1 },
+  { clayWetness: 0.08, porcelainFinish: 1, ceramicMaturity: 0.18 },
   "进入装饰后应完全切换到细腻素瓷材质",
 );
 assert.equal(
@@ -85,6 +88,14 @@ assert.equal(
   0,
   "上釉阶段应交回釉色材质控制",
 );
+assert.ok(
+  potterySurfaceState(4).ceramicMaturity > potterySurfaceState(2).ceramicMaturity,
+  "高温烧制后的釉上彩绘页必须使用比上釉页更成熟的玻化釉面",
+);
+assert.equal(potterySurfaceState(5).ceramicMaturity, 1, "成品展台必须使用完全成熟的最终釉面");
+assert.equal(potteryLightingPreset(1), "window", "装饰页应使用柔和窗光显出瓷面弧度");
+assert.equal(potteryLightingPreset(2), "window", "上釉页应以窗光呈现湿釉的宽高光");
+assert.equal(potteryLightingPreset(4), "museum", "烧成后的彩绘页应升级为展陈级塑形光");
 
 const freshCup = createWork("cup");
 for (let index = 3; index < freshCup.outerRadius.length; index++) {
@@ -291,7 +302,7 @@ const compressedThickMesh = buildPotteryMesh(
 );
 const rimOffset = compressedThickMesh.ranges.rim.indexOffset;
 const rimOuterVertex = compressedThickMesh.indices[rimOffset];
-const lastRimBandOffset = rimOffset + 3 * radialSegments * 6;
+const lastRimBandOffset = rimOffset + (POTTERY_RIM_BANDS - 1) * radialSegments * 6;
 const rimInnerVertex = compressedThickMesh.indices[lastRimBandOffset + 1];
 const rimOuterX = compressedThickMesh.positions[rimOuterVertex * 3];
 const rimOuterY = compressedThickMesh.positions[rimOuterVertex * 3 + 1];
@@ -308,6 +319,17 @@ assert.ok(
 assert.ok(
   Math.abs(rimOuterY - rimInnerY) < 1e-6,
   "厚壁压矮后口沿两侧接缝必须保持同高",
+);
+assert.ok(POTTERY_RIM_BANDS >= 8, "口沿需要足够分段形成细腻圆润的倒角");
+assert.ok(POTTERY_FOOT_BEVEL_BANDS >= 4, "底足需要多段圆弧过渡，不能保持尖锐直角");
+const bottomRingVertex = compressedThickMesh.indices[compressedThickMesh.ranges.bottom.indexOffset + 1];
+const bottomRingRadius = Math.hypot(
+  compressedThickMesh.positions[bottomRingVertex * 3],
+  compressedThickMesh.positions[bottomRingVertex * 3 + 2],
+);
+assert.ok(
+  bottomRingRadius < compressedThickOuter[0],
+  "底面边缘必须自然内收，为器身到底面留出真实倒角",
 );
 
 for (const shapeId of ["cup", "bowl", "vase", "jar", "plate"]) {

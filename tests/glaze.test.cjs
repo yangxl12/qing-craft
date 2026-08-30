@@ -14,7 +14,7 @@ require.extensions[".ts"] = (module, filename) => {
 };
 
 const { CLASSIC_GLAZES, GLAZES, TOOLS } = require("../core/catalog.ts");
-const { createWork, glazeMaterial, validateWork } = require("../core/model.ts");
+const { createWork, glazeColor, glazeMaterial, validateWork } = require("../core/model.ts");
 
 assert.deepEqual(
   CLASSIC_GLAZES.map((item) => item.name),
@@ -36,6 +36,10 @@ for (const [index, glaze] of CLASSIC_GLAZES.entries()) {
   const work = createWork("vase");
   work.glazeId = glaze.id;
   assert.deepEqual(glazeMaterial(work), glaze.material, `${glaze.name} 必须驱动对应的 WebGL 材质`);
+  work.stageIndex = 2;
+  assert.equal(glazeColor(work), glaze.wet, `${glaze.name} 在上釉页必须呈现较乳浊的鲜釉色`);
+  work.stageIndex = 4;
+  assert.equal(glazeColor(work), glaze.fired, `${glaze.name} 高温烧成后必须显出稳定的烧后釉色`);
 }
 
 const legacy = createWork("cup");
@@ -57,11 +61,14 @@ assert.doesNotMatch(wxml, /stageIndex===2[^\n]+swatch-scroll/, "旧横向釉色�
 
 const engineSource = fs.readFileSync(require.resolve("../core/pottery-engine.ts"), "utf8");
 assert.match(engineSource, /uniform vec4 uGlazeMaterial;/, "shader 必须接收釉色材质参数");
+assert.match(engineSource, /uniform float uCeramicMaturity;/, "shader 必须接收分阶段的釉面成熟度");
 assert.match(
   engineSource,
   /const glazeMix = this\.work\.stageIndex >= 2 \? 1 : 0;/,
   "选择釉色后器身必须展示完整釉层，而不是低比例换色",
 );
 assert.match(engineSource, /建盏黑釉[\s\S]+hareFur/, "建盏黑釉必须包含独立的铁系结晶变化");
+assert.match(engineSource, /windowReflection/, "烧成与成品阶段必须包含克制的窗格环境映照");
+assert.match(engineSource, /overglazeFired/, "釉上彩必须在低温烤花后才进入最终定色状态");
 
 console.log("glaze tests passed: six classics, single-select tray, legacy safety and material profiles");

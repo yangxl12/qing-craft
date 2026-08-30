@@ -5,6 +5,8 @@ export type PotteryMeshPart = "outer" | "inner" | "rim" | "bottom" | "floor";
 export const DECORATION_SURFACE_NONE = 0;
 export const DECORATION_SURFACE_WALL = 1;
 export const DECORATION_SURFACE_BASE = 2;
+export const POTTERY_RIM_BANDS = 8;
+export const POTTERY_FOOT_BEVEL_BANDS = 5;
 
 export interface PotteryMeshRange {
   indexOffset: number;
@@ -118,8 +120,20 @@ export function buildPotteryMesh(
     (outer[top] - inner[top]) / 2
   );
   const rimHeight = Math.min(rimHalfWidth, DEFAULT_POTTERY_WALL, safeHeight * 0.18);
-  const sideHeight = safeHeight - rimHeight;
-  const yAt = (ring: number) => -safeHeight / 2 + (ring / (ringCount - 1)) * sideHeight;
+  // Reserve a small part of the requested height for a rounded foot. The
+  // profile still controls the silhouette, but it no longer meets the flat
+  // underside at a mathematically sharp 90 degree edge.
+  const bottomY = -safeHeight / 2;
+  const footBevelHeight = Math.min(
+    DEFAULT_POTTERY_WALL * 0.9,
+    safeHeight * 0.035,
+    outer[0] * 0.12
+  );
+  const footBevelInset = Math.min(footBevelHeight * 0.72, outer[0] * 0.08);
+  const footBottomRadius = outer[0] - footBevelInset;
+  const bodyBottomY = bottomY + footBevelHeight;
+  const sideHeight = safeHeight - rimHeight - footBevelHeight;
+  const yAt = (ring: number) => bodyBottomY + (ring / (ringCount - 1)) * sideHeight;
 
   const appendVertex = (
     x: number,
@@ -185,7 +199,9 @@ export function buildPotteryMesh(
   let start = startPart();
   const outerBases: number[] = [];
   for (let ring = 0; ring < ringCount; ring++) {
-    const slope = profileSlope(outer, ring, 0, ringCount - 1);
+    // The first ring flows into the rounded foot with a radial normal. From
+    // the second ring upward, the user's profile slope controls the shading.
+    const slope = ring === 0 ? 0 : profileSlope(outer, ring, 0, ringCount - 1);
     outerBases.push(
       appendRing(
         outer[ring],
@@ -209,6 +225,29 @@ export function buildPotteryMesh(
         indices.push(lowerCurrent, upperCurrent, lowerNext, lowerNext, upperCurrent, upperNext);
       }
     }
+  }
+  let bevelUpper = outerBases[0];
+  for (let band = 1; band <= POTTERY_FOOT_BEVEL_BANDS; band++) {
+    const phase = (band / POTTERY_FOOT_BEVEL_BANDS) * Math.PI / 2;
+    const radialNormal = Math.cos(phase);
+    const downNormal = -Math.sin(phase);
+    const bevelLower = appendRing(
+      outer[0] - footBevelInset * (1 - Math.cos(phase)),
+      bottomY + footBevelHeight * Math.cos(phase),
+      (cosine, sine) => [radialNormal * cosine, downNormal, radialNormal * sine],
+      0,
+      DECORATION_SURFACE_WALL
+    );
+    if (!cachedTopology) {
+      for (let segment = 0; segment < segments; segment++) {
+        const lowerCurrent = bevelLower + segment;
+        const lowerNext = lowerCurrent + 1;
+        const upperCurrent = bevelUpper + segment;
+        const upperNext = upperCurrent + 1;
+        indices.push(lowerCurrent, upperCurrent, lowerNext, lowerNext, upperCurrent, upperNext);
+      }
+    }
+    bevelUpper = bevelLower;
   }
   finishPart("outer", start);
 
@@ -243,10 +282,9 @@ export function buildPotteryMesh(
 
   start = startPart();
   const rimCenterRadius = (outer[top] + inner[top]) / 2;
-  const rimBands = 4;
   const rimBases: number[] = [];
-  for (let band = 0; band <= rimBands; band++) {
-    const phase = (band / rimBands) * Math.PI;
+  for (let band = 0; band <= POTTERY_RIM_BANDS; band++) {
+    const phase = (band / POTTERY_RIM_BANDS) * Math.PI;
     const radialNormal = Math.cos(phase);
     const upNormal = Math.sin(phase);
     const ellipseNormal = normalize(
@@ -263,12 +301,12 @@ export function buildPotteryMesh(
           ellipseNormal[1],
           ellipseNormal[0] * sine
         ],
-        (band / rimBands) * 0.35
+        (band / POTTERY_RIM_BANDS) * 0.35
       )
     );
   }
   if (!cachedTopology) {
-    for (let band = 0; band < rimBands; band++) {
+    for (let band = 0; band < POTTERY_RIM_BANDS; band++) {
       const outerBand = rimBases[band];
       const innerBand = rimBases[band + 1];
       for (let segment = 0; segment < segments; segment++) {
@@ -290,7 +328,6 @@ export function buildPotteryMesh(
   finishPart("rim", start);
 
   start = startPart();
-  const bottomY = yAt(0);
   const bottomCenter = appendVertex(
     0,
     bottomY,
@@ -302,7 +339,7 @@ export function buildPotteryMesh(
     DECORATION_SURFACE_BASE
   );
   const bottomRing = appendRing(
-    outer[0],
+    footBottomRadius,
     bottomY,
     () => [0, -1, 0],
     0,

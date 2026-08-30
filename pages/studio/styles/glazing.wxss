@@ -45,6 +45,13 @@
 .fallback-pot.glazed.glaze-cobalt { background: linear-gradient(100deg, #09284d, #a7cbe1 48%, #16477b); }
 .fallback-pot.glazed.glaze-cloud { background: linear-gradient(100deg, #91aaa4, #ffffff 48%, #bfd6d0); }
 
+/* Fresh glaze is milkier and carries a broader wet reflection. High-fired
+ * stage four keeps the deeper catalogue colour and a tighter window sheen. */
+.fallback-pot.stage-2 { filter: brightness(1.12) saturate(0.76); }
+.fallback-pot.stage-2::after { width: 18%; opacity: 0.58; filter: blur(8rpx); }
+.fallback-pot.stage-4 { filter: saturate(1.08) contrast(1.04); }
+.fallback-pot.stage-4::after { width: 10%; opacity: 0.78; filter: blur(3rpx); }
+
 @media (max-width: 340px) {
   .glaze-panel { padding-left: var(--space-3); padding-right: var(--space-3); }
   .glaze-grid { gap: var(--space-2); }

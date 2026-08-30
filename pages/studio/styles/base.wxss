@@ -307,8 +307,15 @@
   width: 300rpx;
   height: 430rpx;
   border-radius: 34% 34% 42% 42% / 18% 18% 42% 42%;
-  background: linear-gradient(100deg, var(--color-celadon-300), var(--color-on-dark) 48%, var(--color-celadon-500));
-  box-shadow: inset 22rpx 0 32rpx var(--ui-workshop-highlight), 0 26rpx 54rpx var(--ui-workshop-shadow);
+  background:
+    radial-gradient(ellipse at 34% 18%, var(--ui-workshop-highlight) 0 5%, transparent 18%),
+    linear-gradient(100deg, var(--color-celadon-500), var(--color-on-dark) 44%, var(--color-celadon-300) 66%, var(--color-celadon-500));
+  border: 1rpx solid var(--ui-workshop-highlight);
+  box-shadow:
+    inset 24rpx 0 38rpx var(--ui-workshop-highlight),
+    inset -18rpx 0 30rpx var(--ui-workshop-shadow),
+    inset 0 -9rpx 6rpx var(--ui-workshop-shadow),
+    0 26rpx 54rpx var(--ui-workshop-shadow);
   transform: translateX(-50%);
 }
 
@@ -324,6 +331,31 @@
   box-shadow: inset 0 10rpx 12rpx var(--ui-workshop-shadow), 0 0 0 10rpx var(--color-on-dark-muted);
   transform: translateX(-50%);
 }
+
+.fallback-pot::after {
+  content: "";
+  position: absolute;
+  left: 22%;
+  top: 13%;
+  width: 14%;
+  height: 58%;
+  border-radius: 48%;
+  background: var(--ui-pottery-window-reflection);
+  filter: blur(5rpx);
+  opacity: 0.42;
+  transform: rotate(5deg);
+}
+
+.fallback-pot.stage-1 {
+  background: var(--ui-pottery-bisque-grad);
+  box-shadow:
+    inset 22rpx 0 34rpx var(--ui-pottery-gloss-light),
+    inset -18rpx 0 28rpx var(--ui-pottery-gloss-shade),
+    inset 0 -8rpx 6rpx var(--ui-pottery-foot-shade),
+    0 26rpx 54rpx var(--ui-workshop-shadow);
+}
+
+.fallback-pot.stage-1::after { opacity: 0.66; }
 
 .fallback-pot.shape-bowl { width: 390rpx; height: 260rpx; border-radius: 18% 18% 48% 48% / 12% 12% 70% 70%; }
 .fallback-pot.shape-cup { width: 250rpx; height: 330rpx; border-radius: 24% 24% 36% 36%; }

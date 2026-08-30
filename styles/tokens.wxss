@@ -79,6 +79,14 @@ page {
   --ui-pottery-preview: linear-gradient(100deg, #7f9f91 0%, #e2ebe5 48%, #6d8f81 100%);
   --ui-pottery-preview-complete: linear-gradient(100deg, #b8c9c0 0%, #f1f5ef 48%, #96ac9f 100%);
   --ui-pottery-shadow: rgba(32, 41, 35, 0.28);
+  --ui-pottery-bisque-grad: radial-gradient(ellipse at 33% 17%, #ffffff 0 5%, transparent 20%), linear-gradient(102deg, #aebbb6 0, #eef3ed 32%, #ffffff 48%, #d9e4df 72%, #a9b9b4 100%);
+  --ui-pottery-showcase-grad: radial-gradient(ellipse at 33% 16%, #ffffff 0 5%, transparent 19%), linear-gradient(100deg, #688982, #f7faf6 45%, #ffffff 52%, #99b8af 72%, #58746e);
+  --ui-pottery-gloss-light: rgba(255, 255, 255, 0.46);
+  --ui-pottery-gloss-shade: rgba(91, 113, 108, 0.24);
+  --ui-pottery-foot-shade: rgba(71, 86, 82, 0.22);
+  --ui-pottery-showcase-shade: rgba(42, 63, 59, 0.3);
+  --ui-pottery-showcase-foot: rgba(33, 47, 44, 0.3);
+  --ui-pottery-window-reflection: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.9) 17% 74%, transparent);
   --ui-hero-placeholder: #d7e1dc;
 
   /* 成品展台：与展柜主光（左上）对应的圆柱配色与渐变 */

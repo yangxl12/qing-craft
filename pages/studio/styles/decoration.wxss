@@ -162,7 +162,7 @@
   --ui-text-tertiary: var(--color-text-tertiary);
   --ui-border: var(--color-border);
   --ui-action: var(--color-celadon-700);
-  --ui-action-text: #f8faf6;
+  --ui-action-text: var(--color-on-dark);
   --ui-focus: var(--color-cobalt);
 }
 

@@ -6,7 +6,7 @@
   left: auto;
   right: var(--space-4);
   top: 120rpx;
-  width: 112rpx;
+  width: 132rpx;
   box-sizing: border-box;
   color: var(--color-on-dark);
   background: var(--ui-workshop-panel);
@@ -18,18 +18,19 @@
   animation: decor-tool-enter var(--motion-overlay) var(--ease-enter) both;
 }
 
-.decor-tool-panel.collapsed { width: 112rpx; }
+.decor-tool-panel.collapsed { width: 132rpx; }
 .decor-tool-head {
   min-height: 0;
+  height: 56rpx;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: stretch;
   border-bottom: 1rpx solid var(--ui-workshop-border);
 }
 .decor-tool-drag {
+  flex: 1;
   min-width: 0;
-  width: 100%;
-  height: 72rpx;
+  height: 100%;
   padding: 0 !important;
   display: flex;
   align-items: center;
@@ -46,25 +47,26 @@
 .decor-drag-icon > view { width: 6rpx; height: 6rpx; border-radius: var(--radius-full); background: var(--color-on-dark-muted); }
 .decor-tool-title { display: none; }
 .decor-tool-fold {
-  width: 100% !important;
+  flex: none;
+  width: 56rpx !important;
   min-width: 0 !important;
-  height: 72rpx;
-  border-left: 0 !important;
-  border-top: 1rpx solid var(--ui-workshop-border) !important;
+  height: 100% !important;
+  border-left: 1rpx solid var(--ui-workshop-border) !important;
+  border-top: 0 !important;
   border-radius: 0 !important;
+  padding: 0 !important;
 }
 .decor-tool-actions {
-  padding: var(--space-2);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
+  padding: var(--space-1);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1);
 }
 .decor-tool-actions.is-collapsed { display: none; }
 
 .decor-tool-command,
 .decor-axis-command {
-  min-height: 88rpx;
+  min-height: 56rpx;
   color: var(--color-text) !important;
   background: var(--ui-porcelain-panel-solid) !important;
   border: 1rpx solid var(--ui-porcelain-border) !important;
@@ -72,8 +74,8 @@
 }
 
 .decor-tool-command {
-  width: 88rpx !important;
-  min-width: 88rpx !important;
+  width: 100% !important;
+  min-width: 0 !important;
   padding: 0 !important;
   display: flex;
   align-items: center;
@@ -81,21 +83,23 @@
 }
 .decor-tool-command.danger { color: var(--color-danger) !important; }
 .decor-axis-command {
-  width: 88rpx;
-  padding: var(--space-1) 0;
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: 0 !important;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   gap: var(--space-1);
 }
 .decor-axis-command > button {
-  width: 80rpx !important;
-  min-width: 80rpx !important;
-  height: 64rpx;
+  flex: 1;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 48rpx;
   padding: 0 !important;
   color: var(--color-text) !important;
   font-family: var(--font-data);
-  font-size: var(--type-h3-size) !important;
+  font-size: var(--type-body-sm-size) !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -322,13 +326,13 @@
 @keyframes decor-tray-enter { from { opacity: 0; transform: translateY(18rpx); } to { opacity: 1; transform: translateY(0); } }
 
 @media (max-width: 340px) {
-  .decor-tool-panel { right: var(--space-3); width: 104rpx; }
-  .decor-tool-panel.collapsed { width: 104rpx; }
+  .decor-tool-panel { right: var(--space-3); width: 124rpx; }
+  .decor-tool-panel.collapsed { width: 124rpx; }
+  .decor-tool-head { height: 52rpx; }
+  .decor-tool-fold { width: 52rpx !important; }
   .decor-tool-command,
-  .decor-axis-command { min-height: 80rpx; }
-  .decor-tool-command { width: 80rpx !important; min-width: 80rpx !important; }
-  .decor-axis-command { width: 80rpx; }
-  .decor-axis-command > button { width: 72rpx !important; min-width: 72rpx !important; height: 56rpx; }
+  .decor-axis-command { min-height: 52rpx; }
+  .decor-axis-command > button { height: 44rpx; }
   .decor-panel-grid { padding-left: var(--space-3); padding-right: var(--space-3); gap: var(--space-2); }
   .decor-library-body { grid-template-columns: 96rpx minmax(0, 1fr); }
   .decor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -340,6 +344,11 @@
 
 @media (max-height: 700px) {
   .decor-tool-panel { top: 104rpx; }
+  .decor-tool-head { height: 52rpx; }
+  .decor-tool-fold { width: 52rpx !important; }
+  .decor-tool-command,
+  .decor-axis-command { min-height: 52rpx; }
+  .decor-axis-command > button { height: 44rpx; }
   .decor-panel-grid { height: 300rpx; }
   .decor-library-panel,
   .decor-selected-panel { grid-template-rows: 72rpx minmax(0, 1fr); }

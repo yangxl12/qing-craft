@@ -1,0 +1,142 @@
+[
+  {
+    "id": "uploaded_peony_prosperity",
+    "name": "牡丹富贵图",
+    "file": "items/01-peony-prosperity.png",
+    "atlasIndex": 0,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (1).png"
+  },
+  {
+    "id": "uploaded_lotus_ducks",
+    "name": "莲池鸳鸯图",
+    "file": "items/02-lotus-ducks.png",
+    "atlasIndex": 1,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (1).png"
+  },
+  {
+    "id": "uploaded_four_gentlemen",
+    "name": "梅兰竹菊",
+    "file": "items/03-four-gentlemen.png",
+    "atlasIndex": 2,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (1).png"
+  },
+  {
+    "id": "uploaded_winter_friends",
+    "name": "岁寒三友",
+    "file": "items/04-winter-three-friends.png",
+    "atlasIndex": 3,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (1).png"
+  },
+  {
+    "id": "uploaded_children_play",
+    "name": "婴戏图",
+    "file": "items/05-children-at-play.png",
+    "atlasIndex": 4,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (1).png"
+  },
+  {
+    "id": "uploaded_landscape_pavilion",
+    "name": "山水楼阁图",
+    "file": "items/06-landscape-pavilion.png",
+    "atlasIndex": 5,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (1).png"
+  },
+  {
+    "id": "uploaded_pine_cranes",
+    "name": "松鹤延年图",
+    "file": "items/07-pine-cranes.png",
+    "atlasIndex": 6,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (1).png"
+  },
+  {
+    "id": "uploaded_fish_algae",
+    "name": "鱼藻图",
+    "file": "items/08-fish-and-algae.png",
+    "atlasIndex": 7,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (1).png"
+  },
+  {
+    "id": "uploaded_phoenix_peony",
+    "name": "凤凰牡丹图",
+    "file": "items/09-phoenix-peony.png",
+    "atlasIndex": 8,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (1).png"
+  },
+  {
+    "id": "uploaded_dragon_pearl",
+    "name": "龙戏珠图",
+    "file": "items/10-dragon-pearl.png",
+    "atlasIndex": 9,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (1).png"
+  },
+  {
+    "id": "uploaded_eight_immortals",
+    "name": "八仙庆寿图",
+    "file": "items/11-eight-immortals.png",
+    "atlasIndex": 10,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (2).png"
+  },
+  {
+    "id": "uploaded_three_abundances",
+    "name": "三多纹",
+    "file": "items/12-three-abundances.png",
+    "atlasIndex": 11,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (2).png"
+  },
+  {
+    "id": "uploaded_flower_bird_spray",
+    "name": "折枝花鸟图",
+    "file": "items/13-flower-bird-spray.png",
+    "atlasIndex": 12,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (2).png"
+  },
+  {
+    "id": "uploaded_rock_flowers",
+    "name": "洞石花卉图",
+    "file": "items/14-rock-flowers.png",
+    "atlasIndex": 13,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (2).png"
+  },
+  {
+    "id": "uploaded_magpie_plum",
+    "name": "喜上眉梢",
+    "file": "items/15-magpie-plum.png",
+    "atlasIndex": 14,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (2).png"
+  },
+  {
+    "id": "uploaded_hundred_butterflies",
+    "name": "百蝶图",
+    "file": "items/16-hundred-butterflies.png",
+    "atlasIndex": 15,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (2).png"
+  },
+  {
+    "id": "uploaded_ladies_flowers",
+    "name": "仕女赏花图",
+    "file": "items/17-ladies-viewing-flowers.png",
+    "atlasIndex": 16,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (2).png"
+  },
+  {
+    "id": "uploaded_deer_crane",
+    "name": "鹿鹤同春图",
+    "file": "items/18-deer-crane-spring.png",
+    "atlasIndex": 17,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (2).png"
+  },
+  {
+    "id": "uploaded_antiquities",
+    "name": "博古清供图",
+    "file": "items/19-antiquities-offering.png",
+    "atlasIndex": 18,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (2).png"
+  },
+  {
+    "id": "uploaded_fortune_longevity",
+    "name": "福寿双全图",
+    "file": "items/20-fortune-longevity.png",
+    "atlasIndex": 19,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (2).png"
+  }
+]

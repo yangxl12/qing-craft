@@ -99,11 +99,13 @@ export interface MotifOption {
   meaningNote: string;
   shaderCode: number;
   glyph: string;
+  /** Index into the packaged 5x4 bitmap atlas for source-preserving motifs. */
+  atlasIndex?: number;
   catalogDefaults?: Partial<Pick<
     DecorationLayer,
     "anchor" | "repeatMode" | "scale" | "scaleX" | "scaleY" | "rotation" | "density"
   >>;
-  license: "original";
+  license: "original" | "user-provided";
 }
 
 export interface DecorationTemplate {
@@ -130,6 +132,10 @@ export interface InscriptionChoice {
 
 export const MAX_DECORATION_STAMPS = 8;
 export const MAX_SEAL_MARK_CHARACTERS = 6;
+export const DECOR_PATTERN_ATLAS_PATH = "/assets/decoration/patterns/blue-white-pattern-atlas.jpg";
+export const DECOR_PATTERN_ATLAS_COLUMNS = 5;
+export const DECOR_PATTERN_ATLAS_ROWS = 4;
+export const DECOR_PATTERN_ATLAS_SHADER_CODE_BASE = 256;
 /** 0 是器身与器底交界，-1 是器底中心，1 是器身口沿。 */
 export const MIN_DECORATION_SURFACE_V = -1;
 
@@ -218,7 +224,7 @@ function curatedMotif(
  * 装饰材料库中的馆藏级图案。每一项都拥有独立目录 ID、构图比例与着色器变体，
  * 不再通过侧栏轮转少量母纹样来凑数；母纹样仍保留给旧作品和一键构图使用。
  */
-export const DECOR_PATTERN_WORKS: MotifOption[] = [
+const LEGACY_DECOR_PATTERN_WORKS: MotifOption[] = [
   curatedMotif(MOTIFS[0], { id:"curated_lotus_pond", name:"莲池清韵", shaderCode:33, defaults:{ repeatMode:"radial", scaleX:1.08, scaleY:1.08, density:1.15 } }, "pattern"),
   curatedMotif(MOTIFS[1], { id:"curated_peony_scroll", name:"缠枝牡丹", shaderCode:66, defaults:{ repeatMode:"four", scaleX:.88, scaleY:.94, rotation:-8, density:1.3 } }, "pattern"),
   curatedMotif(MOTIFS[2], { id:"curated_plum_shadow", name:"梅枝疏影", shaderCode:99, defaults:{ repeatMode:"single", scaleX:1.18, scaleY:.9, rotation:-16, density:.88 } }, "pattern"),
@@ -239,6 +245,68 @@ export const DECOR_PATTERN_WORKS: MotifOption[] = [
   curatedMotif(MOTIFS[5], { id:"curated_crane_sun", name:"鹤舞朝阳", shaderCode:70, defaults:{ repeatMode:"single", scaleX:1.08, scaleY:1.18, rotation:-7, density:.84 } }, "pattern"),
   curatedMotif(MOTIFS[7], { id:"curated_spring_butterfly", name:"花蝶迎春", shaderCode:104, defaults:{ repeatMode:"four", scaleX:.78, scaleY:.82, rotation:15, density:1.26 } }, "pattern"),
   curatedMotif(MOTIFS[6], { id:"curated_fortune_longevity", name:"福寿连绵", shaderCode:71, defaults:{ repeatMode:"four", scaleX:.88, scaleY:.88, rotation:-10, density:1.38 } }, "pattern")
+];
+
+interface UploadedPatternOptions {
+  id: string;
+  name: string;
+  glyph: string;
+  atlasIndex: number;
+  meaningNote: string;
+}
+
+function uploadedPattern(source: MotifOption, options: UploadedPatternOptions): MotifOption {
+  return {
+    ...source,
+    id:options.id,
+    name:options.name,
+    roles:["main"],
+    stylePackIds:ALL_STYLES,
+    techniques:["underglaze"],
+    anchors:["belly", "well"],
+    repeatMode:"single",
+    densityRange:[.7, 1.3],
+    meaningNote:options.meaningNote,
+    shaderCode:DECOR_PATTERN_ATLAS_SHADER_CODE_BASE + options.atlasIndex,
+    glyph:options.glyph,
+    atlasIndex:options.atlasIndex,
+    catalogDefaults:{
+      anchor:"belly",
+      repeatMode:"single",
+      scale:1.32,
+      scaleX:1.32,
+      scaleY:1.32,
+      density:1
+    },
+    license:"user-provided"
+  };
+}
+
+/**
+ * 用户提供的二十幅青花圆景。目录缩略图与器身渲染共用同一图集索引，
+ * 避免菜单看见新图、实际贴到器物上仍回退到旧程序纹样。
+ */
+export const DECOR_PATTERN_WORKS: MotifOption[] = [
+  uploadedPattern(MOTIFS[1], { id:"uploaded_peony_prosperity", name:"牡丹富贵图", glyph:"牡", atlasIndex:0, meaningNote:"牡丹与花蝶相映，常用于表达富贵丰盛与春日生机。" }),
+  uploadedPattern(MOTIFS[0], { id:"uploaded_lotus_ducks", name:"莲池鸳鸯图", glyph:"鸳", atlasIndex:1, meaningNote:"莲池鸳鸯成双，常用于表达和美相伴与清雅圆满。" }),
+  uploadedPattern(MOTIFS[3], { id:"uploaded_four_gentlemen", name:"梅兰竹菊", glyph:"雅", atlasIndex:2, meaningNote:"梅兰竹菊四时相续，寄托清雅、坚韧与自持之意。" }),
+  uploadedPattern(MOTIFS[2], { id:"uploaded_winter_friends", name:"岁寒三友", glyph:"友", atlasIndex:3, meaningNote:"松竹梅凌寒相伴，常用于表达坚贞、长青与高洁品格。" }),
+  uploadedPattern(MOTIFS[9], { id:"uploaded_children_play", name:"婴戏图", glyph:"童", atlasIndex:4, meaningNote:"童子嬉游构图活泼，寄托家宅欢悦与生机绵延。" }),
+  uploadedPattern(MOTIFS[10], { id:"uploaded_landscape_pavilion", name:"山水楼阁图", glyph:"山", atlasIndex:5, meaningNote:"远山楼阁层叠开合，营造可游可居的清远意境。" }),
+  uploadedPattern(MOTIFS[5], { id:"uploaded_pine_cranes", name:"松鹤延年图", glyph:"鹤", atlasIndex:6, meaningNote:"苍松与双鹤相伴，常用于表达安康长久与松龄鹤寿。" }),
+  uploadedPattern(MOTIFS[4], { id:"uploaded_fish_algae", name:"鱼藻图", glyph:"鱼", atlasIndex:7, meaningNote:"游鱼穿行水藻之间，常用于表达有余、生机与水意。" }),
+  uploadedPattern(MOTIFS[1], { id:"uploaded_phoenix_peony", name:"凤凰牡丹图", glyph:"凤", atlasIndex:8, meaningNote:"凤凰与牡丹同绘，常用于表达华美、祥瑞与盛世气象。" }),
+  uploadedPattern(MOTIFS[8], { id:"uploaded_dragon_pearl", name:"龙戏珠图", glyph:"龙", atlasIndex:9, meaningNote:"云龙逐珠盘旋舒展，呈现昂扬灵动与吉庆气韵。" }),
+  uploadedPattern(MOTIFS[11], { id:"uploaded_eight_immortals", name:"八仙庆寿图", glyph:"仙", atlasIndex:10, meaningNote:"群仙会聚庆寿，寄托福泽、安康与长久祝愿。" }),
+  uploadedPattern(MOTIFS[1], { id:"uploaded_three_abundances", name:"三多纹", glyph:"多", atlasIndex:11, meaningNote:"桃、石榴与佛手相映，常用于表达多福、多寿与多子。" }),
+  uploadedPattern(MOTIFS[7], { id:"uploaded_flower_bird_spray", name:"折枝花鸟图", glyph:"鸟", atlasIndex:12, meaningNote:"折枝花卉与鸣鸟相映，传达春意、清趣与自然生机。" }),
+  uploadedPattern(MOTIFS[1], { id:"uploaded_rock_flowers", name:"洞石花卉图", glyph:"石", atlasIndex:13, meaningNote:"洞石与繁花虚实相生，形成古雅而有层次的园林清供。" }),
+  uploadedPattern(MOTIFS[2], { id:"uploaded_magpie_plum", name:"喜上眉梢", glyph:"喜", atlasIndex:14, meaningNote:"喜鹊立于梅梢，借谐音表达喜事将至与新春祝愿。" }),
+  uploadedPattern(MOTIFS[7], { id:"uploaded_hundred_butterflies", name:"百蝶图", glyph:"蝶", atlasIndex:15, meaningNote:"群蝶穿花轻盈繁盛，常用于表达百福、生机与春色。" }),
+  uploadedPattern(MOTIFS[1], { id:"uploaded_ladies_flowers", name:"仕女赏花图", glyph:"仕", atlasIndex:16, meaningNote:"仕女赏花构图闲雅，呈现庭院清欢与从容气韵。" }),
+  uploadedPattern(MOTIFS[5], { id:"uploaded_deer_crane", name:"鹿鹤同春图", glyph:"春", atlasIndex:17, meaningNote:"鹿鹤与松景相伴，寄托安宁、长寿与同享春和。" }),
+  uploadedPattern(MOTIFS[11], { id:"uploaded_antiquities", name:"博古清供图", glyph:"博", atlasIndex:18, meaningNote:"古器、花木与案几陈设相映，表达雅集清赏与文房意趣。" }),
+  uploadedPattern(MOTIFS[11], { id:"uploaded_fortune_longevity", name:"福寿双全图", glyph:"寿", atlasIndex:19, meaningNote:"寿字、桃实与吉祥结组合，集中表达福寿双全的祝愿。" })
 ];
 
 export const DECOR_ORNAMENT_WORKS: MotifOption[] = [
@@ -290,6 +358,8 @@ export const DECOR_CARVING_WORKS: MotifOption[] = [
 export const ALL_DECORATION_MOTIFS = [
   ...MOTIFS,
   ...BORDERS,
+  // 旧目录只用于恢复已经保存的作品，不再出现在材料菜单中。
+  ...LEGACY_DECOR_PATTERN_WORKS,
   ...DECOR_PATTERN_WORKS,
   ...DECOR_ORNAMENT_WORKS,
   ...DECOR_CARVING_WORKS

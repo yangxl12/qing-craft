@@ -23,6 +23,7 @@ import {
   createSealMark,
   DECOR_CARVING_WORKS,
   DECOR_ORNAMENT_WORKS,
+  DECOR_PATTERN_ATLAS_COLUMNS,
   DECOR_PATTERN_WORKS,
   duplicateDecorationLayer,
   DecorationAnchor,
@@ -284,6 +285,13 @@ function motifPreviewClass(
   const variant = collection ? collection[1].findIndex((item) => item.id === motif.id) + 1 : ((motif.shaderCode * 7) % 20) + 1;
   const category = collection?.[0] || "classic";
   return `motif-preview-${variant} motif-category-${category} motif-technique-${technique}`;
+}
+
+function motifAtlasStyle(motif: (typeof ALL_DECORATION_MOTIFS)[number]): string {
+  if (typeof motif.atlasIndex !== "number") return "";
+  const column = motif.atlasIndex % DECOR_PATTERN_ATLAS_COLUMNS;
+  const row = Math.floor(motif.atlasIndex / DECOR_PATTERN_ATLAS_COLUMNS);
+  return `left:${column * -100}%;top:${row * -100}%;`;
 }
 
 function decorCatalogRole(tab: DecorCatalogTabId): "main" | "border" | "stamp" {
@@ -748,6 +756,7 @@ Page({
         technique,
         checked:!!match,
         layerId:match?.layerId || "",
+        atlasStyle:motifAtlasStyle(motif),
         patternClass:motifPreviewClass(motif, technique)
       };
     });
@@ -761,6 +770,7 @@ Page({
       visible:layer.visible,
       copyNumber:layer.copyNumber || 0,
       isSeal:false,
+      atlasStyle:motifAtlasStyle(motifById(layer.motifId)),
       patternClass:motifPreviewClass(motifById(layer.motifId), layer.technique)
     }));
     if (sealMark) {
@@ -774,6 +784,7 @@ Page({
         visible:true,
         copyNumber:0,
         isSeal:true,
+        atlasStyle:"",
         patternClass:`seal-mark-art ${sealMark.colorId === "seal_red" ? "motif-ink-5" : sealMark.colorId === "wujin" ? "motif-ink-1" : "motif-ink-3"}`
       });
     }

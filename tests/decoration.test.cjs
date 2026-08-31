@@ -26,6 +26,8 @@ const {
   createDecorationStamp,
   DECOR_CARVING_WORKS,
   DECOR_ORNAMENT_WORKS,
+  DECOR_PATTERN_ATLAS_PATH,
+  DECOR_PATTERN_ATLAS_SHADER_CODE_BASE,
   DECOR_PATTERN_WORKS,
   duplicateDecorationLayer,
   DECORATION_TEMPLATES,
@@ -54,6 +56,39 @@ for (const [name, works] of [
   assert.equal(new Set(works.map((item) => item.id)).size, 20, `${name}作品必须拥有独立目录 ID`);
   assert.ok(works.every((item) => item.catalogDefaults), `${name}作品必须带有精修构图参数`);
 }
+assert.deepEqual(
+  DECOR_PATTERN_WORKS.map((item) => item.name),
+  [
+    "牡丹富贵图", "莲池鸳鸯图", "梅兰竹菊", "岁寒三友", "婴戏图",
+    "山水楼阁图", "松鹤延年图", "鱼藻图", "凤凰牡丹图", "龙戏珠图",
+    "八仙庆寿图", "三多纹", "折枝花鸟图", "洞石花卉图", "喜上眉梢",
+    "百蝶图", "仕女赏花图", "鹿鹤同春图", "博古清供图", "福寿双全图",
+  ],
+  "图案目录必须完整替换为两张上传图中的二十幅作品",
+);
+assert.deepEqual(
+  DECOR_PATTERN_WORKS.map((item) => item.atlasIndex),
+  Array.from({ length:20 }, (_, index) => index),
+  "二十幅上传图案必须与运行时图集逐格一一对应",
+);
+assert.ok(
+  DECOR_PATTERN_WORKS.every((item) =>
+    item.license === "user-provided" &&
+    item.shaderCode >= DECOR_PATTERN_ATLAS_SHADER_CODE_BASE
+  ),
+  "上传图案必须走位图着色器代码并记录用户提供来源",
+);
+assert.ok(fs.existsSync(`.${DECOR_PATTERN_ATLAS_PATH}`), "运行时青花图集必须存在");
+const uploadedPatternManifest = JSON.parse(
+  fs.readFileSync("assets/decoration/patterns/manifest.json", "utf8"),
+);
+assert.equal(uploadedPatternManifest.length, 20, "图案清单必须记录二十个独立文件");
+assert.ok(
+  uploadedPatternManifest.every((item) =>
+    fs.existsSync(`assets/decoration/patterns/${item.file}`)
+  ),
+  "清单中的二十个透明独立图案文件必须全部存在",
+);
 assert.equal(DECORATION_TEMPLATES.length, 6, "MVP 必须提供六套一键构图");
 
 const studioMarkup = fs.readFileSync("pages/studio/studio.wxml", "utf8");
@@ -94,6 +129,11 @@ assert.match(
   "装饰作品目录每行必须稳定展示四件",
 );
 assert.doesNotMatch(studioMarkup, /<view><\/view><text>\{\{item\.glyph\}\}<\/text><view><\/view>/, "目录缩略图不得继续使用汉字加椭圆占位图");
+assert.match(studioMarkup, /blue-white-pattern-atlas\.jpg/, "上传图案目录必须显示真实青花图集缩略图");
+assert.match(studioSource, /atlasStyle:motifAtlasStyle\(motif\)/, "目录项必须按图集索引定位真实缩略图");
+const potteryEngineSource = fs.readFileSync("core/pottery-engine.ts", "utf8");
+assert.match(potteryEngineSource, /uniform sampler2D uPatternAtlas/, "器身着色器必须接入上传图案图集");
+assert.match(potteryEngineSource, /bitmapMotifMask\(atlasIndex, point\)/, "器身必须采样图集而不是继续使用旧占位轮廓");
 assert.match(
   studioMarkup,
   /wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command"[^>]+bindtap="copySelectedDecoration"/,

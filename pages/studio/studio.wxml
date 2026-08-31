@@ -356,7 +356,15 @@
                   data-key="{{item.key}}"
                   bindtap="toggleDecorCatalogItem"
                 >
-                  <view class="motif-art {{item.patternClass}}" aria-hidden="true">
+                  <view wx:if="{{item.atlasStyle}}" class="motif-art decor-pattern-art" aria-hidden="true">
+                    <image
+                      class="decor-pattern-atlas"
+                      src="/assets/decoration/patterns/blue-white-pattern-atlas.jpg"
+                      mode="scaleToFill"
+                      style="{{item.atlasStyle}}"
+                    />
+                  </view>
+                  <view wx:else class="motif-art {{item.patternClass}}" aria-hidden="true">
                     <view class="motif-stroke motif-stroke-a"></view>
                     <view class="motif-stroke motif-stroke-b"></view>
                     <view class="motif-stroke motif-stroke-c"></view>
@@ -385,7 +393,15 @@
               data-id="{{item.id}}"
               bindtap="selectDecoration"
             >
-              <view class="motif-art {{item.patternClass}}" aria-hidden="true">
+              <view wx:if="{{item.atlasStyle}}" class="motif-art decor-pattern-art" aria-hidden="true">
+                <image
+                  class="decor-pattern-atlas"
+                  src="/assets/decoration/patterns/blue-white-pattern-atlas.jpg"
+                  mode="scaleToFill"
+                  style="{{item.atlasStyle}}"
+                />
+              </view>
+              <view wx:else class="motif-art {{item.patternClass}}" aria-hidden="true">
                 <view wx:if="{{!item.isSeal}}" class="motif-stroke motif-stroke-a"></view>
                 <view wx:if="{{!item.isSeal}}" class="motif-stroke motif-stroke-b"></view>
                 <view wx:if="{{!item.isSeal}}" class="motif-stroke motif-stroke-c"></view>

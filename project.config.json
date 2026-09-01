@@ -9,6 +9,7 @@
       { "type": "folder", "value": "types" },
       { "type": "folder", "value": "screenshots" },
       { "type": "folder", "value": "assets/decoration/patterns/items" },
+      { "type": "folder", "value": "assets/decoration/ornaments/items" },
       { "type": "file", "value": "package.json" },
       { "type": "file", "value": "package-lock.json" },
       { "type": "file", "value": "tsconfig.json" },

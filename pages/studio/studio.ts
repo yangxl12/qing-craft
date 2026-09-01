@@ -23,8 +23,10 @@ import {
   createDecorationStamp,
   createSealMark,
   DECOR_CARVING_WORKS,
+  DECOR_ORNAMENT_ATLAS_PATH,
   DECOR_ORNAMENT_WORKS,
   DECOR_PATTERN_ATLAS_COLUMNS,
+  DECOR_PATTERN_ATLAS_PATH,
   DECOR_PATTERN_WORKS,
   duplicateDecorationLayer,
   DecorationAnchor,
@@ -293,6 +295,13 @@ function motifAtlasStyle(motif: (typeof ALL_DECORATION_MOTIFS)[number]): string 
   const column = motif.atlasIndex % DECOR_PATTERN_ATLAS_COLUMNS;
   const row = Math.floor(motif.atlasIndex / DECOR_PATTERN_ATLAS_COLUMNS);
   return `left:${column * -100}%;top:${row * -100}%;`;
+}
+
+function motifAtlasSource(motif: (typeof ALL_DECORATION_MOTIFS)[number]): string {
+  if (typeof motif.atlasIndex !== "number") return "";
+  return motif.atlasKind === "ornament"
+    ? DECOR_ORNAMENT_ATLAS_PATH
+    : DECOR_PATTERN_ATLAS_PATH;
 }
 
 function decorCatalogRole(tab: DecorCatalogTabId): "main" | "border" | "stamp" {
@@ -758,6 +767,7 @@ Page({
         checked:!!match,
         layerId:match?.layerId || "",
         atlasStyle:motifAtlasStyle(motif),
+        atlasSrc:motifAtlasSource(motif),
         patternClass:motifPreviewClass(motif, technique)
       };
     });
@@ -772,6 +782,7 @@ Page({
       copyNumber:layer.copyNumber || 0,
       isSeal:false,
       atlasStyle:motifAtlasStyle(motifById(layer.motifId)),
+      atlasSrc:motifAtlasSource(motifById(layer.motifId)),
       patternClass:motifPreviewClass(motifById(layer.motifId), layer.technique)
     }));
     if (sealMark) {
@@ -786,6 +797,7 @@ Page({
         copyNumber:0,
         isSeal:true,
         atlasStyle:"",
+        atlasSrc:"",
         patternClass:`seal-mark-art ${sealMark.colorId === "seal_red" ? "motif-ink-5" : sealMark.colorId === "wujin" ? "motif-ink-1" : "motif-ink-3"}`
       });
     }

@@ -26,6 +26,8 @@ const {
   createSealMark,
   createDecorationStamp,
   DECOR_CARVING_WORKS,
+  DECOR_ORNAMENT_ATLAS_PATH,
+  DECOR_ORNAMENT_ATLAS_SHADER_CODE_BASE,
   DECOR_ORNAMENT_WORKS,
   DECOR_PATTERN_ATLAS_PATH,
   DECOR_PATTERN_ATLAS_SHADER_CODE_BASE,
@@ -88,6 +90,29 @@ assert.ok(
   }),
   "上传圆景必须带有非等比的开放式器身构图倍率",
 );
+assert.deepEqual(
+  DECOR_ORNAMENT_WORKS.map((item) => item.name),
+  [
+    "缠枝莲纹", "卷草纹", "回纹", "如意云头纹", "海水江崖纹",
+    "宝相花纹", "八吉祥纹", "弦纹", "连珠纹", "蕉叶纹",
+    "夔龙纹", "云龙纹", "冰裂纹", "博古纹", "龟背纹",
+    "万字纹", "团花纹", "莲瓣纹", "灵芝纹", "锦地纹",
+  ],
+  "纹样目录必须完整替换为两张上传图中的二十幅作品",
+);
+assert.deepEqual(
+  DECOR_ORNAMENT_WORKS.map((item) => item.atlasIndex),
+  Array.from({ length:20 }, (_, index) => index),
+  "二十幅上传纹样必须与独立运行时图集逐格一一对应",
+);
+assert.ok(
+  DECOR_ORNAMENT_WORKS.every((item) =>
+    item.license === "user-provided" &&
+    item.atlasKind === "ornament" &&
+    item.shaderCode >= DECOR_ORNAMENT_ATLAS_SHADER_CODE_BASE
+  ),
+  "上传纹样必须走独立位图着色器代码并记录用户提供来源",
+);
 const uploadedPatternManifest = JSON.parse(
   fs.readFileSync("assets/decoration/patterns/manifest.json", "utf8"),
 );
@@ -97,6 +122,22 @@ assert.ok(
     fs.existsSync(`assets/decoration/patterns/${item.file}`)
   ),
   "清单中的二十个透明独立图案文件必须全部存在",
+);
+assert.ok(fs.existsSync(`.${DECOR_ORNAMENT_ATLAS_PATH}`), "运行时精品纹样图集必须存在");
+const uploadedOrnamentManifest = JSON.parse(
+  fs.readFileSync("assets/decoration/ornaments/manifest.json", "utf8"),
+);
+assert.equal(uploadedOrnamentManifest.length, 20, "纹样清单必须记录二十个独立文件");
+assert.deepEqual(
+  uploadedOrnamentManifest.map(({ id, name, atlasIndex }) => ({ id, name, atlasIndex })),
+  DECOR_ORNAMENT_WORKS.map(({ id, name, atlasIndex }) => ({ id, name, atlasIndex })),
+  "纹样清单顺序必须与菜单和着色器索引完全一致",
+);
+assert.ok(
+  uploadedOrnamentManifest.every((item) =>
+    fs.existsSync(`assets/decoration/ornaments/${item.file}`)
+  ),
+  "清单中的二十个透明独立纹样文件必须全部存在",
 );
 assert.equal(DECORATION_TEMPLATES.length, 6, "MVP 必须提供六套一键构图");
 
@@ -138,11 +179,14 @@ assert.match(
   "装饰作品目录每行必须稳定展示四件",
 );
 assert.doesNotMatch(studioMarkup, /<view><\/view><text>\{\{item\.glyph\}\}<\/text><view><\/view>/, "目录缩略图不得继续使用汉字加椭圆占位图");
-assert.match(studioMarkup, /blue-white-pattern-atlas\.png/, "上传图案目录必须显示透明青花图集缩略图");
+assert.match(studioMarkup, /src="{{item\.atlasSrc}}"/, "上传图案与纹样目录必须按条目选择真实图集缩略图");
 assert.match(studioSource, /atlasStyle:motifAtlasStyle\(motif\)/, "目录项必须按图集索引定位真实缩略图");
+assert.match(studioSource, /atlasSrc:motifAtlasSource\(motif\)/, "目录项必须区分图案图集与纹样图集");
 const potteryEngineSource = fs.readFileSync("core/pottery-engine.ts", "utf8");
 assert.match(potteryEngineSource, /uniform sampler2D uPatternAtlas/, "器身着色器必须接入上传图案图集");
+assert.match(potteryEngineSource, /uniform sampler2D uOrnamentAtlas/, "器身着色器必须接入上传纹样图集");
 assert.match(potteryEngineSource, /bitmapMotifMask\(atlasIndex, point\)/, "器身必须采样图集而不是继续使用旧占位轮廓");
+assert.match(potteryEngineSource, /bitmapOrnamentMask\(atlasIndex, point\)/, "器身纹样必须采样独立纹样图集");
 assert.match(potteryEngineSource, /atlasSample\.a/, "器身图案必须使用透明图集去除圆景白边");
 assert.doesNotMatch(
   studioSource,

@@ -99,8 +99,9 @@ export interface MotifOption {
   meaningNote: string;
   shaderCode: number;
   glyph: string;
-  /** Index into the packaged 5x4 bitmap atlas for source-preserving motifs. */
+  /** Index into one packaged 5x4 bitmap atlas for source-preserving motifs. */
   atlasIndex?: number;
+  atlasKind?: "pattern" | "ornament";
   /** Source artwork fit applied before the user's free X/Y transform. */
   surfaceScaleX?: number;
   surfaceScaleY?: number;
@@ -139,6 +140,10 @@ export const DECOR_PATTERN_ATLAS_PATH = "/assets/decoration/patterns/blue-white-
 export const DECOR_PATTERN_ATLAS_COLUMNS = 5;
 export const DECOR_PATTERN_ATLAS_ROWS = 4;
 export const DECOR_PATTERN_ATLAS_SHADER_CODE_BASE = 256;
+export const DECOR_ORNAMENT_ATLAS_PATH = "/assets/decoration/ornaments/blue-white-ornament-atlas.png";
+export const DECOR_ORNAMENT_ATLAS_COLUMNS = 5;
+export const DECOR_ORNAMENT_ATLAS_ROWS = 4;
+export const DECOR_ORNAMENT_ATLAS_SHADER_CODE_BASE = 320;
 /** 0 是器身与器底交界，-1 是器底中心，1 是器身口沿。 */
 export const MIN_DECORATION_SURFACE_V = -1;
 
@@ -287,6 +292,7 @@ function uploadedPattern(source: MotifOption, options: UploadedPatternOptions): 
     shaderCode:DECOR_PATTERN_ATLAS_SHADER_CODE_BASE + options.atlasIndex,
     glyph:options.glyph,
     atlasIndex:options.atlasIndex,
+    atlasKind:"pattern",
     surfaceScaleX,
     surfaceScaleY,
     catalogDefaults:{
@@ -328,7 +334,7 @@ export const DECOR_PATTERN_WORKS: MotifOption[] = [
   uploadedPattern(MOTIFS[11], { id:"uploaded_fortune_longevity", name:"福寿双全图", glyph:"寿", atlasIndex:19, meaningNote:"寿字、桃实与吉祥结组合，集中表达福寿双全的祝愿。" })
 ];
 
-export const DECOR_ORNAMENT_WORKS: MotifOption[] = [
+const LEGACY_DECOR_ORNAMENT_WORKS: MotifOption[] = [
   curatedMotif(BORDERS[0], { id:"curated_meander_brocade", name:"回纹锦地", shaderCode:48, defaults:{ repeatMode:"band", scaleX:.72, scaleY:.64, density:1.52 } }, "ornament"),
   curatedMotif(BORDERS[1], { id:"curated_ruyi_cloud", name:"如意云头", shaderCode:81, defaults:{ repeatMode:"band", scaleX:.82, scaleY:.72, density:1.28 } }, "ornament"),
   curatedMotif(BORDERS[2], { id:"curated_lotus_up_down", name:"仰覆莲瓣", shaderCode:114, defaults:{ repeatMode:"band", scaleX:.74, scaleY:.82, density:1.36 } }, "ornament"),
@@ -349,6 +355,71 @@ export const DECOR_ORNAMENT_WORKS: MotifOption[] = [
   curatedMotif(BORDERS[5], { id:"curated_pearl_roundel", name:"联珠团花", shaderCode:53, defaults:{ repeatMode:"band", scaleX:.62, scaleY:.62, density:1.46 } }, "ornament"),
   curatedMotif(BORDERS[1], { id:"curated_lotus_ruyi", name:"莲瓣如意", shaderCode:49, defaults:{ repeatMode:"band", scaleX:.78, scaleY:.78, density:1.34 } }, "ornament"),
   curatedMotif(BORDERS[3], { id:"curated_winding_water", name:"曲水纹", shaderCode:115, defaults:{ repeatMode:"band", scaleX:.88, scaleY:.64, rotation:-5, density:1.58 } }, "ornament")
+];
+
+interface UploadedOrnamentOptions {
+  id: string;
+  name: string;
+  glyph: string;
+  atlasIndex: number;
+  scaleY: number;
+  density: number;
+  meaningNote: string;
+}
+
+function uploadedOrnament(source: MotifOption, options: UploadedOrnamentOptions): MotifOption {
+  return {
+    ...source,
+    id:options.id,
+    name:options.name,
+    roles:["border"],
+    stylePackIds:ALL_STYLES,
+    techniques:["underglaze"],
+    anchors:["rim", "shoulder", "belly", "foot"],
+    repeatMode:"band",
+    densityRange:[.65, 1.8],
+    meaningNote:options.meaningNote,
+    shaderCode:DECOR_ORNAMENT_ATLAS_SHADER_CODE_BASE + options.atlasIndex,
+    glyph:options.glyph,
+    atlasIndex:options.atlasIndex,
+    atlasKind:"ornament",
+    catalogDefaults:{
+      anchor:"belly",
+      repeatMode:"band",
+      scale:1,
+      scaleX:1,
+      scaleY:options.scaleY,
+      density:options.density
+    },
+    license:"user-provided"
+  };
+}
+
+/**
+ * 用户提供的二十幅精品纹样。圆景去除盘沿后保留完整主体，冰裂、锦地与带饰
+ * 保持开放边界；目录缩略图与器身渲染共用独立纹样图集。
+ */
+export const DECOR_ORNAMENT_WORKS: MotifOption[] = [
+  uploadedOrnament(BORDERS[4], { id:"uploaded_scroll_lotus", name:"缠枝莲纹", glyph:"莲", atlasIndex:0, scaleY:.92, density:.82, meaningNote:"缠枝莲花连绵舒展，适合沿器腹形成连续花带。" }),
+  uploadedOrnament(BORDERS[4], { id:"uploaded_scroll_grass", name:"卷草纹", glyph:"卷", atlasIndex:1, scaleY:.88, density:.9, meaningNote:"卷草回旋相接，形成轻盈而有节奏的连续纹带。" }),
+  uploadedOrnament(BORDERS[0], { id:"uploaded_meander_roundel", name:"回纹", glyph:"回", atlasIndex:2, scaleY:.78, density:1.15, meaningNote:"回纹层层转折，表达连绵有序的几何节奏。" }),
+  uploadedOrnament(BORDERS[1], { id:"uploaded_ruyi_cloud", name:"如意云头纹", glyph:"意", atlasIndex:3, scaleY:.9, density:.9, meaningNote:"如意云头圆转相承，常用于表达顺遂圆满。" }),
+  uploadedOrnament(BORDERS[3], { id:"uploaded_waves_cliff", name:"海水江崖纹", glyph:"水", atlasIndex:4, scaleY:.86, density:.82, meaningNote:"海水与山崖层叠起伏，形成稳重而开阔的下承纹样。" }),
+  uploadedOrnament(BORDERS[4], { id:"uploaded_treasure_flower", name:"宝相花纹", glyph:"宝", atlasIndex:5, scaleY:.9, density:.88, meaningNote:"宝相花端庄饱满，适合构成秩序清晰的团花带饰。" }),
+  uploadedOrnament(MOTIFS[13], { id:"uploaded_eight_auspicious", name:"八吉祥纹", glyph:"吉", atlasIndex:6, scaleY:.96, density:.76, meaningNote:"八吉祥器物环列成章，集中表达吉庆与圆满祝愿。" }),
+  uploadedOrnament(BORDERS[5], { id:"uploaded_string_bands", name:"弦纹", glyph:"弦", atlasIndex:7, scaleY:.72, density:1.05, meaningNote:"多重弦线平行收束，适合作为器身分区和过渡。" }),
+  uploadedOrnament(BORDERS[5], { id:"uploaded_linked_pearl", name:"连珠纹", glyph:"珠", atlasIndex:8, scaleY:.7, density:1.2, meaningNote:"大小连珠沿带排列，形成明快而稳定的边界节奏。" }),
+  uploadedOrnament(BORDERS[2], { id:"uploaded_banana_leaf", name:"蕉叶纹", glyph:"蕉", atlasIndex:9, scaleY:1, density:1.1, meaningNote:"蕉叶纵向挺拔，适合承接肩部、近足或长颈区域。" }),
+  uploadedOrnament(MOTIFS[8], { id:"uploaded_kui_dragon", name:"夔龙纹", glyph:"夔", atlasIndex:10, scaleY:.92, density:.72, meaningNote:"夔龙盘转有力，形成古雅而富有动势的连续龙纹。" }),
+  uploadedOrnament(MOTIFS[8], { id:"uploaded_cloud_dragon", name:"云龙纹", glyph:"龙", atlasIndex:11, scaleY:.92, density:.72, meaningNote:"云龙首尾呼应，呈现昂扬舒展的器身气势。" }),
+  uploadedOrnament(BORDERS[0], { id:"uploaded_ice_crackle", name:"冰裂纹", glyph:"冰", atlasIndex:12, scaleY:.82, density:1.1, meaningNote:"冰裂线网疏密自然，形成含蓄的釉面开片意象。" }),
+  uploadedOrnament(MOTIFS[11], { id:"uploaded_antiquities_display", name:"博古纹", glyph:"博", atlasIndex:13, scaleY:.94, density:.72, meaningNote:"古器与清供错落陈设，表达文房清赏与博雅意趣。" }),
+  uploadedOrnament(BORDERS[0], { id:"uploaded_tortoise_back", name:"龟背纹", glyph:"龟", atlasIndex:14, scaleY:.82, density:1.12, meaningNote:"龟背格连续相扣，构成规整而富变化的锦地。" }),
+  uploadedOrnament(BORDERS[0], { id:"uploaded_wan_brocade", name:"万字纹", glyph:"卍", atlasIndex:15, scaleY:.78, density:1.18, meaningNote:"万字折线反复连缀，表达绵延不断的吉祥寓意。" }),
+  uploadedOrnament(MOTIFS[1], { id:"uploaded_roundel_flower", name:"团花纹", glyph:"团", atlasIndex:16, scaleY:.9, density:.84, meaningNote:"团花向心舒展，形成端正饱满的花卉节奏。" }),
+  uploadedOrnament(BORDERS[2], { id:"uploaded_lotus_petals", name:"莲瓣纹", glyph:"瓣", atlasIndex:17, scaleY:.96, density:1.05, meaningNote:"莲瓣仰覆相接，适合沿器足与肩部形成挺拔收束。" }),
+  uploadedOrnament(MOTIFS[13], { id:"uploaded_lingzhi", name:"灵芝纹", glyph:"芝", atlasIndex:18, scaleY:.86, density:.88, meaningNote:"灵芝与云气相连，构成圆润舒展的吉祥纹带。" }),
+  uploadedOrnament(BORDERS[4], { id:"uploaded_floral_brocade", name:"锦地纹", glyph:"锦", atlasIndex:19, scaleY:.82, density:1.12, meaningNote:"繁花卷枝满铺成锦，形成细密华美的连续地纹。" })
 ];
 
 export const DECOR_CARVING_WORKS: MotifOption[] = [
@@ -379,6 +450,7 @@ export const ALL_DECORATION_MOTIFS = [
   ...BORDERS,
   // 旧目录只用于恢复已经保存的作品，不再出现在材料菜单中。
   ...LEGACY_DECOR_PATTERN_WORKS,
+  ...LEGACY_DECOR_ORNAMENT_WORKS,
   ...DECOR_PATTERN_WORKS,
   ...DECOR_ORNAMENT_WORKS,
   ...DECOR_CARVING_WORKS

@@ -1,6 +1,10 @@
 import { clayColor, glazeColor, glazeMaterial, PotteryWork } from "./model";
 import {
   borderRepeatCount,
+  DECOR_ORNAMENT_ATLAS_COLUMNS,
+  DECOR_ORNAMENT_ATLAS_PATH,
+  DECOR_ORNAMENT_ATLAS_ROWS,
+  DECOR_ORNAMENT_ATLAS_SHADER_CODE_BASE,
   DECOR_PATTERN_ATLAS_COLUMNS,
   DECOR_PATTERN_ATLAS_PATH,
   DECOR_PATTERN_ATLAS_ROWS,
@@ -322,6 +326,8 @@ uniform vec2 uSealHalfSize;
 uniform vec3 uSealColor;
 uniform sampler2D uPatternAtlas;
 uniform float uPatternAtlasReady;
+uniform sampler2D uOrnamentAtlas;
+uniform float uOrnamentAtlasReady;
 uniform float uShowcase;
 
 float wrappedDistance(float value, float center){
@@ -450,7 +456,30 @@ float bitmapMotifMask(float atlasIndex, vec2 point){
   return smoothstep(.025, .72, cobaltInk) * inside;
 }
 
+float bitmapOrnamentMask(float atlasIndex, vec2 point){
+  float inside = 1.0 - step(1.0, max(abs(point.x), abs(point.y)));
+  float column = mod(atlasIndex, ${DECOR_ORNAMENT_ATLAS_COLUMNS.toFixed(1)});
+  float sourceRow = floor(atlasIndex / ${DECOR_ORNAMENT_ATLAS_COLUMNS.toFixed(1)});
+  float textureRow = ${String(DECOR_ORNAMENT_ATLAS_ROWS - 1)}.0 - sourceRow;
+  vec2 localUv = point * .5 + .5;
+  vec2 atlasUv = vec2(
+    (column + localUv.x) / ${DECOR_ORNAMENT_ATLAS_COLUMNS.toFixed(1)},
+    (textureRow + localUv.y) / ${DECOR_ORNAMENT_ATLAS_ROWS.toFixed(1)}
+  );
+  // The ornament atlas stores the already-normalized cobalt mask in alpha so
+  // pale relief sources and dark blue sources render with one clean contract.
+  return texture2D(uOrnamentAtlas, atlasUv).a * inside;
+}
+
 float motifMask(float code, vec2 point){
+  if (
+    code >= ${DECOR_ORNAMENT_ATLAS_SHADER_CODE_BASE.toFixed(1)} &&
+    code < ${(DECOR_ORNAMENT_ATLAS_SHADER_CODE_BASE + DECOR_ORNAMENT_ATLAS_COLUMNS * DECOR_ORNAMENT_ATLAS_ROWS).toFixed(1)}
+  ) {
+    float atlasIndex = floor(code - ${DECOR_ORNAMENT_ATLAS_SHADER_CODE_BASE.toFixed(1)} + .5);
+    if (uOrnamentAtlasReady > .5) return bitmapOrnamentMask(atlasIndex, point);
+    return motifBaseMask(mod(atlasIndex, 15.0) + 1.0, point);
+  }
   if (
     code >= ${DECOR_PATTERN_ATLAS_SHADER_CODE_BASE.toFixed(1)} &&
     code < ${(DECOR_PATTERN_ATLAS_SHADER_CODE_BASE + DECOR_PATTERN_ATLAS_COLUMNS * DECOR_PATTERN_ATLAS_ROWS).toFixed(1)}
@@ -1049,6 +1078,8 @@ export class PotteryEngine {
   private sealTextureReady = false;
   private patternAtlasTexture: any;
   private patternAtlasReady = false;
+  private ornamentAtlasTexture: any;
+  private ornamentAtlasReady = false;
   private firedPreview = false;
   private kilnHeat = 0;
 
@@ -1078,6 +1109,9 @@ export class PotteryEngine {
     this.patternAtlasTexture = gl.createTexture();
     this.initializePatternAtlasTexture();
     this.loadPatternAtlasTexture();
+    this.ornamentAtlasTexture = gl.createTexture();
+    this.initializeOrnamentAtlasTexture();
+    this.loadOrnamentAtlasTexture();
     this.rebuild();
     this.targetRpm = calculatePotteryTargetRpm(this.meshRadius, "idle");
     this.currentRpm = this.targetRpm;
@@ -1406,6 +1440,55 @@ export class PotteryEngine {
       image.src = DECOR_PATTERN_ATLAS_PATH;
     } catch (_error) {
       this.patternAtlasReady = false;
+    }
+  }
+
+  private initializeOrnamentAtlasTexture() {
+    const gl = this.gl;
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, this.ornamentAtlasTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      1,
+      1,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      new Uint8Array([0, 0, 0, 0])
+    );
+  }
+
+  private loadOrnamentAtlasTexture() {
+    const createImage = this.canvas?.createImage;
+    if (typeof createImage !== "function") return;
+    try {
+      const image = createImage.call(this.canvas);
+      image.onload = () => {
+        if (!this.running) return;
+        try {
+          const gl = this.gl;
+          gl.activeTexture(gl.TEXTURE3);
+          gl.bindTexture(gl.TEXTURE_2D, this.ornamentAtlasTexture);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+          this.ornamentAtlasReady = true;
+          this.render();
+        } catch (_error) {
+          this.ornamentAtlasReady = false;
+        }
+      };
+      image.onerror = () => {
+        this.ornamentAtlasReady = false;
+      };
+      image.src = DECOR_ORNAMENT_ATLAS_PATH;
+    } catch (_error) {
+      this.ornamentAtlasReady = false;
     }
   }
 
@@ -1769,6 +1852,7 @@ export class PotteryEngine {
     gl.deleteTexture(this.inscriptionTexture);
     gl.deleteTexture(this.sealTexture);
     gl.deleteTexture(this.patternAtlasTexture);
+    gl.deleteTexture(this.ornamentAtlasTexture);
     gl.deleteProgram(this.program);
   }
 
@@ -2106,6 +2190,13 @@ export class PotteryEngine {
     gl.uniform1f(
       gl.getUniformLocation(program, "uPatternAtlasReady"),
       this.patternAtlasReady ? 1 : 0
+    );
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, this.ornamentAtlasTexture);
+    gl.uniform1i(gl.getUniformLocation(program, "uOrnamentAtlas"), 3);
+    gl.uniform1f(
+      gl.getUniformLocation(program, "uOrnamentAtlasReady"),
+      this.ornamentAtlasReady ? 1 : 0
     );
     const methods: Record<string, number> = { full: 0, half: 1, brush: 2, splash: 3 };
     gl.uniform1f(

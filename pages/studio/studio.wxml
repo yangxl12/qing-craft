@@ -359,7 +359,7 @@
                   <view wx:if="{{item.atlasStyle}}" class="motif-art decor-pattern-art" aria-hidden="true">
                     <image
                       class="decor-pattern-atlas"
-                      src="/assets/decoration/patterns/blue-white-pattern-atlas.png"
+                      src="{{item.atlasSrc}}"
                       mode="scaleToFill"
                       style="{{item.atlasStyle}}"
                     />
@@ -396,7 +396,7 @@
               <view wx:if="{{item.atlasStyle}}" class="motif-art decor-pattern-art" aria-hidden="true">
                 <image
                   class="decor-pattern-atlas"
-                  src="/assets/decoration/patterns/blue-white-pattern-atlas.png"
+                  src="{{item.atlasSrc}}"
                   mode="scaleToFill"
                   style="{{item.atlasStyle}}"
                 />

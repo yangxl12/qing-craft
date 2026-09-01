@@ -1,0 +1,142 @@
+[
+  {
+    "id": "uploaded_scroll_lotus",
+    "name": "缠枝莲纹",
+    "file": "items/01-scroll-lotus.png",
+    "atlasIndex": 0,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (3).png"
+  },
+  {
+    "id": "uploaded_scroll_grass",
+    "name": "卷草纹",
+    "file": "items/02-scroll-grass.png",
+    "atlasIndex": 1,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (3).png"
+  },
+  {
+    "id": "uploaded_meander_roundel",
+    "name": "回纹",
+    "file": "items/03-meander.png",
+    "atlasIndex": 2,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (3).png"
+  },
+  {
+    "id": "uploaded_ruyi_cloud",
+    "name": "如意云头纹",
+    "file": "items/04-ruyi-cloud.png",
+    "atlasIndex": 3,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (3).png"
+  },
+  {
+    "id": "uploaded_waves_cliff",
+    "name": "海水江崖纹",
+    "file": "items/05-waves-cliff.png",
+    "atlasIndex": 4,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (3).png"
+  },
+  {
+    "id": "uploaded_treasure_flower",
+    "name": "宝相花纹",
+    "file": "items/06-treasure-flower.png",
+    "atlasIndex": 5,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (3).png"
+  },
+  {
+    "id": "uploaded_eight_auspicious",
+    "name": "八吉祥纹",
+    "file": "items/07-eight-auspicious.png",
+    "atlasIndex": 6,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (3).png"
+  },
+  {
+    "id": "uploaded_string_bands",
+    "name": "弦纹",
+    "file": "items/08-string-bands.png",
+    "atlasIndex": 7,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (3).png"
+  },
+  {
+    "id": "uploaded_linked_pearl",
+    "name": "连珠纹",
+    "file": "items/09-linked-pearl.png",
+    "atlasIndex": 8,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (3).png"
+  },
+  {
+    "id": "uploaded_banana_leaf",
+    "name": "蕉叶纹",
+    "file": "items/10-banana-leaf.png",
+    "atlasIndex": 9,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (3).png"
+  },
+  {
+    "id": "uploaded_kui_dragon",
+    "name": "夔龙纹",
+    "file": "items/11-kui-dragon.png",
+    "atlasIndex": 10,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (4).png"
+  },
+  {
+    "id": "uploaded_cloud_dragon",
+    "name": "云龙纹",
+    "file": "items/12-cloud-dragon.png",
+    "atlasIndex": 11,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (4).png"
+  },
+  {
+    "id": "uploaded_ice_crackle",
+    "name": "冰裂纹",
+    "file": "items/13-ice-crackle.png",
+    "atlasIndex": 12,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (4).png"
+  },
+  {
+    "id": "uploaded_antiquities_display",
+    "name": "博古纹",
+    "file": "items/14-antiquities.png",
+    "atlasIndex": 13,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (4).png"
+  },
+  {
+    "id": "uploaded_tortoise_back",
+    "name": "龟背纹",
+    "file": "items/15-tortoise-back.png",
+    "atlasIndex": 14,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (4).png"
+  },
+  {
+    "id": "uploaded_wan_brocade",
+    "name": "万字纹",
+    "file": "items/16-wan-brocade.png",
+    "atlasIndex": 15,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (4).png"
+  },
+  {
+    "id": "uploaded_roundel_flower",
+    "name": "团花纹",
+    "file": "items/17-roundel-flower.png",
+    "atlasIndex": 16,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (4).png"
+  },
+  {
+    "id": "uploaded_lotus_petals",
+    "name": "莲瓣纹",
+    "file": "items/18-lotus-petals.png",
+    "atlasIndex": 17,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (4).png"
+  },
+  {
+    "id": "uploaded_lingzhi",
+    "name": "灵芝纹",
+    "file": "items/19-lingzhi.png",
+    "atlasIndex": 18,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (4).png"
+  },
+  {
+    "id": "uploaded_floral_brocade",
+    "name": "锦地纹",
+    "file": "items/20-floral-brocade.png",
+    "atlasIndex": 19,
+    "source": "ChatGPT Image 2026年8月30日 21_33_54 (4).png"
+  }
+]

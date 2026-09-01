@@ -101,6 +101,9 @@ export interface MotifOption {
   glyph: string;
   /** Index into the packaged 5x4 bitmap atlas for source-preserving motifs. */
   atlasIndex?: number;
+  /** Source artwork fit applied before the user's free X/Y transform. */
+  surfaceScaleX?: number;
+  surfaceScaleY?: number;
   catalogDefaults?: Partial<Pick<
     DecorationLayer,
     "anchor" | "repeatMode" | "scale" | "scaleX" | "scaleY" | "rotation" | "density"
@@ -132,7 +135,7 @@ export interface InscriptionChoice {
 
 export const MAX_DECORATION_STAMPS = 8;
 export const MAX_SEAL_MARK_CHARACTERS = 6;
-export const DECOR_PATTERN_ATLAS_PATH = "/assets/decoration/patterns/blue-white-pattern-atlas.jpg";
+export const DECOR_PATTERN_ATLAS_PATH = "/assets/decoration/patterns/blue-white-pattern-atlas.png";
 export const DECOR_PATTERN_ATLAS_COLUMNS = 5;
 export const DECOR_PATTERN_ATLAS_ROWS = 4;
 export const DECOR_PATTERN_ATLAS_SHADER_CODE_BASE = 256;
@@ -255,7 +258,21 @@ interface UploadedPatternOptions {
   meaningNote: string;
 }
 
+/**
+ * 圆景源图进入器身时不再作为完整圆章缩在腹部。这里按画面题材给出开放式构图的
+ * 基础比例：横景沿器腹展开，花鸟与人物纵向贯穿肩腹；用户自己的 scaleX/scaleY
+ * 仍作为相对变换叠加其上。放大后的画面由真实器物轮廓自然截断。
+ */
+const UPLOADED_PATTERN_SURFACE_SCALES: ReadonlyArray<readonly [number, number]> = [
+  [2.18, 2.38], [2.28, 2.22], [2.12, 2.44], [2.16, 2.4], [2.2, 2.32],
+  [2.38, 2.18], [2.22, 2.38], [2.26, 2.3], [2.2, 2.42], [2.22, 2.4],
+  [2.4, 2.2], [2.18, 2.36], [2.14, 2.46], [2.16, 2.44], [2.14, 2.46],
+  [2.36, 2.22], [2.2, 2.42], [2.2, 2.4], [2.34, 2.26], [2.14, 2.36]
+];
+
 function uploadedPattern(source: MotifOption, options: UploadedPatternOptions): MotifOption {
+  const [surfaceScaleX, surfaceScaleY] =
+    UPLOADED_PATTERN_SURFACE_SCALES[options.atlasIndex] || [2.2, 2.4];
   return {
     ...source,
     id:options.id,
@@ -270,6 +287,8 @@ function uploadedPattern(source: MotifOption, options: UploadedPatternOptions): 
     shaderCode:DECOR_PATTERN_ATLAS_SHADER_CODE_BASE + options.atlasIndex,
     glyph:options.glyph,
     atlasIndex:options.atlasIndex,
+    surfaceScaleX,
+    surfaceScaleY,
     catalogDefaults:{
       anchor:"belly",
       repeatMode:"single",
@@ -600,6 +619,11 @@ export function clampDecorationLayer<T extends DecorationLayer | DecorationStamp
   const anchor = preferredAnchor(shapeId, layer.anchor, role);
   const range = anchorRange(shapeId, anchor);
   const finite = (value: number, fallback: number) => Number.isFinite(value) ? value : fallback;
+  const positiveScale = (value: number, fallback: number) => {
+    const safeValue = finite(value, fallback);
+    return safeValue > 0 ? safeValue : fallback;
+  };
+  const scale = positiveScale(layer.scale, 1);
   return {
     ...layer,
     motifId:motif.id,
@@ -611,9 +635,11 @@ export function clampDecorationLayer<T extends DecorationLayer | DecorationStamp
       MIN_DECORATION_SURFACE_V,
       Math.min(1, finite(layer.v, (range[0] + range[1]) / 2))
     ),
-    scale:Math.max(.42, Math.min(1.65, finite(layer.scale, 1))),
-    scaleX:Math.max(.42, Math.min(1.65, finite(layer.scaleX, finite(layer.scale, 1)))),
-    scaleY:Math.max(.42, Math.min(1.65, finite(layer.scaleY, finite(layer.scale, 1)))),
+    // 横纵缩放只要求为有限正数，不再设置交互上限。超出器物的部分由网格轮廓
+    // 自然裁切；比例式缩小也可以持续进行而不会跨过 0 发生翻转。
+    scale,
+    scaleX:positiveScale(layer.scaleX, scale),
+    scaleY:positiveScale(layer.scaleY, scale),
     flipY:layer.flipY === true,
     rotation:Math.max(-180, Math.min(180, finite(layer.rotation, 0))),
     density:Math.max(.65, Math.min(1.8, finite(layer.density, 1))),
@@ -699,6 +725,26 @@ export function motifById(id: string): MotifOption {
   return ALL_DECORATION_MOTIFS.find((item) => item.id === id) || MOTIFS[0];
 }
 
+export function motifSurfaceScale(id: string): [number, number] {
+  const motif = motifById(id);
+  return [
+    Number.isFinite(motif.surfaceScaleX) && Number(motif.surfaceScaleX) > 0
+      ? Number(motif.surfaceScaleX)
+      : 1,
+    Number.isFinite(motif.surfaceScaleY) && Number(motif.surfaceScaleY) > 0
+      ? Number(motif.surfaceScaleY)
+      : 1
+  ];
+}
+
+/** One tap changes an axis proportionally, so repeated taps have no UI ceiling. */
+export function adjustDecorationScale(value: number, direction: number): number {
+  const current = Number.isFinite(value) && value > 0 ? value : 1;
+  const factor = direction < 0 ? 1 / 1.12 : 1.12;
+  const next = current * factor;
+  return Number.isFinite(next) && next > 0 ? next : current;
+}
+
 export function motifShaderCode(id: string): number {
   return motifById(id).shaderCode;
 }
@@ -737,12 +783,16 @@ export function defaultInscription(now = new Date()): Inscription {
 
 export function clampSealMark(seal: SealMark): SealMark {
   const finite = (value: number, fallback: number) => (Number.isFinite(value) ? value : fallback);
+  const positiveScale = (value: number) => {
+    const safeValue = finite(value, 1);
+    return safeValue > 0 ? safeValue : 1;
+  };
   return {
     ...seal,
     u:((finite(seal.u, .75) % 1) + 1) % 1,
     v:Math.max(MIN_DECORATION_SURFACE_V, Math.min(1, finite(seal.v, .45))),
-    scaleX:Math.max(.42, Math.min(1.65, finite(seal.scaleX, 1))),
-    scaleY:Math.max(.42, Math.min(1.65, finite(seal.scaleY, 1)))
+    scaleX:positiveScale(seal.scaleX),
+    scaleY:positiveScale(seal.scaleY)
   };
 }
 

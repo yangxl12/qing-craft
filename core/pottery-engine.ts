@@ -8,6 +8,7 @@ import {
   decorationColorHex,
   MAX_SEAL_MARK_CHARACTERS,
   MIN_DECORATION_SURFACE_V,
+  motifSurfaceScale,
   motifShaderCode,
   SEAL_MARK_COLORS
 } from "./decoration";
@@ -441,8 +442,12 @@ float bitmapMotifMask(float atlasIndex, vec2 point){
     (column + localUv.x) / ${DECOR_PATTERN_ATLAS_COLUMNS.toFixed(1)},
     (textureRow + localUv.y) / ${DECOR_PATTERN_ATLAS_ROWS.toFixed(1)}
   );
-  float cobaltInk = 1.0 - texture2D(uPatternAtlas, atlasUv).r;
-  return smoothstep(.035, .72, cobaltInk) * inside;
+  vec4 atlasSample = texture2D(uPatternAtlas, atlasUv);
+  // The runtime atlas preserves the extracted alpha instead of flattening the
+  // round source tile onto JPEG white. Multiplying ink by alpha removes the
+  // pale circular fringe while retaining the original cobalt wash hierarchy.
+  float cobaltInk = (1.0 - atlasSample.r) * atlasSample.a;
+  return smoothstep(.025, .72, cobaltInk) * inside;
 }
 
 float motifMask(float code, vec2 point){
@@ -495,7 +500,7 @@ float decorationLayerMaskAt(
   float anchor = floor(layerC.x / 32.0);
   float rotation = (fract(layerA.z) * 1000.0 - 180.0) * .0174532925;
   float verticalDirection = sign(layerB.w);
-  float verticalScale = max(.42, abs(layerB.w));
+  float verticalScale = max(.0001, abs(layerB.w));
   vec2 point;
   if (anchor > 4.5) {
     float wantedCavity = anchor < 5.5 ? step(.52, vCavity) : (1.0 - step(-.62, normalize(vNormal).y));
@@ -524,8 +529,8 @@ float decorationLayerMaskAt(
   vec2 wallPoint;
   if (layerB.y >= 0.0) {
     wallPoint = vec2(
-      localU / max(.035, horizontalScale),
-      (normalizedY - layerB.y) / max(.035, .16 * verticalScale)
+      localU / max(.0001, horizontalScale),
+      (normalizedY - layerB.y) / max(.0001, .16 * verticalScale)
     );
   } else {
     float wallCopyCenterU = layerB.x + floor((surfaceU - layerB.x) * copies + .5) / copies;
@@ -1362,7 +1367,7 @@ export class PotteryEngine {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    // The shader reads 1-red as ink strength, so white is a transparent mask.
+    // Transparent is the neutral fallback for the alpha-aware pattern atlas.
     gl.texImage2D(
       gl.TEXTURE_2D,
       0,
@@ -1372,7 +1377,7 @@ export class PotteryEngine {
       0,
       gl.RGBA,
       gl.UNSIGNED_BYTE,
-      new Uint8Array([255, 255, 255, 255])
+      new Uint8Array([0, 0, 0, 0])
     );
   }
 
@@ -2004,6 +2009,7 @@ export class PotteryEngine {
     layers.forEach((layer, index) => {
       const offset = index * 4;
       const color = hexRgb(decorationColorHex(layer.colorId));
+      const [surfaceScaleX, surfaceScaleY] = motifSurfaceScale(layer.motifId);
       const techniqueAndRotation = (techniqueCode[layer.technique] ?? 0) +
         (clamp(layer.rotation, -180, 180) + 180) / 1000;
       layerA.set([
@@ -2015,8 +2021,8 @@ export class PotteryEngine {
       layerB.set([
         layer.u,
         layer.v,
-        layer.scaleX ?? layer.scale,
-        (layer.flipY ? -1 : 1) * (layer.scaleY ?? layer.scale)
+        (layer.scaleX ?? layer.scale) * surfaceScaleX,
+        (layer.flipY ? -1 : 1) * (layer.scaleY ?? layer.scale) * surfaceScaleY
       ], offset);
       layerC.set([
         (anchorCode[layer.anchor] ?? 3) * 32 +
@@ -2069,11 +2075,10 @@ export class PotteryEngine {
       // 因而题款跨过足边或移动到器底中心时仍保持方正。
       const halfHeight = (SEAL_MARK_SIZE * seal.scaleY) / 2;
       const radius = this.radiusAtHeight(seal.v);
-      const halfWidth = clamp(
+      const halfWidth = Math.max(
+        0.0001,
         (SEAL_MARK_SIZE * seal.scaleX * this.meshHeight) /
-          (4 * Math.PI * Math.max(0.05, radius)),
-        0.02,
-        0.42
+          (4 * Math.PI * Math.max(0.05, radius))
       );
       gl.uniform4f(
         gl.getUniformLocation(program, "uSealRegion"),

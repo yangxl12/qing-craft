@@ -10,6 +10,7 @@ import {
 import { cloneWork, createWork, PotteryWork } from "../../core/model";
 import {
   ALL_DECORATION_MOTIFS,
+  adjustDecorationScale,
   anchorRange,
   applyDecorationTemplate,
   availableAnchors,
@@ -1551,12 +1552,15 @@ Page({
     const before = JSON.stringify(seal || selected);
     this.pushHistory();
     if (seal) {
-      if (axis === "x") seal.scaleX += direction * .1;
-      else seal.scaleY += direction * .1;
+      if (axis === "x") seal.scaleX = adjustDecorationScale(seal.scaleX, direction);
+      else seal.scaleY = adjustDecorationScale(seal.scaleY, direction);
       Object.assign(seal, clampSealMark(seal));
     } else if (selected) {
-      if (axis === "x") selected.scaleX = clamp((selected.scaleX ?? selected.scale) + direction * .1, .42, 1.65);
-      else selected.scaleY = clamp((selected.scaleY ?? selected.scale) + direction * .1, .42, 1.65);
+      if (axis === "x") {
+        selected.scaleX = adjustDecorationScale(selected.scaleX ?? selected.scale, direction);
+      } else {
+        selected.scaleY = adjustDecorationScale(selected.scaleY ?? selected.scale, direction);
+      }
       selected.scale = ((selected.scaleX ?? selected.scale) + (selected.scaleY ?? selected.scale)) / 2;
       Object.assign(selected, clampDecorationLayer(selected, this.work.shapeId));
     }

@@ -14,6 +14,7 @@ require.extensions[".ts"] = (module, filename) => {
 };
 
 const {
+  adjustDecorationScale,
   applyDecorationTemplate,
   availableAnchors,
   borderRepeatCount,
@@ -35,6 +36,7 @@ const {
   MAX_SEAL_MARK_CHARACTERS,
   MIN_DECORATION_SURFACE_V,
   MOTIFS,
+  motifSurfaceScale,
   stableKilnSeed,
   STYLE_PACKS,
   validateDecorationComposition,
@@ -79,6 +81,13 @@ assert.ok(
   "上传图案必须走位图着色器代码并记录用户提供来源",
 );
 assert.ok(fs.existsSync(`.${DECOR_PATTERN_ATLAS_PATH}`), "运行时青花图集必须存在");
+assert.ok(
+  DECOR_PATTERN_WORKS.every((item) => {
+    const [scaleX, scaleY] = motifSurfaceScale(item.id);
+    return scaleX > 1.5 && scaleY > 1.5 && scaleX !== scaleY;
+  }),
+  "上传圆景必须带有非等比的开放式器身构图倍率",
+);
 const uploadedPatternManifest = JSON.parse(
   fs.readFileSync("assets/decoration/patterns/manifest.json", "utf8"),
 );
@@ -129,11 +138,17 @@ assert.match(
   "装饰作品目录每行必须稳定展示四件",
 );
 assert.doesNotMatch(studioMarkup, /<view><\/view><text>\{\{item\.glyph\}\}<\/text><view><\/view>/, "目录缩略图不得继续使用汉字加椭圆占位图");
-assert.match(studioMarkup, /blue-white-pattern-atlas\.jpg/, "上传图案目录必须显示真实青花图集缩略图");
+assert.match(studioMarkup, /blue-white-pattern-atlas\.png/, "上传图案目录必须显示透明青花图集缩略图");
 assert.match(studioSource, /atlasStyle:motifAtlasStyle\(motif\)/, "目录项必须按图集索引定位真实缩略图");
 const potteryEngineSource = fs.readFileSync("core/pottery-engine.ts", "utf8");
 assert.match(potteryEngineSource, /uniform sampler2D uPatternAtlas/, "器身着色器必须接入上传图案图集");
 assert.match(potteryEngineSource, /bitmapMotifMask\(atlasIndex, point\)/, "器身必须采样图集而不是继续使用旧占位轮廓");
+assert.match(potteryEngineSource, /atlasSample\.a/, "器身图案必须使用透明图集去除圆景白边");
+assert.doesNotMatch(
+  studioSource,
+  /scaleX[^\n]+\.42,\s*1\.65|scaleY[^\n]+\.42,\s*1\.65/,
+  "横纵伸缩不得继续保留 1.65 的交互上限",
+);
 assert.match(
   studioMarkup,
   /wx:if="{{!selectedDecorationIsSeal}}" class="decor-tool-command"[^>]+bindtap="copySelectedDecoration"/,
@@ -343,6 +358,24 @@ const upgradedTransform = clampDecorationLayer(legacyTransform, "vase");
 assert.equal(upgradedTransform.scaleX, 1.24, "旧作品横向大小应从统一大小恢复");
 assert.equal(upgradedTransform.scaleY, 1.24, "旧作品纵向大小应从统一大小恢复");
 assert.equal(upgradedTransform.flipY, false, "旧作品默认不翻转纹样");
+
+const unboundedTransform = clampDecorationLayer({
+  ...legacyTransform,
+  scale:12,
+  scaleX:48,
+  scaleY:0.004,
+}, "vase");
+assert.equal(unboundedTransform.scale, 12, "统一缩放不得再被旧上限截断");
+assert.equal(unboundedTransform.scaleX, 48, "横向伸展必须允许持续放大并由器身裁切");
+assert.equal(unboundedTransform.scaleY, 0.004, "纵向伸缩必须允许持续缩小且保持正数");
+let repeatedlyExpanded = 1;
+let repeatedlyContracted = 1;
+for (let index = 0; index < 80; index += 1) {
+  repeatedlyExpanded = adjustDecorationScale(repeatedlyExpanded, 1);
+  repeatedlyContracted = adjustDecorationScale(repeatedlyContracted, -1);
+}
+assert.ok(repeatedlyExpanded > 1000, "连续增大不得在任意视觉档位停住");
+assert.ok(repeatedlyContracted > 0 && repeatedlyContracted < 0.001, "连续减小必须保持正数且不设视觉下限");
 
 const transformedWork = createWork("vase", "porcelain", "free");
 const transformedStamp = createDecorationStamp("plum", "vase", "yuan_blue");
